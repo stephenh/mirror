@@ -1,0 +1,21 @@
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "mirror";
+option java_outer_classname = "MirrorProto";
+
+service Mirror {
+  rpc Connect(Empty) returns (stream Update) {}
+}
+
+message Empty {
+}
+
+message Update {
+  string path = 1;
+  int32 modTime = 2;
+  string hash = 3;
+  bytes data = 4;
+}
+
