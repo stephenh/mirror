@@ -1,0 +1,72 @@
+
+Goals
+=====
+
+* Fast two-way sync between a desktop development machine, and an IDE-only laptop
+
+Non-Goals
+=========
+
+* Offline/disconnected support (e.g. general purpose distributed file system)
+* Anything permissions/owner/group related
+* Support for multiple clients
+* Support for huge files, instead assuming most files are source code.
+
+Comparison to Existing Options
+==============================
+
+* rsync is not two-way
+* unison is two-way, but not real-time
+* lsyncd is only one-way, and doesn't handle the initial sync
+* sshfs is too slow and doesn't support inotify
+
+General Idea
+============
+
+* Run one FileWatcher on the client, and sync changes client to server
+* Run one FileWatcher on the server, and sync changes server to client
+* Bootstrap the process, for now with an rsync of server to client
+* When a file changes, send path+time+data to other side
+* State machine of the file on each side?
+
+---
+
+* Server-side should own the state machine of path/mtime/hash
+* If no client-side connection, server-side can cache changes since last client connect
+* When client connects, bring up to date
+
+---
+
+Need a state machine of the connection state:
+
+1. Initialize
+2. Get Server State
+  * If overflow goto 1
+3. Get Client State
+  * If overlfow goto 1
+4. Bring into sync
+5. Watch server
+  * If overflow goto 1
+6. watch client
+  * If overlfow goto 1
+
+---
+
+The steady-state (post initial sync) client side would be:
+
+* One thread listening for file changes (or overflow)
+* One thread listening for server changes
+* Central logic that, on each incoming Update, decides what to do
+
+Then:
+
+* On change from server:
+  * Ensure server's mtime >= our mtime
+    * If so, write file
+    * If not, it's fine, we should have an incoming/outgoing Update to correct the server
+* On add/change from file system:
+  * Send file + mtime to server
+
+
+
+

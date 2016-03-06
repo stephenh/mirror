@@ -1,9 +1,14 @@
+package mirror;
+
 import io.grpc.stub.StreamObserver;
 import mirror.Empty;
 import mirror.MirrorGrpc.Mirror;
 import mirror.Update;
 
 public class MirrorServer implements Mirror {
+
+  public MirrorServer() {
+  }
 
   @Override
   public void connect(Empty request, StreamObserver<Update> responseObserver) {
