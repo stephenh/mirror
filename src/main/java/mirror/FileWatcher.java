@@ -96,10 +96,10 @@ class FileWatcher {
   private void onChangedPath(Path path) throws IOException, InterruptedException {
     if (Files.isHidden(path)) {
       return;
-    } else if (Files.isRegularFile(path)) {
-      onChangedFile(path);
-    } else {
+    } else if (Files.isDirectory(path)) {
       onNewDirectory(path);
+    } else {
+      onChangedFile(path);
     }
   }
 
