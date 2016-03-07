@@ -12,6 +12,7 @@
 			<attribute name="ignore_optional_problems" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="src" path="src/test/resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8/"/>
 	<classpathentry kind="lib" path="/home/stephen/.gradle/caches/modules-2/files-2.1/io.grpc/grpc-netty/0.13.1/b8195f7ce76408a3ebbd1fae7f1c231b1df27d3f/grpc-netty-0.13.1.jar" sourcepath="/home/stephen/.gradle/caches/modules-2/files-2.1/io.grpc/grpc-netty/0.13.1/4f9453f282702e3fb6951c1e7693e588a6b2627e/grpc-netty-0.13.1-sources.jar"/>
 	<classpathentry kind="lib" path="/home/stephen/.gradle/caches/modules-2/files-2.1/io.grpc/grpc-core/0.13.1/b109fb14bd0bc9a31992f102825e99eac4ab03a/grpc-core-0.13.1.jar" sourcepath="/home/stephen/.gradle/caches/modules-2/files-2.1/io.grpc/grpc-core/0.13.1/2c91d1a96495bf1a1031e1f96bcc121ac81775a7/grpc-core-0.13.1-sources.jar"/>
