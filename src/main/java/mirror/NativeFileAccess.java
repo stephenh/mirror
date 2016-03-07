@@ -19,6 +19,7 @@ public class NativeFileAccess implements FileAccess {
     String s = Charsets.US_ASCII.newDecoder().decode(b).toString();
     System.out.println(s);
     f.write(bar, ByteBuffer.wrap((s + "2").getBytes()));
+    // f.setModifiedTime(bar, 86_002);
   }
 
   @Override
@@ -39,6 +40,11 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public long getModifiedTime(Path path) {
     return path.toFile().lastModified();
+  }
+
+  @Override
+  public void setModifiedTime(Path path, long time) throws IOException {
+    path.toFile().setLastModified(time);
   }
 
   @Override

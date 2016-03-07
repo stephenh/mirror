@@ -19,4 +19,6 @@ public interface FileAccess {
 
   long getModifiedTime(Path path) throws IOException;
 
+  void setModifiedTime(Path path, long time) throws IOException;
+
 }

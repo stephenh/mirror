@@ -62,6 +62,7 @@ public class SyncLogic {
       if (!remote.getDelete()) {
         ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
         fileAccess.write(path, data);
+        fileAccess.setModifiedTime(path, remote.getModTime());
       } else {
         fileAccess.delete(path);
       }

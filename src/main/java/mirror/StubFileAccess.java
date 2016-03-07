@@ -33,6 +33,11 @@ public class StubFileAccess implements FileAccess {
   }
 
   @Override
+  public void setModifiedTime(Path path, long time) throws IOException {
+    fileTimes.put(path, time);
+  }
+
+  @Override
   public void delete(Path path) throws IOException {
     deleted.add(path);
     // could delete all subpaths if we needed to, but doesn't matter
