@@ -105,7 +105,7 @@ class FileWatcher {
 
   private void onRemovedPath(Path path) throws InterruptedException {
     String relativePath = toRelativePath(path);
-    queue.put(Update.newBuilder().setPath(relativePath).setDelete(true).build());
+    queue.put(Update.newBuilder().setPath(relativePath).setDelete(true).setLocal(true).build());
   }
 
   private void onNewDirectory(Path directory) throws IOException, InterruptedException {
@@ -119,7 +119,7 @@ class FileWatcher {
 
   private void onChangedFile(Path file) throws InterruptedException {
     String relativePath = toRelativePath(file);
-    queue.put(Update.newBuilder().setPath(relativePath).build());
+    queue.put(Update.newBuilder().setPath(relativePath).setLocal(true).build());
   }
 
   private String toRelativePath(Path path) {

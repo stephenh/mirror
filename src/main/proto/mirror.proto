@@ -17,5 +17,6 @@ message Update {
   int64 modTime = 2;
   bool delete = 3;
   bytes data = 4;
+  bool local = 5;
 }
 

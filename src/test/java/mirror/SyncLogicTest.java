@@ -22,21 +22,20 @@ public class SyncLogicTest {
   private static final Path fooDotTxt = Paths.get("./foo.txt");
   private final static byte[] data = new byte[] { 1, 2, 3, 4 };
   private final static byte[] data2 = new byte[] { 1, 2, 3, 4, 5, 6 };
-  private final BlockingQueue<Update> remoteChanges = new ArrayBlockingQueue<>(10);
-  private final BlockingQueue<Update> localChanges = new ArrayBlockingQueue<>(10);
-  private final StubObserver<Update> outgoing = new StubObserver();
+  private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
+  private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
-  private final SyncLogic l = new SyncLogic(Paths.get("./"), remoteChanges, localChanges, outgoing, fileAccess);
+  private final SyncLogic l = new SyncLogic(Paths.get("./"), changes, outgoing, fileAccess);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes locally
-    Update u = Update.newBuilder().setPath("foo.txt").build();
-    localChanges.add(u);
+    Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
+    changes.add(u);
     // when we notice
-    l.pollLocal();
+    l.poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and it has the correct data
@@ -44,6 +43,7 @@ public class SyncLogicTest {
     assertThat(sent.getData().toByteArray(), is(data));
     // and the time stamp
     assertThat(sent.getModTime(), is(1L));
+    assertThat(sent.getLocal(), is (false));
   }
 
   @Test
@@ -51,10 +51,10 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted locally
-    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).build();
-    localChanges.add(u);
+    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
+    changes.add(u);
     // when we notice
-    l.pollLocal();
+    l.poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and we don't need to send any data
@@ -64,6 +64,7 @@ public class SyncLogicTest {
     // assertThat(sent.getModTime(), is(1L));
     // and we marked it as a delete
     assertThat(sent.getDelete(), is(true));
+    assertThat(sent.getLocal(), is (false));
   }
 
   @Test
@@ -72,9 +73,9 @@ public class SyncLogicTest {
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes remotely
     Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).setModTime(10L).build();
-    remoteChanges.add(u);
+    changes.add(u);
     // when we notice
-    l.pollRemote();
+    l.poll();
     // then we've saved it locally
     ByteBuffer data = fileAccess.read(fooDotTxt);
     assertThat(data.array(), is(data2));
@@ -87,9 +88,9 @@ public class SyncLogicTest {
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted remotely
     Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).build();
-    remoteChanges.add(u);
+    changes.add(u);
     // when we notice
-    l.pollRemote();
+    l.poll();
     // then we delete it locally
     assertThat(fileAccess.wasDeleted(fooDotTxt), is(true));
   }
@@ -100,12 +101,27 @@ public class SyncLogicTest {
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes remotely
     Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).build();
-    remoteChanges.add(u);
+    changes.add(u);
     // when we notice and save that write locally
-    l.pollRemote();
-    localChanges.add(u);
+    l.poll();
+    changes.add(Update.newBuilder(u).setLocal(true).build());
     // then we don't echo it back out to the remote
-    l.pollLocal();
+    l.poll();
+    assertThat(outgoing.values.isEmpty(), is(true));
+  }
+
+  @Test
+  public void doNotEchoRemoteDelete() throws Exception {
+    // given we have an existing local file
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
+    // and it is deleted remotely
+    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).build();
+    changes.add(u);
+    // when we notice and save that delete locally
+    l.poll();
+    changes.add(Update.newBuilder(u).setLocal(true).build());
+    // then we don't echo it back out to the remote
+    l.poll();
     assertThat(outgoing.values.isEmpty(), is(true));
   }
 
