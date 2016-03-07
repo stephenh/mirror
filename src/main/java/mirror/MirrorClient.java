@@ -9,19 +9,18 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import io.grpc.stub.StreamObserver;
-import mirror.MirrorGrpc.Mirror;
+import mirror.MirrorGrpc.MirrorStub;
 
-public class MirrorServer implements Mirror {
+public class MirrorClient {
 
   private final Path root;
   private final FileAccess fs = new NativeFileAccess();
 
-  public MirrorServer(Path root) {
+  public MirrorClient(Path root) {
     this.root = root;
   }
 
-  @Override
-  public StreamObserver<Update> connect(StreamObserver<Update> outgoingUpdates) {
+  public void connect(MirrorStub stub) {
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(10_000);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
@@ -32,15 +31,11 @@ public class MirrorServer implements Mirror {
       queue.drainTo(initial);
       r.startPolling();
 
-      SyncLogic s = new SyncLogic(root, queue, outgoingUpdates, fs);
-      s.startPolling();
-
-      // make an observable for when the client sends in new updates
-      StreamObserver<Update> incomingUpdates = new StreamObserver<Update>() {
+      StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override
-        public void onNext(Update value) {
-          System.out.println("Received from client " + value);
-          queue.add(value);
+        public void onNext(Update update) {
+          System.out.println("Received from server " + update);
+          queue.add(update);
         }
 
         @Override
@@ -49,10 +44,12 @@ public class MirrorServer implements Mirror {
 
         @Override
         public void onCompleted() {
-          outgoingUpdates.onCompleted();
         }
       };
-      return incomingUpdates;
+      StreamObserver<Update> outgoingChanges = stub.connect(incomingChanges);
+
+      SyncLogic s = new SyncLogic(root, queue, outgoingChanges, fs);
+      s.startPolling();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

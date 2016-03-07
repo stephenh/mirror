@@ -6,7 +6,7 @@ option java_package = "mirror";
 option java_outer_classname = "MirrorProto";
 
 service Mirror {
-  rpc Connect(Empty) returns (stream Update) {}
+  rpc Connect(stream Update) returns (stream Update) {}
 }
 
 message Empty {

@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
@@ -34,15 +35,48 @@ public class SyncLogic {
     this.fileAccess = fileAccess;
   }
 
+  /**
+   * Starts polling for changes.
+   *
+   * Polling happens on a separate thread, so this method does not block.
+   */
+  public void startPolling() throws IOException, InterruptedException {
+    Runnable runnable = () -> {
+      try {
+        pollLoop();
+      } catch (Exception e) {
+        // TODO need to signal that our connection needs reset
+        throw new RuntimeException(e);
+      }
+    };
+    new ThreadFactoryBuilder() //
+      .setDaemon(true)
+      .setNameFormat("SyncLogic-%s")
+      .build()
+      .newThread(runnable)
+      .start();
+  }
+
+  private void pollLoop() throws IOException, InterruptedException {
+    while (true) {
+      Update u = changes.take();
+      handleUpdate(u);
+    }
+  }
+
   @VisibleForTesting
   public void poll() throws IOException {
     Update u = changes.poll();
     if (u != null) {
-      if (u.getLocal()) {
-        handleLocal(u);
-      } else {
-        handleRemote(u);
-      }
+      handleUpdate(u);
+    }
+  }
+
+  private void handleUpdate(Update u) throws IOException {
+    if (u.getLocal()) {
+      handleLocal(u);
+    } else {
+      handleRemote(u);
     }
   }
 

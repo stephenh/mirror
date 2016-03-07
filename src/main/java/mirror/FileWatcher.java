@@ -67,7 +67,7 @@ class FileWatcher {
     };
     new ThreadFactoryBuilder() //
       .setDaemon(true)
-      .setNameFormat("ResourceAccumulator-%s")
+      .setNameFormat("FileWatcher-%s")
       .build()
       .newThread(runnable)
       .start();
