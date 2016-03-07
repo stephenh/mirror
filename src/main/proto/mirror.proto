@@ -9,9 +9,6 @@ service Mirror {
   rpc Connect(stream Update) returns (stream Update) {}
 }
 
-message Empty {
-}
-
 message Update {
   string path = 1;
   int64 modTime = 2;
