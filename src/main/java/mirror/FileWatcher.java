@@ -13,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -42,13 +44,16 @@ class FileWatcher {
   }
 
   /**
-   * Initializes watches on the rootDirectory, and as a side-effect generates
-   * Update events in the blocking queue with all of the current paths.
+   * Initializes watches on the rootDirectory, and returns a list of all of
+   * the file paths found while setting up listening hooks.
    *
-   * This scan is performed on-thread and so the method blocks until complete.
+   * This scan is performed on-thread and so this method blocks until complete.
    */
-  public void performInitialScan() throws IOException, InterruptedException {
+  public List<Update> performInitialScan() throws IOException, InterruptedException {
     onNewDirectory(rootDirectory);
+    List<Update> updates = new ArrayList<>(queue.size());
+    queue.drainTo(updates);
+    return updates;
   }
 
   /**

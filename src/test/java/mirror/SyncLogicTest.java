@@ -25,7 +25,8 @@ public class SyncLogicTest {
   private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
-  private final SyncLogic l = new SyncLogic(Paths.get("./"), changes, outgoing, fileAccess);
+  private final Path root = Paths.get("./");
+  private final SyncLogic l = new SyncLogic(root, changes, outgoing, fileAccess);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {

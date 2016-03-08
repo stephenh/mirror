@@ -6,14 +6,39 @@ option java_package = "mirror";
 option java_outer_classname = "MirrorProto";
 
 service Mirror {
+  rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {}
+  
   rpc Connect(stream Update) returns (stream Update) {}
 }
 
+// Message for the client's initial state.
+message InitialSyncRequest {
+  repeated Update state = 1;
+}
+
+// Message for the server to return it's initial state.
+message InitialSyncResponse {
+  repeated Update state = 1;
+}
+
 message Update {
+  // The relative path from our sync root, e.g. ./foo.txt.
   string path = 1;
+
+  // The file modification time.
   int64 modTime = 2;
+
+  // Whether this path is being deleted.
   bool delete = 3;
+
+  // The file data. We don't initially fill in this when a local change
+  // is detected; instead we fill it in right before we put the event
+  // on the wire (in case we can avoid/skip the event, e.g. if it's an echo).
   bytes data = 4;
+  
+  // Our SyncLogic is easier to implement if we have a shared queue of
+  // both remote+local changes, so we use this flag to differentiate
+  // locally-generated Update events from remote-received Update events.
   bool local = 5;
 }
 

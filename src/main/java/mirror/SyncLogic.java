@@ -16,8 +16,9 @@ import io.grpc.stub.StreamObserver;
 /**
  * Implements the steady-state (post-initial sync) two-way sync logic.
  *
- * We poll for changes from either the remote host, or our local disk,
- * and then do the right thing.
+ * We poll for changes, either the remote host or our local disk, and
+ * either persist it locally or send it out remotely, while also considering
+ * whether we've since had a newer/conflicting change.
  */
 public class SyncLogic {
 

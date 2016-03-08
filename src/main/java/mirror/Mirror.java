@@ -22,7 +22,7 @@ public class Mirror {
     Channel c = NettyChannelBuilder.forAddress("localhost", 10000).negotiationType(NegotiationType.PLAINTEXT).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
     MirrorClient client = new MirrorClient(root2);
-    client.connect(stub);
+    client.startSession(stub);
 
     System.out.println("connected client");
 

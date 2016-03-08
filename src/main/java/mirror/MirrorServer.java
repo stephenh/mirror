@@ -1,12 +1,7 @@
 package mirror;
 
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.WatchService;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.Mirror;
@@ -14,33 +9,38 @@ import mirror.MirrorGrpc.Mirror;
 public class MirrorServer implements Mirror {
 
   private final Path root;
-  private final FileAccess fs = new NativeFileAccess();
+  private MirrorSession currentSession = null;
 
   public MirrorServer(Path root) {
     this.root = root;
   }
 
   @Override
-  public StreamObserver<Update> connect(StreamObserver<Update> outgoingUpdates) {
-    BlockingQueue<Update> queue = new ArrayBlockingQueue<>(10_000);
+  public void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
+    // start a new session
+    // TODO handle if there is an existing session
+    currentSession = new MirrorSession(root);
     try {
-      WatchService watchService = FileSystems.getDefault().newWatchService();
-      FileWatcher r = new FileWatcher(watchService, root, queue);
-      // throw away initial scan for now
-      r.performInitialScan();
-      List<Update> initial = new ArrayList<>();
-      queue.drainTo(initial);
-      r.startPolling();
+      // record the client's current state
+      currentSession.setRemoteState(request.getStateList());
+      // send back our current state
+      List<Update> state = currentSession.calcInitialState();
+      responseObserver.onNext(InitialSyncResponse.newBuilder().addAllState(state).build());
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 
-      SyncLogic s = new SyncLogic(root, queue, outgoingUpdates, fs);
-      s.startPolling();
-
+  @Override
+  public StreamObserver<Update> connect(StreamObserver<Update> outgoingUpdates) {
+    try {
       // make an observable for when the client sends in new updates
       StreamObserver<Update> incomingUpdates = new StreamObserver<Update>() {
         @Override
         public void onNext(Update value) {
           System.out.println("Received from client " + value);
-          queue.add(value);
+          currentSession.enqueue(value);
         }
 
         @Override
@@ -52,6 +52,9 @@ public class MirrorServer implements Mirror {
           outgoingUpdates.onCompleted();
         }
       };
+
+      currentSession.startPolling(outgoingUpdates);
+
       return incomingUpdates;
     } catch (Exception e) {
       throw new RuntimeException(e);
