@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.WatchService;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -17,6 +16,7 @@ public class MirrorSession {
   private final FileAccess fs = new NativeFileAccess();
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
   private final FileWatcher watcher;
+  private SyncLogic sync;
 
   public MirrorSession(Path root) {
     this.root = root;
@@ -43,7 +43,11 @@ public class MirrorSession {
   }
 
   public void startPolling(StreamObserver<Update> outgoingChanges) throws IOException, InterruptedException {
-    SyncLogic s = new SyncLogic(root, queue, outgoingChanges, fs);
-    s.startPolling();
+    sync = new SyncLogic(root, queue, outgoingChanges, fs);
+    sync.startPolling();
+  }
+
+  public void stop() throws InterruptedException {
+    sync.stop();
   }
 }

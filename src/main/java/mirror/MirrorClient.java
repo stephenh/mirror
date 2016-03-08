@@ -11,6 +11,7 @@ import mirror.MirrorGrpc.MirrorStub;
 public class MirrorClient {
 
   private final Path root;
+  private MirrorSession session;
 
   public MirrorClient(Path root) {
     this.root = root;
@@ -18,7 +19,7 @@ public class MirrorClient {
 
   /** Connects to the server and starts a sync session. */
   public void startSession(MirrorStub stub) {
-    MirrorSession session = new MirrorSession(root);
+    session = new MirrorSession(root);
 
     try {
       List<Update> state = session.calcInitialState();
@@ -64,4 +65,7 @@ public class MirrorClient {
     }
   }
 
+  public void stop() throws InterruptedException {
+    session.stop();
+  }
 }

@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -22,12 +23,15 @@ import io.grpc.stub.StreamObserver;
  */
 public class SyncLogic {
 
+  private static final String poisonPillPath = "SHUTDOWN NOW";
   private final Path rootDirectory;
   private final BlockingQueue<Update> changes;
   private final StreamObserver<Update> outgoing;
   private final FileAccess fileAccess;
   // eventually should be fancier
   private final Map<Path, Long> remoteState = new HashMap<Path, Long>();
+  private volatile boolean shutdown = false;
+  private final CountDownLatch isShutdown = new CountDownLatch(1);
 
   public SyncLogic(Path rootDirectory, BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess) {
     this.rootDirectory = rootDirectory;
@@ -50,19 +54,21 @@ public class SyncLogic {
         throw new RuntimeException(e);
       }
     };
-    new ThreadFactoryBuilder() //
-      .setDaemon(true)
-      .setNameFormat("SyncLogic-%s")
-      .build()
-      .newThread(runnable)
-      .start();
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SyncLogic-%s").build().newThread(runnable).start();
+  }
+
+  public void stop() throws InterruptedException {
+    shutdown = true;
+    changes.add(Update.newBuilder().setPath(poisonPillPath).build());
+    isShutdown.await();
   }
 
   private void pollLoop() throws IOException, InterruptedException {
-    while (true) {
+    while (!shutdown) {
       Update u = changes.take();
       handleUpdate(u);
     }
+    isShutdown.countDown();
   }
 
   @VisibleForTesting
@@ -74,6 +80,9 @@ public class SyncLogic {
   }
 
   private void handleUpdate(Update u) throws IOException {
+    if (u.getPath().equals(poisonPillPath)) {
+      return;
+    }
     if (u.getLocal()) {
       handleLocal(u);
     } else {

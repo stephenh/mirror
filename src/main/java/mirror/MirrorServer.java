@@ -53,6 +53,7 @@ public class MirrorServer implements Mirror {
         }
       };
 
+      // look for file system updates to send back to the client
       currentSession.startPolling(outgoingUpdates);
 
       return incomingUpdates;

@@ -23,7 +23,6 @@ public class Mirror {
     MirrorStub stub = MirrorGrpc.newStub(c);
     MirrorClient client = new MirrorClient(root2);
     client.startSession(stub);
-
     System.out.println("connected client");
 
     // just wait for control-c

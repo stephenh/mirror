@@ -21,6 +21,7 @@ dependencies {
   compile 'io.grpc:grpc-protobuf:0.13.1'
   compile 'io.grpc:grpc-stub:0.13.1'
   testCompile 'junit:junit:4.12'
+  testCompile 'commons-io:commons-io:2.4'
 }
 
 protobuf {

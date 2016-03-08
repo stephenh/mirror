@@ -12,7 +12,6 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.WatchService;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -28,15 +27,13 @@ public class Digest {
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
     FileWatcher r = new FileWatcher(watchService, root, queue);
-    r.performInitialScan();
+    List<Update> initial =r.performInitialScan();
     s.stop();
 
     System.out.println("scan took " + s.elapsed(TimeUnit.MILLISECONDS) + " millis");
     s.reset();
     s.start();
 
-    List<Update> initial = new ArrayList<>();
-    queue.drainTo(initial);
     StringBuilder b = new StringBuilder();
     for (Update update : initial) {
       Path p = root.resolve(update.getPath());

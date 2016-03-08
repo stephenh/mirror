@@ -24,6 +24,7 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public void write(Path path, ByteBuffer data) throws IOException {
+    path.getParent().toFile().mkdirs();
     FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     try {
       c.write(data);
