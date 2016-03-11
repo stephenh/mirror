@@ -57,7 +57,7 @@ public class MirrorClient {
         }
       };
 
-      StreamObserver<Update> outgoingChanges = stub.connect(incomingChanges);
+      StreamObserver<Update> outgoingChanges = stub.streamUpdates(incomingChanges);
 
       session.startPolling(outgoingChanges);
     } catch (Exception e) {

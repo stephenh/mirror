@@ -7,8 +7,8 @@ option java_outer_classname = "MirrorProto";
 
 service Mirror {
   rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {}
-  
-  rpc Connect(stream Update) returns (stream Update) {}
+
+  rpc StreamUpdates(stream Update) returns (stream Update) {}
 }
 
 // Message for the client's initial state.

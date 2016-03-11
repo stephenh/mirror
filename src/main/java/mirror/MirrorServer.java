@@ -33,7 +33,7 @@ public class MirrorServer implements Mirror {
   }
 
   @Override
-  public StreamObserver<Update> connect(StreamObserver<Update> outgoingUpdates) {
+  public StreamObserver<Update> streamUpdates(StreamObserver<Update> outgoingUpdates) {
     try {
       // make an observable for when the client sends in new updates
       StreamObserver<Update> incomingUpdates = new StreamObserver<Update>() {
