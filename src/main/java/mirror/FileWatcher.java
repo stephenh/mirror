@@ -101,6 +101,8 @@ class FileWatcher {
   private void onChangedPath(Path path) throws IOException, InterruptedException {
     if (Files.isHidden(path)) {
       return;
+    } else if (Files.isSymbolicLink(path)) {
+      onChangedSymbolicLink(path);
     } else if (Files.isDirectory(path)) {
       onNewDirectory(path);
     } else {
@@ -125,6 +127,22 @@ class FileWatcher {
   private void onChangedFile(Path file) throws InterruptedException {
     String relativePath = toRelativePath(file);
     queue.put(Update.newBuilder().setPath(relativePath).setLocal(true).build());
+  }
+
+  private void onChangedSymbolicLink(Path path) throws IOException, InterruptedException {
+    Path symlink = Files.readSymbolicLink(path);
+    String targetPath;
+    if (symlink.isAbsolute()) {
+      targetPath = path.getParent().toAbsolutePath().relativize(symlink).toString();
+    } else {
+      // Used to try and resolve + then re-relative this, but just straight as-is should be the same thing
+      // Path parent = path.getParent().normalize().toAbsolutePath();
+      // Path resolved = parent.resolve(symlink);
+      // Path relative = parent.relativize(resolved);
+      targetPath = symlink.toString();
+    }
+    String relativePath = toRelativePath(path);
+    queue.put(Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setLocal(true).build());
   }
 
   private String toRelativePath(Path path) {

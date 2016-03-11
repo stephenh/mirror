@@ -53,4 +53,9 @@ public class NativeFileAccess implements FileAccess {
     path.toFile().delete();
   }
 
+  @Override
+  public void createSymlink(Path link, Path target) throws IOException {
+    java.nio.file.Files.createSymbolicLink(link, target);
+  }
+
 }

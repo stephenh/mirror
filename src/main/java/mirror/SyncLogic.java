@@ -3,6 +3,7 @@ package mirror;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -92,12 +93,19 @@ public class SyncLogic {
 
   private void handleLocal(Update local) throws IOException {
     Path path = rootDirectory.resolve(local.getPath());
-    if (!local.getDelete()) {
-      // need to make a ByteString copy until GRPC supports ByteBuffers
-      ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
+    if (!local.getSymlink().isEmpty()) {
       long localModTime = fileAccess.getModifiedTime(path);
       Long remoteModTime = remoteState.get(path);
       if (remoteModTime == null || remoteModTime.longValue() < localModTime) {
+        Update toSend = Update.newBuilder(local).setModTime(localModTime).setLocal(false).build();
+        outgoing.onNext(toSend);
+      }
+    } else if (!local.getDelete()) {
+      long localModTime = fileAccess.getModifiedTime(path);
+      Long remoteModTime = remoteState.get(path);
+      if (remoteModTime == null || remoteModTime.longValue() < localModTime) {
+        // need to make a ByteString copy until GRPC supports ByteBuffers
+        ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
         Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
       }
@@ -112,7 +120,13 @@ public class SyncLogic {
 
   private void handleRemote(Update remote) throws IOException {
     Path path = rootDirectory.resolve(remote.getPath());
-    if (!remote.getDelete()) {
+    if (!remote.getSymlink().isEmpty()) {
+      Path target = Paths.get(remote.getSymlink());
+      fileAccess.createSymlink(path, target);
+      fileAccess.setModifiedTime(path, remote.getModTime());
+      // remember the last remote mod-time, so we don't echo back
+      remoteState.put(path, remote.getModTime());
+    } else if (!remote.getDelete()) {
       ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
       fileAccess.write(path, data);
       fileAccess.setModifiedTime(path, remote.getModTime());

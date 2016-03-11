@@ -21,4 +21,6 @@ public interface FileAccess {
 
   void setModifiedTime(Path path, long time) throws IOException;
 
+  void createSymlink(Path link, Path target) throws IOException;
+
 }

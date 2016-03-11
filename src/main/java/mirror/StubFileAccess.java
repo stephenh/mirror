@@ -13,6 +13,7 @@ public class StubFileAccess implements FileAccess {
   private Map<Path, byte[]> fileData = new HashMap<>();
   private Map<Path, Long> fileTimes = new HashMap<>();
   private List<Path> deleted = new ArrayList<>();
+  private Map<Path, Path> symlinks = new HashMap<>();
 
   @Override
   public void write(Path path, ByteBuffer data) throws IOException {
@@ -48,6 +49,16 @@ public class StubFileAccess implements FileAccess {
 
   public boolean wasDeleted(Path path) {
     return deleted.contains(path);
+  }
+
+  public Path readSymlink(Path link) {
+    return symlinks.get(link);
+  }
+
+  @Override
+  public void createSymlink(Path link, Path target) throws IOException {
+    symlinks.put(link, target);
+    fileTimes.put(link, 1L);
   }
 
 }

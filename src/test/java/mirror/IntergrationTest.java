@@ -4,6 +4,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -36,6 +38,7 @@ public class IntergrationTest {
 
   @After
   public void shutdown() throws Exception {
+    rpc.awaitTermination();
     if (rpc != null) {
       System.out.println("stopping server");
       rpc.shutdownNow();
@@ -91,6 +94,65 @@ public class IntergrationTest {
     sleep();
     // then it is also replicated back to root1
     assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abcd"));
+  }
+
+  @Test
+  public void testFileSymlinks() throws Exception {
+    // given a file that exists in both remotes
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    startMirror();
+    // when a symlink is created on root1
+    Files.createSymbolicLink(root1.toPath().resolve("foo2"), Paths.get("foo.txt"));
+    sleep();
+    // then it is replicated to root2 as a symlink
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo2")).toString(), is("foo.txt"));
+    assertThat(FileUtils.readFileToString(new File(root2, "foo2")), is("abc"));
+  }
+
+  @Test
+  public void testFileSymlinksThatAreAbsolutePaths() throws Exception {
+    // given a file that exists in both remotes
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    startMirror();
+    // when a symlink is created on root1
+    Files.createSymbolicLink(root1.toPath().resolve("foo2"), root1.toPath().resolve("foo.txt").toAbsolutePath());
+    sleep();
+    // then it is replicated to root2 as a symlink
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo2")).toString(), is("foo.txt"));
+    assertThat(FileUtils.readFileToString(new File(root2, "foo2")), is("abc"));
+  }
+
+  @Test
+  public void testFileSymlinksToADifferentDirectory() throws Exception {
+    // given a file in a/ that exists in both remotes
+    for (File root : new File[] { root1, root2 }) {
+      new File(root, "a").mkdir();
+      new File(root, "b").mkdir();
+      FileUtils.writeStringToFile(new File(root, "a/foo.txt"), "abc");
+    }
+    startMirror();
+    // when a symlink to b/ is created on root1
+    Files.createSymbolicLink(root1.toPath().resolve("b/foo2"), Paths.get("../a/foo.txt"));
+    sleep();
+    // then it is replicated to root2 as a symlink
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("b/foo2")).toString(), is("../a/foo.txt"));
+    assertThat(FileUtils.readFileToString(new File(root2, "b/foo2")), is("abc"));
+  }
+
+  @Test
+  public void testDirectorySymlinks() throws Exception {
+    // given a file that exists in both remotes
+    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    startMirror();
+    // when a symlink for it's directory is created on root1
+    Files.createSymbolicLink(root1.toPath().resolve("b"), Paths.get("a"));
+    sleep();
+    // then it is replicated to root2 as a symlink
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("b")).toString(), is("a"));
+    assertThat(FileUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
   }
 
   private void startMirror() throws Exception {
