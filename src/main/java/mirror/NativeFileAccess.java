@@ -42,32 +42,49 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public ByteBuffer read(Path relative) throws IOException {
-    Path path = rootDirectory.resolve(relative);
-    return Files.map(path.toFile());
+    return Files.map(resolve(relative).toFile());
   }
 
   @Override
   public long getModifiedTime(Path relative) {
-    Path path = rootDirectory.resolve(relative);
-    return path.toFile().lastModified();
+    return resolve(relative).toFile().lastModified();
   }
 
   @Override
   public void setModifiedTime(Path relative, long time) throws IOException {
-    Path path = rootDirectory.resolve(relative);
-    path.toFile().setLastModified(time);
+    resolve(relative).toFile().setLastModified(time);
   }
 
   @Override
   public void delete(Path relative) throws IOException {
-    Path path = rootDirectory.resolve(relative);
-    path.toFile().delete();
+    resolve(relative).toFile().delete();
   }
 
   @Override
   public void createSymlink(Path relative, Path target) throws IOException {
-    Path path = rootDirectory.resolve(relative);
-    java.nio.file.Files.createSymbolicLink(path, target);
+    resolve(relative).getParent().toFile().mkdirs();
+    java.nio.file.Files.createSymbolicLink(resolve(relative), target);
+  }
+
+  @Override
+  public boolean isSymlink(Path relativePath) throws IOException {
+    return java.nio.file.Files.isSymbolicLink(resolve(relativePath));
+  }
+
+  @Override
+  public Path readSymlink(Path relativePath) throws IOException {
+    // symlink semantics is that the path is relative to the location of the link
+    // path (relativePath), so we don't want to return it relative to the rootDirectory
+    Path symlink = java.nio.file.Files.readSymbolicLink(resolve(relativePath));
+    if (symlink.isAbsolute()) {
+      return resolve(relativePath).getParent().toAbsolutePath().relativize(symlink);
+    } else {
+      return resolve(relativePath).getParent().relativize(symlink);
+    }
+  }
+
+  private Path resolve(Path relativePath) {
+    return rootDirectory.resolve(relativePath);
   }
 
 }

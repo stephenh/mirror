@@ -5,6 +5,9 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.util.concurrent.SettableFuture;
 
 import io.grpc.Channel;
@@ -14,6 +17,8 @@ import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
 
 public class MirrorClient {
+
+  private static final Logger log = LoggerFactory.getLogger(MirrorClient.class);
 
   public static void main(String[] args) throws Exception {
     LoggingConfig.init();
@@ -43,6 +48,7 @@ public class MirrorClient {
     try {
       // 1. see what our current state is
       List<Update> localState = session.calcInitialState();
+      log.info("Client has " + localState.size() + " paths");
 
       // 2. send it to the server, so they can send back any stale/missing paths we have
       SettableFuture<PathState> remoteState = SettableFuture.create();
@@ -62,6 +68,7 @@ public class MirrorClient {
       });
 
       session.setInitialRemoteState(remoteState.get());
+      log.info("Server has " + remoteState.get().size() + " paths");
       session.seedQueueForInitialSync(new PathState(localState));
 
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {

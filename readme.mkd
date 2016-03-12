@@ -18,6 +18,7 @@ Goals
 =====
 
 * Real-time, two-way sync between a desktop development machine, and an editor-/IDE-only laptop
+* Native file system events (e.g. inotify) fired when files are changed (otherwise IDEs require explicit refreshes/polling)
 
 Non-Goals
 =========

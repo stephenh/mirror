@@ -4,6 +4,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -11,6 +14,7 @@ import mirror.MirrorGrpc.Mirror;
 
 public class MirrorServer implements Mirror {
 
+  private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
   private final Path root;
   private MirrorSession currentSession = null;
 
@@ -28,13 +32,16 @@ public class MirrorServer implements Mirror {
   }
 
   @Override
-  public void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
+  public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     // start a new session
     // TODO handle if there is an existing session
     currentSession = new MirrorSession(root);
+    log.info("Starting new session");
     try {
       // get our current state
       List<Update> serverState = currentSession.calcInitialState();
+      log.info("Server has " + serverState.size() + " paths");
+      log.info("Client has " + request.getStateList().size() + " paths");
       // record the client's current state
       currentSession.setInitialRemoteState(new PathState(request.getStateList()));
       currentSession.seedQueueForInitialSync(new PathState(serverState));
@@ -47,7 +54,7 @@ public class MirrorServer implements Mirror {
   }
 
   @Override
-  public StreamObserver<Update> streamUpdates(StreamObserver<Update> outgoingUpdates) {
+  public synchronized StreamObserver<Update> streamUpdates(StreamObserver<Update> outgoingUpdates) {
     try {
       // make an observable for when the client sends in new updates
       StreamObserver<Update> incomingUpdates = new StreamObserver<Update>() {
@@ -65,10 +72,8 @@ public class MirrorServer implements Mirror {
           outgoingUpdates.onCompleted();
         }
       };
-
       // look for file system updates to send back to the client
       currentSession.startPolling(outgoingUpdates);
-
       return incomingUpdates;
     } catch (Exception e) {
       throw new RuntimeException(e);

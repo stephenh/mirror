@@ -135,10 +135,7 @@ class FileWatcher {
     if (symlink.isAbsolute()) {
       targetPath = path.getParent().toAbsolutePath().relativize(symlink).toString();
     } else {
-      // Used to try and resolve + then re-relative this, but just straight as-is should be the same thing
-      // Path parent = path.getParent().normalize().toAbsolutePath();
-      // Path resolved = parent.resolve(symlink);
-      // Path relative = parent.relativize(resolved);
+      // the symlink is already relative, so we can leave it alone, e.g. foo.txt
       targetPath = symlink.toString();
     }
     String relativePath = toRelativePath(path);

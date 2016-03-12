@@ -178,6 +178,37 @@ public class IntergrationTest {
   }
 
   @Test
+  public void testInitialSyncDirectorySymlinkFromServerToClient() throws Exception {
+    // given a file that exists in both remotes
+    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    // and it is also symlinked on root1
+    new File(root1, "b").mkdir();
+    Files.createSymbolicLink(new File(root1, "b/foo.txt").toPath(), new File(root1, "a/foo.txt").toPath());
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the symlink is replicated to root2
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("b/foo.txt")).toString(), is("../a/foo.txt"));
+    assertThat(FileUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
+  }
+
+  @Test
+  public void testInitialSyncDirectorySymlinkFromClientToServer() throws Exception {
+    // given a file that exists in both remotes
+    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    // and it is also symlinked on root2
+    Files.createSymbolicLink(new File(root2, "b").toPath(), new File(root2, "a/foo.txt").toPath());
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the symlink is replicated to root1
+    assertThat(Files.readSymbolicLink(root1.toPath().resolve("b")).toString(), is("a/foo.txt"));
+    assertThat(FileUtils.readFileToString(new File(root1, "b")), is("abc"));
+  }
+
+  @Test
   public void testInitialSyncMissingFileFromServerToClient() throws Exception {
     // given root1 has an existing file
     FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");

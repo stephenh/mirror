@@ -51,8 +51,14 @@ public class StubFileAccess implements FileAccess {
     return deleted.contains(path);
   }
 
+  @Override
   public Path readSymlink(Path link) {
     return symlinks.get(link);
+  }
+
+  @Override
+  public boolean isSymlink(Path link) {
+    return symlinks.get(link) != null;
   }
 
   @Override

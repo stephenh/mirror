@@ -21,6 +21,10 @@ public interface FileAccess {
 
   void setModifiedTime(Path relativePath, long time) throws IOException;
 
+  boolean isSymlink(Path relativePath) throws IOException;
+
+  Path readSymlink(Path readSymlink) throws IOException;
+
   void createSymlink(Path relativePath, Path target) throws IOException;
 
 }

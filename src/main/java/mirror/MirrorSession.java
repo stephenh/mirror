@@ -3,6 +3,7 @@ package mirror;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.WatchService;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -59,9 +60,14 @@ public class MirrorSession {
   }
 
   /** Pretend we have local file events for anything the remote side needs from us. */
-  public void seedQueueForInitialSync(PathState initialLocalState) {
+  public void seedQueueForInitialSync(PathState initialLocalState) throws IOException {
     for (String path : this.initialRemoteState.getPathsToFetch(initialLocalState)) {
-      queue.add(Update.newBuilder().setPath(path).setLocal(true).build());
+      Path p = Paths.get(path);
+      if (fs.isSymlink(p)) {
+        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSymlink(fs.readSymlink(p).toString()).build());
+      } else {
+        queue.add(Update.newBuilder().setPath(path).setLocal(true).build());
+      }
     }
   }
 

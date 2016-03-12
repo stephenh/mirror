@@ -35,7 +35,7 @@ public class PathState {
   public void add(PathState other) {
     this.paths.putAll(other.paths);
   }
-  
+
   /** Records {@code remoteModTime} as the last-known mod time for {@code path}. */
   public void record(Path path, long modTime) {
     paths.put(path, modTime);
@@ -46,7 +46,7 @@ public class PathState {
     Long modTime = paths.get(path);
     return modTime == null || modTime.longValue() < potentiallyNewerModTime;
   }
-  
+
   /** @return if we think {@code path} exists on the remote side. */
   public boolean needsDeleted(Path path) {
     Long modTime = paths.get(path);
@@ -63,5 +63,9 @@ public class PathState {
       }
     }
     return fetch;
+  }
+
+  public int size() {
+    return paths.size();
   }
 }
