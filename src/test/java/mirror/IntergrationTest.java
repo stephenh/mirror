@@ -229,6 +229,17 @@ public class IntergrationTest {
     assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
   }
 
+  @Test
+  public void testIgnoreDirectories() throws Exception {
+    // given a file that exists within an ignored directory
+    FileUtils.writeStringToFile(new File(root1, "tmp/foo.txt"), "abc");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then it is not replicated to root2
+    assertThat(new File(root2, "tmp/foo.txt").exists(), is(false));
+  }
+
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;

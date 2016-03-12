@@ -98,7 +98,8 @@ class FileWatcher {
   }
 
   private void onChangedPath(Path path) throws IOException, InterruptedException {
-    if (Files.isHidden(path)) {
+    // TODO Support command line parameters for customization
+    if (Files.isHidden(path) || path.getFileName().toString().equals("tmp") || path.getFileName().toString().endsWith(".class")) {
       return;
     } else if (Files.isSymbolicLink(path)) {
       onChangedSymbolicLink(path);
