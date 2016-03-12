@@ -1,13 +1,16 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'com.google.protobuf'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 buildscript {
   repositories {
     mavenCentral()
+    jcenter()
   }
   dependencies {
     classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.4'
+    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
   }
 }
 
