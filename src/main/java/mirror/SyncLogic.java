@@ -7,6 +7,9 @@ import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
@@ -22,6 +25,7 @@ import io.grpc.stub.StreamObserver;
  */
 public class SyncLogic {
 
+  private static final Logger log = LoggerFactory.getLogger(SyncLogic.class);
   private static final String poisonPillPath = "SHUTDOWN NOW";
   private final BlockingQueue<Update> changes;
   private final StreamObserver<Update> outgoing;
@@ -120,6 +124,7 @@ public class SyncLogic {
 
   private void handleRemote(Update remote) throws IOException {
     Path path = Paths.get(remote.getPath());
+    log.info("Received " + path);
     if (!remote.getSymlink().isEmpty()) {
       Path target = Paths.get(remote.getSymlink());
       fileAccess.createSymlink(path, target);

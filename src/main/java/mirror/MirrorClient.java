@@ -1,14 +1,33 @@
 package mirror;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import io.grpc.Channel;
+import io.grpc.netty.NegotiationType;
+import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
 
 public class MirrorClient {
+
+  public static void main(String[] args) throws Exception {
+    LoggingConfig.init();
+    Path root = Paths.get(args[0]).toAbsolutePath();
+    String host = args[1];
+    Integer port = Integer.parseInt(args[2]);
+    Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).build();
+    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
+    MirrorClient client = new MirrorClient(root);
+    client.startSession(stub);
+    // TODO something better
+    CountDownLatch cl = new CountDownLatch(1);
+    cl.await();
+  }
 
   private final Path root;
   private MirrorSession session;
@@ -48,7 +67,6 @@ public class MirrorClient {
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override
         public void onNext(Update update) {
-          System.out.println("Received from server " + update);
           session.addRemoteUpdate(update);
         }
 

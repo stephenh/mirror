@@ -23,6 +23,7 @@ dependencies {
   compile 'io.grpc:grpc-core:0.13.1'
   compile 'io.grpc:grpc-protobuf:0.13.1'
   compile 'io.grpc:grpc-stub:0.13.1'
+  compile 'org.slf4j:slf4j-jdk14:1.7.18'
   testCompile 'junit:junit:4.12'
   testCompile 'commons-io:commons-io:2.4'
 }

@@ -1,8 +1,11 @@
 package mirror;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
+import io.grpc.internal.ServerImpl;
+import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.Mirror;
 
@@ -10,6 +13,15 @@ public class MirrorServer implements Mirror {
 
   private final Path root;
   private MirrorSession currentSession = null;
+
+  public static void main(String[] args) throws Exception {
+    LoggingConfig.init();
+    Path root = Paths.get(args[0]).toAbsolutePath();
+    Integer port = Integer.parseInt(args[1]);
+    ServerImpl rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root))).build();
+    rpc.start();
+    rpc.awaitTermination();
+  }
 
   public MirrorServer(Path root) {
     this.root = root;
@@ -41,7 +53,6 @@ public class MirrorServer implements Mirror {
       StreamObserver<Update> incomingUpdates = new StreamObserver<Update>() {
         @Override
         public void onNext(Update value) {
-          System.out.println("Received from client " + value);
           currentSession.addRemoteUpdate(value);
         }
 

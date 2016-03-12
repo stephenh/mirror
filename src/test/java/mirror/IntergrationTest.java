@@ -11,6 +11,8 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.grpc.Channel;
 import io.grpc.internal.ServerImpl;
@@ -21,6 +23,11 @@ import mirror.MirrorGrpc.MirrorStub;
 
 public class IntergrationTest {
 
+  static {
+    System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n");
+  }
+
+  private static final Logger log = LoggerFactory.getLogger(IntergrationTest.class);
   private static final File integrationTestDir = new File("./build/IntergrationTest");
   private static final File root1 = new File(integrationTestDir, "root1");
   private static final File root2 = new File(integrationTestDir, "root2");
@@ -40,11 +47,11 @@ public class IntergrationTest {
   public void shutdown() throws Exception {
     // rpc.awaitTermination();
     if (rpc != null) {
-      System.out.println("stopping server");
+      log.info("stopping server");
       rpc.shutdownNow();
     }
     if (client != null) {
-      System.out.println("stopping client");
+      log.info("stopping client");
       client.stop();
     }
   }
@@ -227,13 +234,13 @@ public class IntergrationTest {
     int port = nextPort++;
     rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
     rpc.start();
-    System.out.println("started server");
+    log.info("started server");
     // client
     Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
     client = new MirrorClient(root2.toPath());
     client.startSession(stub);
-    System.out.println("started client");
+    log.info("started client");
   }
 
   private static void sleep() throws InterruptedException {
