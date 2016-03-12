@@ -28,8 +28,12 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * 2. Directory delete
  *
  * The idea being that directory creates aren't important until a file exists within them,
- * but directories deletes are, because a dir1/ deletion means we need to remove any files
- * nested under dir1/.
+ * but directories deletes are important, because a dir1/ deletion means we need to remove
+ * any files nested under dir1/.
+ *
+ * All of the events that we fire should use paths relative to {@code rootDirectory},
+ * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
+ * the path * of the event should be {@code project-a/foo.txt}.
  */
 class FileWatcher {
 
@@ -70,12 +74,7 @@ class FileWatcher {
         throw new RuntimeException(e);
       }
     };
-    new ThreadFactoryBuilder() //
-      .setDaemon(true)
-      .setNameFormat("FileWatcher-%s")
-      .build()
-      .newThread(runnable)
-      .start();
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("FileWatcher-%s").build().newThread(runnable).start();
   }
 
   private void watchLoop() throws IOException, InterruptedException {
