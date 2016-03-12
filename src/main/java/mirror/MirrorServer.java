@@ -21,11 +21,13 @@ public class MirrorServer implements Mirror {
     // TODO handle if there is an existing session
     currentSession = new MirrorSession(root);
     try {
+      // get our current state
+      List<Update> serverState = currentSession.calcInitialState();
       // record the client's current state
-      currentSession.setRemoteState(request.getStateList());
-      // send back our current state
-      List<Update> state = currentSession.calcInitialState();
-      responseObserver.onNext(InitialSyncResponse.newBuilder().addAllState(state).build());
+      currentSession.setInitialRemoteState(new PathState(request.getStateList()));
+      currentSession.seedQueueForInitialSync(new PathState(serverState));
+      // send back our state for the client to seed their own sync queue with our missing/stale paths
+      responseObserver.onNext(InitialSyncResponse.newBuilder().addAllState(serverState).build());
       responseObserver.onCompleted();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -40,7 +42,7 @@ public class MirrorServer implements Mirror {
         @Override
         public void onNext(Update value) {
           System.out.println("Received from client " + value);
-          currentSession.enqueue(value);
+          currentSession.addRemoteUpdate(value);
         }
 
         @Override

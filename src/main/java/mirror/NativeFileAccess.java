@@ -13,8 +13,8 @@ import com.google.common.io.Files;
 public class NativeFileAccess implements FileAccess {
 
   public static void main(String[] args) throws Exception {
-    NativeFileAccess f = new NativeFileAccess();
-    Path bar = Paths.get("/home/stephen/dir1/bar.txt");
+    NativeFileAccess f = new NativeFileAccess(Paths.get("/home/stephen/dir1"));
+    Path bar = Paths.get("bar.txt");
     ByteBuffer b = f.read(bar);
     String s = Charsets.US_ASCII.newDecoder().decode(b).toString();
     System.out.println(s);
@@ -22,8 +22,15 @@ public class NativeFileAccess implements FileAccess {
     // f.setModifiedTime(bar, 86_002);
   }
 
+  private final Path rootDirectory;
+
+  public NativeFileAccess(Path rootDirectory) {
+    this.rootDirectory = rootDirectory;
+  }
+
   @Override
-  public void write(Path path, ByteBuffer data) throws IOException {
+  public void write(Path relative, ByteBuffer data) throws IOException {
+    Path path = rootDirectory.resolve(relative);
     path.getParent().toFile().mkdirs();
     FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     try {
@@ -34,28 +41,33 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public ByteBuffer read(Path path) throws IOException {
+  public ByteBuffer read(Path relative) throws IOException {
+    Path path = rootDirectory.resolve(relative);
     return Files.map(path.toFile());
   }
 
   @Override
-  public long getModifiedTime(Path path) {
+  public long getModifiedTime(Path relative) {
+    Path path = rootDirectory.resolve(relative);
     return path.toFile().lastModified();
   }
 
   @Override
-  public void setModifiedTime(Path path, long time) throws IOException {
+  public void setModifiedTime(Path relative, long time) throws IOException {
+    Path path = rootDirectory.resolve(relative);
     path.toFile().setLastModified(time);
   }
 
   @Override
-  public void delete(Path path) throws IOException {
+  public void delete(Path relative) throws IOException {
+    Path path = rootDirectory.resolve(relative);
     path.toFile().delete();
   }
 
   @Override
-  public void createSymlink(Path link, Path target) throws IOException {
-    java.nio.file.Files.createSymbolicLink(link, target);
+  public void createSymlink(Path relative, Path target) throws IOException {
+    Path path = rootDirectory.resolve(relative);
+    java.nio.file.Files.createSymbolicLink(path, target);
   }
 
 }

@@ -1,0 +1,41 @@
+
+Primary Workflow
+================
+
+Mirror is built to support a desktop/laptop workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
+
+This is fairly common, but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts from the build process, e.g.:
+
+* On your laptop, save `projectA/foo.java`
+  * Mirror sends `foo.java` to the desktop
+* On your desktop, the build system picks up the `projectA/foo.java` change and creates `projectA-snapshot.jar`
+  * Mirror sends `projectA-snapshot.jar` back to the laptop
+* On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. in project B
+
+Granted, the IDE will also do local compilation of `projectA/foo.java`, but when working on larger/more complex projects, e.g. with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), using `projectX-snapshot.jar` artifacts is sometimes the only way to do reliable cross-project code reuse (instead of the much easier, but more limited in-IDE project/workspace references).
+
+Goals
+=====
+
+* Real-time, two-way sync between a desktop development machine, and an editor-/IDE-only laptop
+
+Non-Goals
+=========
+
+* Offline/disconnected support (e.g. general purpose distributed file system)
+  * Other than very basic "bring back into sync" support
+* Maintain Unix permissions/owner/group
+* Support for multiple clients
+* Support for huge files
+  * The assumption is that most files are source code, and occassional binary artifacts
+* Super-efficient diff/transmission logic like rsync
+  * Instead we assume a generally fast network connection
+
+Comparison to Existing Options
+==============================
+
+* rsync is not two-way, nor two-way
+* unison is two-way, but not real-time
+* lsyncd is only one-way, and doesn't handle the initial sync
+* sshfs is too slow and doesn't support inotify
+

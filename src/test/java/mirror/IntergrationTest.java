@@ -38,7 +38,7 @@ public class IntergrationTest {
 
   @After
   public void shutdown() throws Exception {
-    rpc.awaitTermination();
+    // rpc.awaitTermination();
     if (rpc != null) {
       System.out.println("stopping server");
       rpc.shutdownNow();
@@ -153,6 +153,58 @@ public class IntergrationTest {
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("b")).toString(), is("a"));
     assertThat(FileUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
+  }
+
+  @Test
+  public void testInitialSyncMissingFileFromServerToClient() throws Exception {
+    // given root1 has an existing file
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the file is created in root2
+    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+  }
+
+  @Test
+  public void testInitialSyncMissingFileFromClientToServer() throws Exception {
+    // given root2 has an existing file
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the file is created in root1
+    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abc"));
+  }
+
+  @Test
+  public void testInitialSyncStaleFileFromServerToClient() throws Exception {
+    // given both roots have an existing file
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
+    // and root1's file is newer
+    new File(root1, "foo.txt").setLastModified(2000);
+    new File(root2, "foo.txt").setLastModified(1000);
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the file is updated in root2
+    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+  }
+
+  @Test
+  public void testInitialSyncStaleFileFromClientToServer() throws Exception {
+    // given both roots have an existing file
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
+    // and root2's file is newer
+    new File(root1, "foo.txt").setLastModified(2000);
+    new File(root2, "foo.txt").setLastModified(3000);
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the file is updated in root1
+    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
   }
 
   private void startMirror() throws Exception {

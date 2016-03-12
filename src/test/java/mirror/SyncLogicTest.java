@@ -1,5 +1,6 @@
 package mirror;
 
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -19,14 +20,13 @@ import io.grpc.stub.StreamObserver;
 
 public class SyncLogicTest {
 
-  private static final Path fooDotTxt = Paths.get("./foo.txt");
+  private static final Path fooDotTxt = Paths.get("foo.txt");
   private final static byte[] data = new byte[] { 1, 2, 3, 4 };
   private final static byte[] data2 = new byte[] { 1, 2, 3, 4, 5, 6 };
   private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
-  private final Path root = Paths.get("./");
-  private final SyncLogic l = new SyncLogic(root, changes, outgoing, fileAccess);
+  private final SyncLogic l = new SyncLogic(changes, outgoing, fileAccess);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {
@@ -51,6 +51,10 @@ public class SyncLogicTest {
   public void sendLocalDeleteToRemote() throws Exception {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
+    // that also exists on the remote
+    PathState remoteState = new PathState();
+    remoteState.record(fooDotTxt, 1L);
+    l.addRemoteState(remoteState);
     // and it is deleted locally
     Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
     changes.add(u);

@@ -11,16 +11,16 @@ import java.nio.file.Path;
  */
 public interface FileAccess {
 
-  ByteBuffer read(Path path) throws IOException;
+  ByteBuffer read(Path relativePath) throws IOException;
 
-  void write(Path path, ByteBuffer data) throws IOException;
+  void write(Path relativePath, ByteBuffer data) throws IOException;
 
-  void delete(Path path) throws IOException;
+  void delete(Path relativePath) throws IOException;
 
-  long getModifiedTime(Path path) throws IOException;
+  long getModifiedTime(Path relativePath) throws IOException;
 
-  void setModifiedTime(Path path, long time) throws IOException;
+  void setModifiedTime(Path relativePath, long time) throws IOException;
 
-  void createSymlink(Path link, Path target) throws IOException;
+  void createSymlink(Path relativePath, Path target) throws IOException;
 
 }

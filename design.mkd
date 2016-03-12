@@ -1,25 +1,4 @@
 
-Goals
-=====
-
-* Fast two-way sync between a desktop development machine, and an IDE-only laptop
-
-Non-Goals
-=========
-
-* Offline/disconnected support (e.g. general purpose distributed file system)
-* Anything permissions/owner/group related
-* Support for multiple clients
-* Support for huge files, instead assuming most files are source code.
-
-Comparison to Existing Options
-==============================
-
-* rsync is not two-way
-* unison is two-way, but not real-time
-* lsyncd is only one-way, and doesn't handle the initial sync
-* sshfs is too slow and doesn't support inotify
-
 General Idea
 ============
 

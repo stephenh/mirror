@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
@@ -25,20 +23,21 @@ import io.grpc.stub.StreamObserver;
 public class SyncLogic {
 
   private static final String poisonPillPath = "SHUTDOWN NOW";
-  private final Path rootDirectory;
   private final BlockingQueue<Update> changes;
   private final StreamObserver<Update> outgoing;
   private final FileAccess fileAccess;
-  // eventually should be fancier
-  private final Map<Path, Long> remoteState = new HashMap<Path, Long>();
+  private final PathState remoteState = new PathState();
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
-
-  public SyncLogic(Path rootDirectory, BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess) {
-    this.rootDirectory = rootDirectory;
+  
+  public SyncLogic(BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess) {
     this.changes = changes;
     this.outgoing = outgoing;
     this.fileAccess = fileAccess;
+  }
+  
+  public void addRemoteState(PathState remoteState) {
+    this.remoteState.add(remoteState);
   }
 
   /**
@@ -46,7 +45,7 @@ public class SyncLogic {
    *
    * Polling happens on a separate thread, so this method does not block.
    */
-  public void startPolling() throws IOException, InterruptedException {
+  public void startPolling() throws IOException {
     Runnable runnable = () -> {
       try {
         pollLoop();
@@ -60,6 +59,7 @@ public class SyncLogic {
 
   public void stop() throws InterruptedException {
     shutdown = true;
+    changes.clear();
     changes.add(Update.newBuilder().setPath(poisonPillPath).build());
     isShutdown.await();
   }
@@ -92,26 +92,26 @@ public class SyncLogic {
   }
 
   private void handleLocal(Update local) throws IOException {
-    Path path = rootDirectory.resolve(local.getPath());
+    // TODO we should probably update our remoteState after each outgoing.onNext,
+    // although right now it probably doesn't matter if the remoteState's timestamp
+    // is stale, as any new handleLocal would be after any timestamp we set now anyway.
+    Path path = Paths.get(local.getPath());
     if (!local.getSymlink().isEmpty()) {
       long localModTime = fileAccess.getModifiedTime(path);
-      Long remoteModTime = remoteState.get(path);
-      if (remoteModTime == null || remoteModTime.longValue() < localModTime) {
+      if (remoteState.needsUpdate(path, localModTime)) {
         Update toSend = Update.newBuilder(local).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
       }
     } else if (!local.getDelete()) {
       long localModTime = fileAccess.getModifiedTime(path);
-      Long remoteModTime = remoteState.get(path);
-      if (remoteModTime == null || remoteModTime.longValue() < localModTime) {
+      if (remoteState.needsUpdate(path, localModTime)) {
         // need to make a ByteString copy until GRPC supports ByteBuffers
         ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
         Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
       }
-    } else {
-      Long remoteModTime = remoteState.get(path);
-      if (remoteModTime == null || remoteModTime != -1) {
+    } else { // a delete
+      if (remoteState.needsDeleted(path)) {
         Update toSend = Update.newBuilder(local).setLocal(false).build();
         outgoing.onNext(toSend);
       }
@@ -119,23 +119,23 @@ public class SyncLogic {
   }
 
   private void handleRemote(Update remote) throws IOException {
-    Path path = rootDirectory.resolve(remote.getPath());
+    Path path = Paths.get(remote.getPath());
     if (!remote.getSymlink().isEmpty()) {
       Path target = Paths.get(remote.getSymlink());
       fileAccess.createSymlink(path, target);
       fileAccess.setModifiedTime(path, remote.getModTime());
       // remember the last remote mod-time, so we don't echo back
-      remoteState.put(path, remote.getModTime());
+      remoteState.record(path, remote.getModTime());
     } else if (!remote.getDelete()) {
       ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
       fileAccess.write(path, data);
       fileAccess.setModifiedTime(path, remote.getModTime());
       // remember the last remote mod-time, so we don't echo back
-      remoteState.put(path, remote.getModTime());
+      remoteState.record(path, remote.getModTime());
     } else {
       fileAccess.delete(path);
       // remember the last remote mod-time, so we don't echo back
-      remoteState.put(path, -1L);
+      remoteState.record(path, -1L);
     }
   }
 

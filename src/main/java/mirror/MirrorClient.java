@@ -22,13 +22,15 @@ public class MirrorClient {
     session = new MirrorSession(root);
 
     try {
-      List<Update> state = session.calcInitialState();
+      // 1. see what our current state is
+      List<Update> localState = session.calcInitialState();
 
-      SettableFuture<List<Update>> remoteState = SettableFuture.create();
-      stub.initialSync(InitialSyncRequest.newBuilder().addAllState(state).build(), new StreamObserver<InitialSyncResponse>() {
+      // 2. send it to the server, so they can send back any stale/missing paths we have
+      SettableFuture<PathState> remoteState = SettableFuture.create();
+      stub.initialSync(InitialSyncRequest.newBuilder().addAllState(localState).build(), new StreamObserver<InitialSyncResponse>() {
         @Override
         public void onNext(InitialSyncResponse value) {
-          remoteState.set(value.getStateList());
+          remoteState.set(new PathState(value.getStateList()));
         }
 
         @Override
@@ -39,13 +41,15 @@ public class MirrorClient {
         public void onCompleted() {
         }
       });
-      session.setRemoteState(remoteState.get());
+
+      session.setInitialRemoteState(remoteState.get());
+      session.seedQueueForInitialSync(new PathState(localState));
 
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override
         public void onNext(Update update) {
           System.out.println("Received from server " + update);
-          session.enqueue(update);
+          session.addRemoteUpdate(update);
         }
 
         @Override
