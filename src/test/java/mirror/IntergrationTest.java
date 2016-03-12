@@ -71,6 +71,21 @@ public class IntergrationTest {
   }
 
   @Test
+  public void testDeleteDirectory() throws Exception {
+    // given a file within a directory that exists in both root1/root2
+    for (File root : new File[] { root1, root2 }) {
+      new File(root, "dir").mkdir();
+      FileUtils.writeStringToFile(new File(root, "dir/foo.txt"), "abc");
+    }
+    startMirror();
+    // when the directory is deleted
+    FileUtils.deleteDirectory(new File(root1, "dir"));
+    sleep();
+    // then the child was also deleted
+    assertThat(new File(root2, "dir/foo.txt").exists(), is(false));
+  }
+
+  @Test
   public void testCreateNestedFile() throws Exception {
     startMirror();
     // given a file that is created in a sub directory
