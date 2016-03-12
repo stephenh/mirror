@@ -44,6 +44,7 @@ protobuf {
 }
 
 eclipse {
+  pathVariables 'GRADLE_USER_HOME': gradle.gradleUserHomeDir
   classpath {
     file.whenMerged { cp ->
       cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/generated/source/proto/main/java/', null))
