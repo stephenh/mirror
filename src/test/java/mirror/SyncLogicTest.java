@@ -1,6 +1,5 @@
 package mirror;
 
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -44,7 +43,7 @@ public class SyncLogicTest {
     assertThat(sent.getData().toByteArray(), is(data));
     // and the time stamp
     assertThat(sent.getModTime(), is(1L));
-    assertThat(sent.getLocal(), is (false));
+    assertThat(sent.getLocal(), is(false));
   }
 
   @Test
@@ -69,7 +68,7 @@ public class SyncLogicTest {
     // assertThat(sent.getModTime(), is(1L));
     // and we marked it as a delete
     assertThat(sent.getDelete(), is(true));
-    assertThat(sent.getLocal(), is (false));
+    assertThat(sent.getLocal(), is(false));
   }
 
   @Test
@@ -146,7 +145,7 @@ public class SyncLogicTest {
     assertThat(sent.getData().isEmpty(), is(true));
     // and the time stamp
     assertThat(sent.getModTime(), is(1L));
-    assertThat(sent.getLocal(), is (false));
+    assertThat(sent.getLocal(), is(false));
   }
 
   @Test
@@ -166,6 +165,32 @@ public class SyncLogicTest {
     l.poll();
     // then we don't echo it back to the remote
     assertThat(outgoing.values.isEmpty(), is(true));
+  }
+
+  @Test
+  public void handleFileBeingQueuedButThenDeleted() throws Exception {
+    // given we detected a local file
+    Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
+    changes.add(u);
+    // but it does not exist on disk anymore
+    assertThat(fileAccess.exists(fooDotTxt), is(false));
+    // when we notice
+    l.poll();
+    // then we handle it with no errors
+    assertThat(outgoing.values.size(), is(0));
+  }
+
+  @Test
+  public void handleFileSymlinkBeingQueuedButThenDeleted() throws Exception {
+    // given we detected a local symlink
+    Update u = Update.newBuilder().setPath("foo.txt").setSymlink("bar.txt").setLocal(true).build();
+    changes.add(u);
+    // but it does not exist on disk anymore
+    assertThat(fileAccess.exists(fooDotTxt), is(false));
+    // when we notice
+    l.poll();
+    // then we handle it with no errors
+    assertThat(outgoing.values.size(), is(0));
   }
 
   private static class StubObserver<T> implements StreamObserver<T> {

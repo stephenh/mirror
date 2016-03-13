@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -33,13 +34,13 @@ public class SyncLogic {
   private final PathState remoteState = new PathState();
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
-  
+
   public SyncLogic(BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess) {
     this.changes = changes;
     this.outgoing = outgoing;
     this.fileAccess = fileAccess;
   }
-  
+
   public void addRemoteState(PathState remoteState) {
     this.remoteState.add(remoteState);
   }
@@ -101,18 +102,26 @@ public class SyncLogic {
     // is stale, as any new handleLocal would be after any timestamp we set now anyway.
     Path path = Paths.get(local.getPath());
     if (!local.getSymlink().isEmpty()) {
-      long localModTime = fileAccess.getModifiedTime(path);
-      if (remoteState.needsUpdate(path, localModTime)) {
-        Update toSend = Update.newBuilder(local).setModTime(localModTime).setLocal(false).build();
-        outgoing.onNext(toSend);
+      try {
+        long localModTime = fileAccess.getModifiedTime(path);
+        if (remoteState.needsUpdate(path, localModTime)) {
+          Update toSend = Update.newBuilder(local).setModTime(localModTime).setLocal(false).build();
+          outgoing.onNext(toSend);
+        }
+      } catch (FileNotFoundException fnfe) {
+        log.info("Local symlink was not found, assuming deleted: " + fnfe.getMessage());
       }
     } else if (!local.getDelete()) {
-      long localModTime = fileAccess.getModifiedTime(path);
-      if (remoteState.needsUpdate(path, localModTime)) {
-        // need to make a ByteString copy until GRPC supports ByteBuffers
-        ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
-        Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
-        outgoing.onNext(toSend);
+      try {
+        long localModTime = fileAccess.getModifiedTime(path);
+        if (remoteState.needsUpdate(path, localModTime)) {
+          // need to make a ByteString copy until GRPC supports ByteBuffers
+          ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
+          Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
+          outgoing.onNext(toSend);
+        }
+      } catch (FileNotFoundException fnfe) {
+        log.info("Local file was not found, assuming deleted: " + fnfe.getMessage());
       }
     } else { // a delete
       if (remoteState.needsDeleted(path)) {

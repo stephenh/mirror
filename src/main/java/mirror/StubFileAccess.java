@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -25,12 +26,20 @@ public class StubFileAccess implements FileAccess {
 
   @Override
   public ByteBuffer read(Path path) throws IOException {
-    return ByteBuffer.wrap(fileData.get(path));
+    byte[] data = fileData.get(path);
+    if (data == null) {
+      throw new FileNotFoundException(path.toString());
+    }
+    return ByteBuffer.wrap(data);
   }
 
   @Override
   public long getModifiedTime(Path path) throws IOException {
-    return fileTimes.get(path);
+    Long modTime = fileTimes.get(path);
+    if (modTime == null) {
+      throw new FileNotFoundException(path.toString());
+    }
+    return modTime.longValue();
   }
 
   @Override
@@ -45,6 +54,10 @@ public class StubFileAccess implements FileAccess {
     // for current tests
     fileData.remove(path);
     fileTimes.remove(path);
+  }
+
+  public boolean exists(Path path) {
+    return fileTimes.keySet().contains(path);
   }
 
   public boolean wasDeleted(Path path) {
