@@ -1,5 +1,7 @@
 package mirror;
 
+import static com.google.protobuf.TextFormat.shortDebugString;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -87,6 +89,7 @@ public class SyncLogic {
 
   private void handleUpdate(Update u) throws IOException {
     if (u.getPath().equals(poisonPillPath)) {
+      outgoing.onCompleted();
       return;
     }
     if (u.getLocal()) {
@@ -101,6 +104,7 @@ public class SyncLogic {
     // although right now it probably doesn't matter if the remoteState's timestamp
     // is stale, as any new handleLocal would be after any timestamp we set now anyway.
     Path path = Paths.get(local.getPath());
+    log.debug("Local update {}", shortDebugString(local));
     if (!local.getSymlink().isEmpty()) {
       try {
         long localModTime = fileAccess.getModifiedTime(path);
@@ -123,20 +127,25 @@ public class SyncLogic {
       } catch (FileNotFoundException fnfe) {
         log.info("Local file was not found, assuming deleted: " + fnfe.getMessage());
       }
-    } else { // a delete
-      if (remoteState.needsDeleted(path)) {
+    } else {
+      // a delete
+      // ensure the file stayed deleted
+      if (!fileAccess.exists(path) && remoteState.needsDeleted(path)) {
         Update toSend = Update.newBuilder(local).setLocal(false).build();
         outgoing.onNext(toSend);
+        remoteState.record(path, -1L);
       }
     }
   }
 
   private void handleRemote(Update remote) throws IOException {
     Path path = Paths.get(remote.getPath());
-    log.info("Received " + path);
+    log.info("Remote update " + path);
     if (!remote.getSymlink().isEmpty()) {
       Path target = Paths.get(remote.getSymlink());
       fileAccess.createSymlink(path, target);
+      // this is going to trigger a local update, but since the write
+      // doesn't go to the symlink, we think the symlink is changed
       fileAccess.setModifiedTime(path, remote.getModTime());
       // remember the last remote mod-time, so we don't echo back
       remoteState.record(path, remote.getModTime());

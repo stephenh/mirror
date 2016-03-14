@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Holds the last-known state of paths.
  *
@@ -20,6 +23,7 @@ import java.util.Map.Entry;
  */
 public class PathState {
 
+  private static final Logger log = LoggerFactory.getLogger(PathState.class);
   private final Map<Path, Long> paths = new LinkedHashMap<>();
 
   public PathState() {
@@ -38,19 +42,24 @@ public class PathState {
 
   /** Records {@code remoteModTime} as the last-known mod time for {@code path}. */
   public void record(Path path, long modTime) {
+    log.debug("{} mod time = {}", path, modTime);
     paths.put(path, modTime);
   }
 
   /** @return if we think {@code path} is older than {@code potentiallyNewerModTime}. */
   public boolean needsUpdate(Path path, long potentiallyNewerModTime) {
     Long modTime = paths.get(path);
-    return modTime == null || modTime.longValue() < potentiallyNewerModTime;
+    boolean needsUpdate = modTime == null || modTime.longValue() < potentiallyNewerModTime;
+    log.debug("{} has mod time {} vs. {} so needsUpdate={}", path, modTime, potentiallyNewerModTime, needsUpdate);
+    return needsUpdate;
   }
 
   /** @return if we think {@code path} exists on the remote side. */
   public boolean needsDeleted(Path path) {
     Long modTime = paths.get(path);
-    return modTime != null && modTime.longValue() > -1;
+    boolean needsDeleted = modTime != null && modTime.longValue() > -1;
+    log.debug("{} has mod time {} so needsDeleted={}", path, modTime, needsDeleted);
+    return needsDeleted;
   }
 
   /** @return given {@code otherState}, return the paths from this state that are out-of-date or missing. */

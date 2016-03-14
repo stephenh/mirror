@@ -3,23 +3,35 @@ package mirror;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
+import jnr.posix.POSIX;
+import jnr.posix.POSIXFactory;
+
 public class NativeFileAccess implements FileAccess {
 
+  private static final Logger log = LoggerFactory.getLogger(NativeFileAccess.class);
+  private static final POSIX posix = POSIXFactory.getNativePOSIX();
+
   public static void main(String[] args) throws Exception {
-    NativeFileAccess f = new NativeFileAccess(Paths.get("/home/stephen/dir1"));
+    Path root = Paths.get("/home/stephen/dir1");
+    NativeFileAccess f = new NativeFileAccess(root);
     Path bar = Paths.get("bar.txt");
     ByteBuffer b = f.read(bar);
     String s = Charsets.US_ASCII.newDecoder().decode(b).toString();
     System.out.println(s);
     f.write(bar, ByteBuffer.wrap((s + "2").getBytes()));
-    // f.setModifiedTime(bar, 86_002);
+    f.setModifiedTime(bar, System.currentTimeMillis());
+    System.out.println(root.resolve(bar).toFile().lastModified());
   }
 
   private final Path rootDirectory;
@@ -46,13 +58,18 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public long getModifiedTime(Path relative) {
-    return resolve(relative).toFile().lastModified();
+  public long getModifiedTime(Path relative) throws IOException {
+    return java.nio.file.Files.getLastModifiedTime(resolve(relative), LinkOption.NOFOLLOW_LINKS).toMillis();
   }
 
   @Override
-  public void setModifiedTime(Path relative, long time) throws IOException {
-    resolve(relative).toFile().setLastModified(time);
+  public void setModifiedTime(Path relative, long millis) throws IOException {
+    long[] accessTime = { millis / 1000, (millis % 1000) * 1000 };
+    long[] modTime = { millis / 1000, (millis % 1000) * 1000 };
+    int r = posix.lutimes(resolve(relative).toFile().getAbsolutePath(), accessTime, modTime);
+    if (r != 0) {
+      throw new IOException("lutimes failed with code " + r);
+    }
   }
 
   @Override
@@ -62,8 +79,12 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public void createSymlink(Path relative, Path target) throws IOException {
-    resolve(relative).getParent().toFile().mkdirs();
-    java.nio.file.Files.createSymbolicLink(resolve(relative), target);
+    Path path = resolve(relative);
+    path.getParent().toFile().mkdirs();
+    if (path.toFile().exists()) {
+      path.toFile().delete();
+    }
+    java.nio.file.Files.createSymbolicLink(path, target);
   }
 
   @Override
@@ -75,12 +96,24 @@ public class NativeFileAccess implements FileAccess {
   public Path readSymlink(Path relativePath) throws IOException {
     // symlink semantics is that the path is relative to the location of the link
     // path (relativePath), so we don't want to return it relative to the rootDirectory
-    Path symlink = java.nio.file.Files.readSymbolicLink(resolve(relativePath));
+    Path path = resolve(relativePath);
+    Path parent = path.getParent();
+    Path symlink = java.nio.file.Files.readSymbolicLink(path);
     if (symlink.isAbsolute()) {
-      return resolve(relativePath).getParent().toAbsolutePath().relativize(symlink);
+      Path p = parent.toAbsolutePath().relativize(symlink);
+      log.debug("Read absolute symlink {} as {}, returning {}", relativePath, symlink, p);
+      return p;
     } else {
-      return resolve(relativePath).getParent().relativize(symlink);
+      Path target = parent.resolve(symlink);
+      Path p = parent.relativize(target);
+      log.debug("Read reatlive symlink {} as {}, returning {}", relativePath, symlink, p);
+      return p;
     }
+  }
+
+  @Override
+  public boolean exists(Path relativePath) throws IOException {
+    return resolve(relativePath).toFile().exists();
   }
 
   private Path resolve(Path relativePath) {

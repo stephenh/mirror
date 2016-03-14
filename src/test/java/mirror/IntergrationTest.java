@@ -23,10 +23,6 @@ import mirror.MirrorGrpc.MirrorStub;
 
 public class IntergrationTest {
 
-  static {
-    System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$-6s %2$s %5$s%6$s%n");
-  }
-
   private static final Logger log = LoggerFactory.getLogger(IntergrationTest.class);
   private static final File integrationTestDir = new File("./build/IntergrationTest");
   private static final File root1 = new File(integrationTestDir, "root1");
@@ -37,6 +33,7 @@ public class IntergrationTest {
 
   @Before
   public void clearFiles() throws Exception {
+    LoggingConfig.init();
     FileUtils.deleteDirectory(integrationTestDir);
     integrationTestDir.mkdirs();
     root1.mkdirs();
@@ -46,14 +43,15 @@ public class IntergrationTest {
   @After
   public void shutdown() throws Exception {
     // rpc.awaitTermination();
-    if (rpc != null) {
-      log.info("stopping server");
-      rpc.shutdownNow();
-    }
     if (client != null) {
       log.info("stopping client");
       client.stop();
     }
+    if (rpc != null) {
+      log.info("stopping server");
+      rpc.shutdown();
+    }
+    rpc.awaitTermination();
   }
 
   @Test
@@ -133,6 +131,44 @@ public class IntergrationTest {
   }
 
   @Test
+  public void testFileSymlinksThatAreUpdatedAfterInitialSync() throws Exception {
+    // given a file that exists in both remotes, and has a symlink to it
+    for (File root : new File[] { root1, root2 }) {
+      FileUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
+      FileUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
+      Files.createSymbolicLink(new File(root, "foo").toPath(), Paths.get("foo1.txt"));
+    }
+    startMirror();
+    // when the symlink is updated on root1
+    new File(root1, "foo").delete();
+    Files.createSymbolicLink(root1.toPath().resolve("foo"), Paths.get("foo2.txt"));
+    sleep();
+    // then it is replicated to root2 as a symlink
+    assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo")).toString(), is("foo2.txt"));
+    assertThat(FileUtils.readFileToString(new File(root2, "foo")), is("abc2"));
+  }
+
+  @Test
+  public void testFileSymlinksThatAreUpdatedDuringInitialSync() throws Exception {
+    // given a file that exists in both remotes, and has a symlink to it
+    for (File root : new File[] { root1, root2 }) {
+      FileUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
+      FileUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
+    }
+    // and root1 has a symlink to foo1
+    Files.createSymbolicLink(new File(root1, "foo").toPath(), Paths.get("foo1.txt"));
+    // and root2 has a symlink to foo2 which is newer
+    Thread.sleep(1000);
+    Files.createSymbolicLink(new File(root2, "foo").toPath(), Paths.get("foo2.txt"));
+    // when we start
+    System.out.println("STARTING");
+    startMirror();
+    sleep();
+    // then we update the link on root1
+    assertThat(Files.readSymbolicLink(root1.toPath().resolve("foo")).toString(), is("foo2.txt"));
+  }
+
+  @Test
   public void testFileSymlinksThatAreAbsolutePaths() throws Exception {
     // given a file that exists in both remotes
     FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
@@ -184,7 +220,7 @@ public class IntergrationTest {
     FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
     // and it is also symlinked on root1
     new File(root1, "b").mkdir();
-    Files.createSymbolicLink(new File(root1, "b/foo.txt").toPath(), new File(root1, "a/foo.txt").toPath());
+    Files.createSymbolicLink(new File(root1, "b/foo.txt").toPath(), new File(root1, "a/foo.txt").getAbsoluteFile().toPath());
     // when mirror is started
     startMirror();
     sleep();
@@ -199,7 +235,7 @@ public class IntergrationTest {
     FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
     FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
     // and it is also symlinked on root2
-    Files.createSymbolicLink(new File(root2, "b").toPath(), new File(root2, "a/foo.txt").toPath());
+    Files.createSymbolicLink(new File(root2, "b").toPath(), new File(root2, "a/foo.txt").getAbsoluteFile().toPath());
     // when mirror is started
     startMirror();
     sleep();

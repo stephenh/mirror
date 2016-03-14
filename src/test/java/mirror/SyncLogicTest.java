@@ -57,6 +57,7 @@ public class SyncLogicTest {
     // and it is deleted locally
     Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
     changes.add(u);
+    fileAccess.delete(fooDotTxt);
     // when we notice
     l.poll();
     // then we sent it to the remote
@@ -190,6 +191,43 @@ public class SyncLogicTest {
     // when we notice
     l.poll();
     // then we handle it with no errors
+    assertThat(outgoing.values.size(), is(0));
+  }
+
+  @Test
+  public void handleFilesGettingDeletedThenReCreated() throws Exception {
+    // given we detect a local delete
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
+    // and it also exists on the remote
+    PathState remoteState = new PathState();
+    remoteState.record(fooDotTxt, 1L);
+    l.addRemoteState(remoteState);
+    l.poll();
+    // and then file is re-created
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
+    // when we notice
+    changes.add(Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data)).setLocal(true).build());
+    l.poll();
+    // then we issue both the delete+create
+    assertThat(outgoing.values.size(), is(2));
+  }
+
+  @Test
+  public void skipStaleLocalDelete() throws Exception {
+    // given we have an existing local file
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
+    // that also exists on the remote
+    PathState remoteState = new PathState();
+    remoteState.record(fooDotTxt, 1L);
+    l.addRemoteState(remoteState);
+    // and it is deleted locally
+    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
+    changes.add(u);
+    // but our delete is stale (it's since been recreated)
+    // fileAccess.delete(fooDotTxt);
+    // when we notice
+    l.poll();
+    // then we don't send the delete to the remote
     assertThat(outgoing.values.size(), is(0));
   }
 

@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.github.johnrengelman.shadow'
-
+ 
 buildscript {
   repositories {
     mavenCentral()
@@ -16,6 +16,7 @@ buildscript {
 
 repositories {
   mavenCentral()
+  mavenLocal()
 }
 
 dependencies {
@@ -24,6 +25,7 @@ dependencies {
   compile 'io.grpc:grpc-protobuf:0.13.1'
   compile 'io.grpc:grpc-stub:0.13.1'
   compile 'org.slf4j:slf4j-jdk14:1.7.18'
+  compile 'com.github.jnr:jnr-posix:3.0.30-lutimes-SNAPSHOT'
   testCompile 'junit:junit:4.12'
   testCompile 'commons-io:commons-io:2.4'
 }

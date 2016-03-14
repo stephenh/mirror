@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
@@ -37,6 +40,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  */
 class FileWatcher {
 
+  private static final Logger log = LoggerFactory.getLogger(FileWatcher.class);
   private final Path rootDirectory;
   private final BlockingQueue<Update> queue;
   private final WatchService watchService;
@@ -139,6 +143,7 @@ class FileWatcher {
       targetPath = symlink.toString();
     }
     String relativePath = toRelativePath(path);
+    log.debug("Symlink changed {}, relative={}, target={}", path, relativePath, targetPath);
     queue.put(Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setLocal(true).build());
   }
 

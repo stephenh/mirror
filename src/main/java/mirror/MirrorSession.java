@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -26,6 +29,7 @@ import io.grpc.stub.StreamObserver;
  */
 public class MirrorSession {
 
+  private static final Logger log = LoggerFactory.getLogger(MirrorSession.class);
   private final FileAccess fs;
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
   private final FileWatcher watcher;
@@ -61,7 +65,10 @@ public class MirrorSession {
 
   /** Pretend we have local file events for anything the remote side needs from us. */
   public void seedQueueForInitialSync(PathState initialLocalState) throws IOException {
-    for (String path : this.initialRemoteState.getPathsToFetch(initialLocalState)) {
+    List<String> paths = this.initialRemoteState.getPathsToFetch(initialLocalState);
+    log.info("Queueing {} paths to send to the remote host", paths.size());
+    for (String path : paths) {
+      log.debug("Seeding {}", path);
       Path p = Paths.get(path);
       if (fs.isSymlink(p)) {
         queue.add(Update.newBuilder().setPath(path).setLocal(true).setSymlink(fs.readSymlink(p).toString()).build());

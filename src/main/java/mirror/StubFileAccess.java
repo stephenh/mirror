@@ -56,6 +56,7 @@ public class StubFileAccess implements FileAccess {
     fileTimes.remove(path);
   }
 
+  @Override
   public boolean exists(Path path) {
     return fileTimes.keySet().contains(path);
   }
