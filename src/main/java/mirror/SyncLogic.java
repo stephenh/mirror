@@ -109,8 +109,10 @@ public class SyncLogic {
       try {
         long localModTime = fileAccess.getModifiedTime(path);
         if (remoteState.needsUpdate(path, localModTime)) {
-          Update toSend = Update.newBuilder(local).setModTime(localModTime).setLocal(false).build();
+          String target = fileAccess.readSymlink(path).toString(); // in case it's changed
+          Update toSend = Update.newBuilder(local).setModTime(localModTime).setSymlink(target).setLocal(false).build();
           outgoing.onNext(toSend);
+          remoteState.record(path, localModTime);
         }
       } catch (FileNotFoundException fnfe) {
         log.info("Local symlink was not found, assuming deleted: " + fnfe.getMessage());
@@ -123,6 +125,7 @@ public class SyncLogic {
           ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
           Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
           outgoing.onNext(toSend);
+          remoteState.record(path, localModTime);
         }
       } catch (FileNotFoundException fnfe) {
         log.info("Local file was not found, assuming deleted: " + fnfe.getMessage());

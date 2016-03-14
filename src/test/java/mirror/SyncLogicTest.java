@@ -231,6 +231,47 @@ public class SyncLogicTest {
     assertThat(outgoing.values.size(), is(0));
   }
 
+  @Test
+  public void skipStaleLocalChange() throws Exception {
+    // given we have an existing local file that is update
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data), 2L);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
+    // and another update is also generated (e.g. from a touch/etc.)
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data2), 3L);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
+    // when we notice
+    l.poll();
+    l.poll();
+    // then we also send one update event to the remote
+    assertThat(outgoing.values.size(), is(1));
+    // and it has the correct data
+    Update sent = outgoing.values.get(0);
+    assertThat(sent.getData().toByteArray(), is(data2));
+    assertThat(sent.getModTime(), is(3L));
+  }
+
+  @Test
+  public void skipStaleLocalSymlink() throws Exception {
+    // given we create a new symlink locally
+    fileAccess.createSymlink(fooDotTxt, Paths.get("bar"));
+    fileAccess.setModifiedTime(fooDotTxt, 2L);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").build());
+    // and then it's updated again
+    fileAccess.createSymlink(fooDotTxt, Paths.get("bar2"));
+    fileAccess.setModifiedTime(fooDotTxt, 3L);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar2").build());
+    // when we notice
+    l.poll();
+    l.poll();
+    // then we sent it to the remote only once
+    assertThat(outgoing.values.size(), is(1));
+    // and it has the correct data
+    Update sent = outgoing.values.get(0);
+    assertThat(sent.getSymlink(), is("bar2"));
+    assertThat(sent.getModTime(), is(3L));
+  }
+
+
   private static class StubObserver<T> implements StreamObserver<T> {
     private final List<T> values = new ArrayList<>();
     private boolean completed;

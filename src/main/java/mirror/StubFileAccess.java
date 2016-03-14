@@ -24,6 +24,11 @@ public class StubFileAccess implements FileAccess {
     fileTimes.put(path, 1L);
   }
 
+  public void write(Path path, ByteBuffer data, long modTime) throws IOException {
+    write(path, data);
+    fileTimes.put(path, modTime);
+  }
+
   @Override
   public ByteBuffer read(Path path) throws IOException {
     byte[] data = fileData.get(path);
