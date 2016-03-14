@@ -5,6 +5,7 @@ import static com.google.protobuf.TextFormat.shortDebugString;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
@@ -114,8 +115,8 @@ public class SyncLogic {
           outgoing.onNext(toSend);
           remoteState.record(path, localModTime);
         }
-      } catch (FileNotFoundException fnfe) {
-        log.info("Local symlink was not found, assuming deleted: " + fnfe.getMessage());
+      } catch (FileNotFoundException | NoSuchFileException e) {
+        log.info("Local symlink was not found, assuming deleted: " + path);
       }
     } else if (!local.getDelete()) {
       try {
@@ -127,8 +128,8 @@ public class SyncLogic {
           outgoing.onNext(toSend);
           remoteState.record(path, localModTime);
         }
-      } catch (FileNotFoundException fnfe) {
-        log.info("Local file was not found, assuming deleted: " + fnfe.getMessage());
+      } catch (FileNotFoundException | NoSuchFileException e) {
+        log.info("Local file was not found, assuming deleted: " + path);
       }
     } else {
       // a delete

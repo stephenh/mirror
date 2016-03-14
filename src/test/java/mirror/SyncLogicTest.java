@@ -169,7 +169,7 @@ public class SyncLogicTest {
   }
 
   @Test
-  public void handleFileBeingQueuedButThenDeleted() throws Exception {
+  public void skipFileBeingQueuedButThenDeleted() throws Exception {
     // given we detected a local file
     Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
     changes.add(u);
@@ -182,7 +182,7 @@ public class SyncLogicTest {
   }
 
   @Test
-  public void handleFileSymlinkBeingQueuedButThenDeleted() throws Exception {
+  public void skipSymlinkBeingQueuedButThenDeleted() throws Exception {
     // given we detected a local symlink
     Update u = Update.newBuilder().setPath("foo.txt").setSymlink("bar.txt").setLocal(true).build();
     changes.add(u);
@@ -270,7 +270,6 @@ public class SyncLogicTest {
     assertThat(sent.getSymlink(), is("bar2"));
     assertThat(sent.getModTime(), is(3L));
   }
-
 
   private static class StubObserver<T> implements StreamObserver<T> {
     private final List<T> values = new ArrayList<>();
