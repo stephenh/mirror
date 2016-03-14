@@ -101,9 +101,6 @@ public class SyncLogic {
   }
 
   private void handleLocal(Update local) throws IOException {
-    // TODO we should probably update our remoteState after each outgoing.onNext,
-    // although right now it probably doesn't matter if the remoteState's timestamp
-    // is stale, as any new handleLocal would be after any timestamp we set now anyway.
     Path path = Paths.get(local.getPath());
     log.debug("Local update {}", shortDebugString(local));
     if (!local.getSymlink().isEmpty()) {
