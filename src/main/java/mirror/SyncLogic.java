@@ -101,41 +101,54 @@ public class SyncLogic {
   }
 
   private void handleLocal(Update local) throws IOException {
-    Path path = Paths.get(local.getPath());
     log.debug("Local update {}", shortDebugString(local));
     if (!local.getSymlink().isEmpty()) {
-      try {
-        long localModTime = fileAccess.getModifiedTime(path);
-        if (remoteState.needsUpdate(path, localModTime)) {
-          String target = fileAccess.readSymlink(path).toString(); // in case it's changed
-          Update toSend = Update.newBuilder(local).setModTime(localModTime).setSymlink(target).setLocal(false).build();
-          outgoing.onNext(toSend);
-          remoteState.record(path, localModTime);
-        }
-      } catch (FileNotFoundException | NoSuchFileException e) {
-        log.info("Local symlink was not found, assuming deleted: " + path);
-      }
-    } else if (!local.getDelete()) {
-      try {
-        long localModTime = fileAccess.getModifiedTime(path);
-        if (remoteState.needsUpdate(path, localModTime)) {
-          // need to make a ByteString copy until GRPC supports ByteBuffers
-          ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
-          Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
-          outgoing.onNext(toSend);
-          remoteState.record(path, localModTime);
-        }
-      } catch (FileNotFoundException | NoSuchFileException e) {
-        log.info("Local file was not found, assuming deleted: " + path);
-      }
+      handleLocalSymlink(local);
+    } else if (local.getDelete()) {
+      handleLocalDelete(local);
     } else {
-      // a delete
-      // ensure the file stayed deleted
-      if (!fileAccess.exists(path) && remoteState.needsDeleted(path)) {
-        Update toSend = Update.newBuilder(local).setLocal(false).build();
+      handleLocalFile(local);
+    }
+  }
+
+  private void handleLocalSymlink(Update local) throws IOException {
+    Path path = Paths.get(local.getPath());
+    try {
+      long localModTime = fileAccess.getModifiedTime(path);
+      if (remoteState.needsUpdate(path, localModTime)) {
+        String target = fileAccess.readSymlink(path).toString(); // in case it's changed
+        Update toSend = Update.newBuilder(local).setModTime(localModTime).setSymlink(target).setLocal(false).build();
         outgoing.onNext(toSend);
-        remoteState.record(path, -1L);
+        remoteState.record(path, localModTime);
       }
+    } catch (FileNotFoundException | NoSuchFileException e) {
+      log.info("Local symlink was not found, assuming deleted: " + path);
+    }
+  }
+
+  private void handleLocalFile(Update local) throws IOException {
+    Path path = Paths.get(local.getPath());
+    try {
+      long localModTime = fileAccess.getModifiedTime(path);
+      if (remoteState.needsUpdate(path, localModTime)) {
+        // need to make a ByteString copy until GRPC supports ByteBuffers
+        ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
+        Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
+        outgoing.onNext(toSend);
+        remoteState.record(path, localModTime);
+      }
+    } catch (FileNotFoundException | NoSuchFileException e) {
+      log.info("Local file was not found, assuming deleted: " + path);
+    }
+  }
+
+  private void handleLocalDelete(Update local) throws IOException {
+    Path path = Paths.get(local.getPath());
+    // ensure the file stayed deleted
+    if (!fileAccess.exists(path) && remoteState.needsDeleted(path)) {
+      Update toSend = Update.newBuilder(local).setLocal(false).build();
+      outgoing.onNext(toSend);
+      remoteState.record(path, -1L);
     }
   }
 
@@ -143,24 +156,39 @@ public class SyncLogic {
     Path path = Paths.get(remote.getPath());
     log.info("Remote update " + path);
     if (!remote.getSymlink().isEmpty()) {
-      Path target = Paths.get(remote.getSymlink());
-      fileAccess.createSymlink(path, target);
-      // this is going to trigger a local update, but since the write
-      // doesn't go to the symlink, we think the symlink is changed
-      fileAccess.setModifiedTime(path, remote.getModTime());
-      // remember the last remote mod-time, so we don't echo back
-      remoteState.record(path, remote.getModTime());
-    } else if (!remote.getDelete()) {
-      ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
-      fileAccess.write(path, data);
-      fileAccess.setModifiedTime(path, remote.getModTime());
-      // remember the last remote mod-time, so we don't echo back
-      remoteState.record(path, remote.getModTime());
+      handleRemoteSymlink(remote);
+    } else if (remote.getDelete()) {
+      handleRemoteDelete(remote);
     } else {
-      fileAccess.delete(path);
-      // remember the last remote mod-time, so we don't echo back
-      remoteState.record(path, -1L);
+      handleRemoteFile(remote);
     }
+  }
+
+  private void handleRemoteDelete(Update remote) throws IOException {
+    Path path = Paths.get(remote.getPath());
+    fileAccess.delete(path);
+    // remember the last remote mod-time, so we don't echo back
+    remoteState.record(path, -1L);
+  }
+
+  private void handleRemoteSymlink(Update remote) throws IOException {
+    Path path = Paths.get(remote.getPath());
+    Path target = Paths.get(remote.getSymlink());
+    fileAccess.createSymlink(path, target);
+    // this is going to trigger a local update, but since the write
+    // doesn't go to the symlink, we think the symlink is changed
+    fileAccess.setModifiedTime(path, remote.getModTime());
+    // remember the last remote mod-time, so we don't echo back
+    remoteState.record(path, remote.getModTime());
+  }
+
+  private void handleRemoteFile(Update remote) throws IOException {
+    Path path = Paths.get(remote.getPath());
+    ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
+    fileAccess.write(path, data);
+    fileAccess.setModifiedTime(path, remote.getModTime());
+    // remember the last remote mod-time, so we don't echo back
+    remoteState.record(path, remote.getModTime());
   }
 
 }
