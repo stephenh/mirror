@@ -40,7 +40,7 @@ public class MirrorSession {
     this.fs = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(watchService, root, queue);
+      watcher = new FileWatcher(watchService, root, queue, new StandardExcludeFilter());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

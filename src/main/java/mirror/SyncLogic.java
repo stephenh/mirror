@@ -101,7 +101,7 @@ public class SyncLogic {
   }
 
   private void handleLocal(Update local) throws IOException {
-    log.debug("Local update {}", shortDebugString(local));
+    log.debug("Local update {}", local.getPath());
     if (!local.getSymlink().isEmpty()) {
       handleLocalSymlink(local);
     } else if (local.getDelete()) {
@@ -153,8 +153,7 @@ public class SyncLogic {
   }
 
   private void handleRemote(Update remote) throws IOException {
-    Path path = Paths.get(remote.getPath());
-    log.info("Remote update " + path);
+    log.debug("Remote update {}", remote.getPath());
     if (!remote.getSymlink().isEmpty()) {
       handleRemoteSymlink(remote);
     } else if (remote.getDelete()) {

@@ -26,7 +26,7 @@ public class Digest {
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
-    FileWatcher r = new FileWatcher(watchService, root, queue);
+    FileWatcher r = new FileWatcher(watchService, root, queue, p -> false);
     List<Update> initial =r.performInitialScan();
     s.stop();
 

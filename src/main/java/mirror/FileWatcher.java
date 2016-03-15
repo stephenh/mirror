@@ -16,6 +16,7 @@ import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +45,13 @@ class FileWatcher {
   private final Path rootDirectory;
   private final BlockingQueue<Update> queue;
   private final WatchService watchService;
+  private final Predicate<Path> excludeFilter;
 
-  public FileWatcher(WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue) {
+  public FileWatcher(WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue, Predicate<Path> excludeFilter) {
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     this.queue = queue;
+    this.excludeFilter = excludeFilter;
   }
 
   /**
@@ -102,15 +105,19 @@ class FileWatcher {
   }
 
   private void onChangedPath(Path path) throws IOException, InterruptedException {
-    // TODO Support command line parameters for customization
-    if (Files.isHidden(path) || path.getFileName().toString().equals("tmp") || path.getFileName().toString().endsWith(".class")) {
-      return;
-    } else if (Files.isSymbolicLink(path)) {
-      onChangedSymbolicLink(path);
-    } else if (Files.isDirectory(path)) {
+    // always recurse into directories so that even if we're excluding target/*,
+    // if we are including target/scala-2.10/src_managed, then we can match those
+    // paths even though we're ignoring some of the cruft around it
+    if (Files.isDirectory(path) && !Files.isSymbolicLink(path)) {
       onNewDirectory(path);
     } else {
-      onChangedFile(path);
+      if (!excludeFilter.test(path)) {
+        if (Files.isSymbolicLink(path)) {
+          onChangedSymbolicLink(path);
+        } else {
+          onChangedFile(path);
+        }
+      }
     }
   }
 

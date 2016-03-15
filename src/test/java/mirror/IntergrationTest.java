@@ -297,7 +297,7 @@ public class IntergrationTest {
   }
 
   @Test
-  public void testIgnoreDirectories() throws Exception {
+  public void testExcludeDirectories() throws Exception {
     // given a file that exists within an ignored directory
     FileUtils.writeStringToFile(new File(root1, "tmp/foo.txt"), "abc");
     // when mirror is started
@@ -305,6 +305,17 @@ public class IntergrationTest {
     sleep();
     // then it is not replicated to root2
     assertThat(new File(root2, "tmp/foo.txt").exists(), is(false));
+  }
+
+  @Test
+  public void testIncludeWithinExcludedDirectories() throws Exception {
+    // given a file that exists within an included directory
+    FileUtils.writeStringToFile(new File(root1, "tmp/src_managed/foo.txt"), "abc");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then it is replicated to root2
+    assertThat(new File(root2, "tmp/src_managed/foo.txt").exists(), is(true));
   }
 
   private void startMirror() throws Exception {

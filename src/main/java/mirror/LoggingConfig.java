@@ -11,7 +11,7 @@ class LoggingConfig {
     for (Handler h : Logger.getLogger("").getHandlers()) {
       h.setLevel(Level.FINER);
     }
-    Logger.getLogger("mirror").setLevel(Level.FINER);
+    Logger.getLogger("mirror").setLevel(Level.INFO);
   }
 
   public static void init() {
