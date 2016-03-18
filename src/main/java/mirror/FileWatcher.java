@@ -111,7 +111,7 @@ class FileWatcher {
     if (Files.isDirectory(path) && !Files.isSymbolicLink(path)) {
       onNewDirectory(path);
     } else {
-      if (!excludeFilter.test(path)) {
+      if (!excludeFilter.test(rootDirectory.relativize(path))) {
         if (Files.isSymbolicLink(path)) {
           onChangedSymbolicLink(path);
         } else {

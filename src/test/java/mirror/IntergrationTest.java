@@ -318,6 +318,23 @@ public class IntergrationTest {
     assertThat(new File(root2, "tmp/src_managed/foo.txt").exists(), is(true));
   }
 
+  @Test
+  public void testDontRecurseIntoSymlink() throws Exception {
+    // given that both roots have a symlink from src to target
+    Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
+    // Files.createSymbolicLink(root2.toPath().resolve("src"), Paths.get("target"));
+    // and target only exists on root1
+    new File(root1, "target").mkdirs();
+    FileUtils.writeStringToFile(new File(root1, "target/output"), "output");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then the symlink on root1 works
+    assertThat(FileUtils.readFileToString(new File(root1, "src/output")), is("output"));
+    // but we didn't copy it over to root2
+    assertThat(new File(root2, "src/output").exists(), is(false));
+  }
+
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
