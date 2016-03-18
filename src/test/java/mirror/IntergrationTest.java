@@ -322,7 +322,6 @@ public class IntergrationTest {
   public void testDontRecurseIntoSymlink() throws Exception {
     // given that both roots have a symlink from src to target
     Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
-    // Files.createSymbolicLink(root2.toPath().resolve("src"), Paths.get("target"));
     // and target only exists on root1
     new File(root1, "target").mkdirs();
     FileUtils.writeStringToFile(new File(root1, "target/output"), "output");
@@ -333,6 +332,22 @@ public class IntergrationTest {
     assertThat(FileUtils.readFileToString(new File(root1, "src/output")), is("output"));
     // but we didn't copy it over to root2
     assertThat(new File(root2, "src/output").exists(), is(false));
+  }
+
+  @Test
+  public void testSymlinkThatIsNowARealPath() throws Exception {
+    // given that root2 thought src was a symlink
+    Files.createSymbolicLink(root2.toPath().resolve("src"), Paths.get("target"));
+    NativeFileAccess.setModifiedTimeForSymlink(root2.toPath().resolve("src"), 1000);
+    // but now on root1 it's actually a real directory
+    new File(root1, "src").mkdir();
+    FileUtils.writeStringToFile(new File(root1, "src/foo.txt"), "foo");
+    new File(root1, "src/foo.txt").setLastModified(2000);
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then root2's src directory is not a real path
+    assertThat(Files.isSymbolicLink(root2.toPath().resolve("src")), is(false));
   }
 
   private void startMirror() throws Exception {

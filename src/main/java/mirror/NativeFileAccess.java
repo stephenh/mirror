@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
@@ -21,6 +22,15 @@ public class NativeFileAccess implements FileAccess {
 
   private static final Logger log = LoggerFactory.getLogger(NativeFileAccess.class);
   private static final POSIX posix = POSIXFactory.getNativePOSIX();
+
+  @VisibleForTesting
+  public static void setModifiedTimeForSymlink(Path absolutePath, long millis) throws IOException {
+    long[] modTime = millisToTimeStructArray(millis);
+    int r = posix.lutimes(absolutePath.toString(), modTime, modTime);
+    if (r != 0) {
+      throw new IOException("lutimes failed with code " + r);
+    }
+  }
 
   public static void main(String[] args) throws Exception {
     Path root = Paths.get("/home/stephen/dir1");
@@ -43,7 +53,23 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public void write(Path relative, ByteBuffer data) throws IOException {
     Path path = rootDirectory.resolve(relative);
-    path.getParent().toFile().mkdirs();
+    boolean created = path.getParent().toFile().mkdirs();
+    if (!created) {
+      // it could be that relative has a parent that used to be a symlink, but now is not anymore...
+      boolean foundOldSymlink = false;
+      Path current = path.getParent();
+      while (current != null) {
+        if (java.nio.file.Files.isSymbolicLink(current)) {
+          current.toFile().delete();
+          path.getParent().toFile().mkdirs();
+          foundOldSymlink = true;
+        }
+        current = current.getParent();
+      }
+      if (!foundOldSymlink) {
+        throw new IOException("Could not create parent directory " + path.getParent());
+      }
+    }
     FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     try {
       c.write(data);
@@ -64,12 +90,7 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public void setModifiedTime(Path relative, long millis) throws IOException {
-    long[] accessTime = { millis / 1000, (millis % 1000) * 1000 };
-    long[] modTime = { millis / 1000, (millis % 1000) * 1000 };
-    int r = posix.lutimes(resolve(relative).toFile().getAbsolutePath(), accessTime, modTime);
-    if (r != 0) {
-      throw new IOException("lutimes failed with code " + r);
-    }
+    setModifiedTimeForSymlink(resolve(relative).toAbsolutePath(), millis);
   }
 
   @Override
@@ -118,6 +139,11 @@ public class NativeFileAccess implements FileAccess {
 
   private Path resolve(Path relativePath) {
     return rootDirectory.resolve(relativePath);
+  }
+
+  /** @return millis has an array of seconds + microseconds, as expected by the POSIX APIs. */
+  private static long[] millisToTimeStructArray(long millis) {
+    return new long[] { millis / 1000, (millis % 1000) * 1000 };
   }
 
 }
