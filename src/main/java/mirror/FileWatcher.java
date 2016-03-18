@@ -7,6 +7,7 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
@@ -128,7 +129,10 @@ class FileWatcher {
 
   private void onNewDirectory(Path directory) throws IOException, InterruptedException {
     directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-    List<Path> children = Seq.seq(Files.newDirectoryStream(directory)).toList();
+    List<Path> children = new ArrayList<>();
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
+      children.addAll(Seq.seq(stream).toList());
+    }
     // first see if we have a .gitignore directory before reading the other children
     Seq.seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
       excludeFilter.addGitIgnore(rootDirectory.relativize(directory), p);
