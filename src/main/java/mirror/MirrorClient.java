@@ -25,8 +25,8 @@ public class MirrorClient {
     Path root = Paths.get(args[0]).toAbsolutePath();
     String host = args[1];
     Integer port = Integer.parseInt(args[2]);
-    Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).build();
-    MirrorStub stub = MirrorGrpc.newStub(c);
+    Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
+    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
     MirrorClient client = new MirrorClient(root);
     client.startSession(stub);
     // TODO something better

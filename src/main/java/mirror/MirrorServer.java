@@ -23,7 +23,7 @@ public class MirrorServer implements Mirror {
     LoggingConfig.init();
     Path root = Paths.get(args[0]).toAbsolutePath();
     Integer port = Integer.parseInt(args[1]);
-    ServerImpl rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root))).build();
+    ServerImpl rpc = NettyServerBuilder.forPort(port).maxMessageSize(1073741824).addService(MirrorGrpc.bindService(new MirrorServer(root))).build();
     rpc.start();
     rpc.awaitTermination();
   }
