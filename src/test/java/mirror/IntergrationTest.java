@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -348,6 +349,25 @@ public class IntergrationTest {
     sleep();
     // then root2's src directory is not a real path
     assertThat(Files.isSymbolicLink(root2.toPath().resolve("src")), is(false));
+    // and root1 stays a real patha s well
+    assertThat(Files.isSymbolicLink(root1.toPath().resolve("src")), is(false));
+  }
+
+  @Test
+  @Ignore
+  public void testRealPathThatIsNowASymlink() throws Exception {
+    // given that root2 thought src was a real path
+    new File(root2, "src").mkdir();
+    FileUtils.writeStringToFile(new File(root2, "src/foo.txt"), "foo");
+    new File(root2, "src/foo.txt").setLastModified(1000);
+    // but now it's a symlink
+    Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
+    NativeFileAccess.setModifiedTimeForSymlink(root1.toPath().resolve("src"), 2000);
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then root2's src directory is not a real path
+    assertThat(Files.isSymbolicLink(root2.toPath().resolve("src")), is(true));
   }
 
   private void startMirror() throws Exception {
