@@ -20,10 +20,10 @@ repositories {
 }
 
 dependencies {
-  compile 'io.grpc:grpc-netty:0.13.1'
-  compile 'io.grpc:grpc-core:0.13.1'
-  compile 'io.grpc:grpc-protobuf:0.13.1'
-  compile 'io.grpc:grpc-stub:0.13.1'
+  compile 'io.grpc:grpc-netty:0.14.0-SNAPSHOT'
+  compile 'io.grpc:grpc-core:0.14.0-SNAPSHOT'
+  compile 'io.grpc:grpc-protobuf:0.14.0-SNAPSHOT'
+  compile 'io.grpc:grpc-stub:0.14.0-SNAPSHOT'
   compile 'org.slf4j:slf4j-jdk14:1.7.18'
   compile 'com.github.jnr:jnr-posix:3.0.30-lutimes-SNAPSHOT'
   testCompile 'junit:junit:4.12'
@@ -51,6 +51,7 @@ protobuf {
 
 eclipse {
   pathVariables 'GRADLE_USER_HOME': gradle.gradleUserHomeDir
+  pathVariables 'M2_REPO': new File("${System.getenv('HOME')}/.m2/repository")
   classpath {
     file.whenMerged { cp ->
       cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/generated/source/proto/main/java/', null))
