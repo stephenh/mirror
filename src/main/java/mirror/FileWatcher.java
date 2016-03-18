@@ -96,6 +96,11 @@ class FileWatcher {
         }
         Path child = parentDir.resolve((Path) watchEvent.context());
         if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
+          // kind of hacky (e.g. should probably be done in SyncLogic), but
+          // update our excludeFilter if this is a .gitignore file
+          if (child.getFileName().toString().equals(".gitignore")) {
+            excludeFilter.addGitIgnore(rootDirectory.relativize(parentDir), child);
+          }
           onChangedPath(child);
         } else if (eventKind == ENTRY_DELETE) {
           onRemovedPath(child);
