@@ -7,7 +7,6 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
@@ -16,8 +15,9 @@ import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.function.Predicate;
 
+import org.jooq.lambda.Seq;
+import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,9 +45,9 @@ class FileWatcher {
   private final Path rootDirectory;
   private final BlockingQueue<Update> queue;
   private final WatchService watchService;
-  private final Predicate<Path> excludeFilter;
+  private final StandardExcludeFilter excludeFilter;
 
-  public FileWatcher(WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue, Predicate<Path> excludeFilter) {
+  public FileWatcher(WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue, StandardExcludeFilter excludeFilter) {
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     this.queue = queue;
@@ -128,10 +128,13 @@ class FileWatcher {
 
   private void onNewDirectory(Path directory) throws IOException, InterruptedException {
     directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-      for (Path child : stream) {
-        onChangedPath(child);
-      }
+    List<Path> children = Seq.seq(Files.newDirectoryStream(directory)).toList();
+    // first see if we have a .gitignore directory before reading the other children
+    Seq.seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
+      excludeFilter.addGitIgnore(rootDirectory.relativize(directory), p);
+    }));
+    for (Path child : Seq.seq(children).sorted()) {
+      onChangedPath(child);
     }
   }
 

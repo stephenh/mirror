@@ -53,15 +53,16 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public void write(Path relative, ByteBuffer data) throws IOException {
     Path path = rootDirectory.resolve(relative);
-    boolean created = path.getParent().toFile().mkdirs();
-    if (!created) {
+    Path parent = path.getParent();
+    parent.toFile().mkdirs();
+    if (!parent.toFile().exists()) {
       // it could be that relative has a parent that used to be a symlink, but now is not anymore...
       boolean foundOldSymlink = false;
-      Path current = path.getParent();
+      Path current = parent;
       while (current != null) {
         if (java.nio.file.Files.isSymbolicLink(current)) {
           current.toFile().delete();
-          path.getParent().toFile().mkdirs();
+          parent.toFile().mkdirs();
           foundOldSymlink = true;
         }
         current = current.getParent();

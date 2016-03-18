@@ -370,6 +370,19 @@ public class IntergrationTest {
     assertThat(Files.isSymbolicLink(root2.toPath().resolve("src")), is(true));
   }
 
+  @Test
+  public void testRespectsGitIgnoreFile() throws Exception {
+    // given that root1 has a .gitignore file
+    FileUtils.writeStringToFile(new File(root1, ".gitignore"), "*.txt");
+    // and a file that would be ignore
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "foo");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then we don't sync it
+    assertThat(new File(root2, "foo.txt").exists(), is(false));
+  }
+
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
