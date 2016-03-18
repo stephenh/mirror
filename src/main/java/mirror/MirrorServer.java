@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NettyServerBuilder;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.Mirror;
 
@@ -65,18 +66,52 @@ public class MirrorServer implements Mirror {
 
         @Override
         public void onError(Throwable t) {
+          log.error("Error from incoming client stream", t);
+          outgoingUpdates.onCompleted();
         }
 
         @Override
         public void onCompleted() {
+          log.info("onCompleted called on the server incoming stream");
           outgoingUpdates.onCompleted();
         }
       };
       // look for file system updates to send back to the client
-      currentSession.startPolling(outgoingUpdates);
+      currentSession.startPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
       return incomingUpdates;
     } catch (Exception e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static class BlockingStreamObserver<T> implements StreamObserver<T> {
+    private CallStreamObserver<T> delegate;
+
+    private BlockingStreamObserver(StreamObserver<T> delegate) {
+      this.delegate = (CallStreamObserver<T>) delegate;
+    }
+
+    @Override
+    public void onNext(T value) {
+      while (!delegate.isReady()) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return;
+        }
+      }
+      delegate.onNext(value);
+    }
+
+    @Override
+    public void onError(Throwable t) {
+      delegate.onError(t);
+    }
+
+    @Override
+    public void onCompleted() {
+      delegate.onCompleted();
     }
   }
 

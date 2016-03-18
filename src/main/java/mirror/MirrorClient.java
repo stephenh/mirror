@@ -26,7 +26,7 @@ public class MirrorClient {
     String host = args[1];
     Integer port = Integer.parseInt(args[2]);
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).build();
-    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
+    MirrorStub stub = MirrorGrpc.newStub(c);
     MirrorClient client = new MirrorClient(root);
     client.startSession(stub);
     // TODO something better
@@ -60,16 +60,20 @@ public class MirrorClient {
 
         @Override
         public void onError(Throwable t) {
+          log.error("Error from incoming server stream", t);
         }
 
         @Override
         public void onCompleted() {
+          log.info("onCompleted called on the client incoming stream");
         }
       });
 
       session.setInitialRemoteState(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");
       session.seedQueueForInitialSync(new PathState(localState));
+
+      StreamObserver<Update> outgoingChanges = null;
 
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override
@@ -79,14 +83,16 @@ public class MirrorClient {
 
         @Override
         public void onError(Throwable t) {
+          log.error("Error from incoming server stream", t);
         }
 
         @Override
         public void onCompleted() {
+          log.info("onCompleted called on client incoming stream");
         }
       };
 
-      StreamObserver<Update> outgoingChanges = stub.streamUpdates(incomingChanges);
+      outgoingChanges = stub.streamUpdates(incomingChanges);
 
       session.startPolling(outgoingChanges);
     } catch (Exception e) {

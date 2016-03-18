@@ -76,6 +76,7 @@ public class MirrorSession {
         queue.add(Update.newBuilder().setPath(path).setLocal(true).build());
       }
     }
+    queue.add(Update.newBuilder().setPath("STATUS:Initial sync complete").setLocal(true).build());
   }
 
   public void startPolling(StreamObserver<Update> outgoingChanges) throws IOException {

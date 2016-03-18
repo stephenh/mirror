@@ -17,7 +17,9 @@ class StandardExcludeFilter implements Predicate<Path> {
       || s.equals("temp")
       || s.equals("target")
       || s.endsWith(".class"));
-    boolean include = anyPartMatches(p, s -> s.equals("src_managed") || s.endsWith("-SNAPSHOT.jar"));
+    boolean include = anyPartMatches(
+      p,
+      s -> s.equals("src_managed") || s.endsWith("-SNAPSHOT.jar") || s.equals(".classpath") || s.equals(".project"));
     log.debug("{} exclude={}, include={}", p, exclude, include);
     return exclude && !include;
   }

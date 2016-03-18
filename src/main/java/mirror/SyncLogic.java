@@ -1,7 +1,5 @@
 package mirror;
 
-import static com.google.protobuf.TextFormat.shortDebugString;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -93,6 +91,10 @@ public class SyncLogic {
       outgoing.onCompleted();
       return;
     }
+    if (u.getPath().startsWith("STATUS:")) {
+      log.info(u.getPath().replace("STATUS:", ""));
+      return;
+    }
     if (u.getLocal()) {
       handleLocal(u);
     } else {
@@ -101,7 +103,7 @@ public class SyncLogic {
   }
 
   private void handleLocal(Update local) throws IOException {
-    log.debug("Local update {}", local.getPath());
+    log.info("Local update {}", local.getPath());
     if (!local.getSymlink().isEmpty()) {
       handleLocalSymlink(local);
     } else if (local.getDelete()) {
@@ -153,7 +155,7 @@ public class SyncLogic {
   }
 
   private void handleRemote(Update remote) throws IOException {
-    log.debug("Remote update {}", remote.getPath());
+    log.info("Remote update {}", remote.getPath());
     if (!remote.getSymlink().isEmpty()) {
       handleRemoteSymlink(remote);
     } else if (remote.getDelete()) {
