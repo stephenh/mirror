@@ -142,14 +142,13 @@ public class SyncLogic {
         if (!local.getSeed()) {
           log.info("Local update {}", local.getPath());
         }
-        boolean ensureNoPartialRead = fileWasJustModified(localModTime);
         // do some gyrations to ensure the file writer has completely written the file
         boolean shouldBeComplete = false;
         ByteString data = null;
         while (!shouldBeComplete) {
           long size1 = fileAccess.getFileSize(path);
           data = this.fileAccess.read(path);
-          if (ensureNoPartialRead) {
+          if (fileWasJustModified(localModTime)) {
             Thread.sleep(100);
             localModTime = fileAccess.getModifiedTime(path);
             long size2 = fileAccess.getFileSize(path);
