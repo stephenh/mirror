@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
-import com.google.common.io.Files;
+import com.google.protobuf.ByteString;
 
 import jnr.posix.POSIX;
 import jnr.posix.POSIXFactory;
@@ -36,8 +37,8 @@ public class NativeFileAccess implements FileAccess {
     Path root = Paths.get("/home/stephen/dir1");
     NativeFileAccess f = new NativeFileAccess(root);
     Path bar = Paths.get("bar.txt");
-    ByteBuffer b = f.read(bar);
-    String s = Charsets.US_ASCII.newDecoder().decode(b).toString();
+    ByteString b = f.read(bar);
+    String s = Charsets.US_ASCII.newDecoder().decode(ByteBuffer.wrap(b.toByteArray())).toString();
     System.out.println(s);
     f.write(bar, ByteBuffer.wrap((s + "2").getBytes()));
     f.setModifiedTime(bar, System.currentTimeMillis());
@@ -80,8 +81,10 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public ByteBuffer read(Path relative) throws IOException {
-    return Files.map(resolve(relative).toFile());
+  public ByteString read(Path relative) throws IOException {
+    try (FileInputStream fis = new FileInputStream(resolve(relative).toFile())) {
+      return ByteString.readFrom(fis);
+    }
   }
 
   @Override

@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.protobuf.ByteString;
+
 public class StubFileAccess implements FileAccess {
 
   private Map<Path, byte[]> fileData = new HashMap<>();
@@ -30,12 +32,12 @@ public class StubFileAccess implements FileAccess {
   }
 
   @Override
-  public ByteBuffer read(Path path) throws IOException {
+  public ByteString read(Path path) throws IOException {
     byte[] data = fileData.get(path);
     if (data == null) {
       throw new FileNotFoundException(path.toString());
     }
-    return ByteBuffer.wrap(data);
+    return ByteString.copyFrom(data);
   }
 
   @Override

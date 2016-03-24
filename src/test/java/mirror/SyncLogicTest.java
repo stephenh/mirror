@@ -82,8 +82,8 @@ public class SyncLogicTest {
     // when we notice
     l.poll();
     // then we've saved it locally
-    ByteBuffer data = fileAccess.read(fooDotTxt);
-    assertThat(data.array(), is(data2));
+    ByteString data = fileAccess.read(fooDotTxt);
+    assertThat(data.toByteArray(), is(data2));
     assertThat(fileAccess.getModifiedTime(fooDotTxt), is(10L));
   }
 

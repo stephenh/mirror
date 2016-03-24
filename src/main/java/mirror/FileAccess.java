@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 
+import com.google.protobuf.ByteString;
+
 /**
  * An interfacing for reads/writes.
  * 
@@ -11,7 +13,7 @@ import java.nio.file.Path;
  */
 public interface FileAccess {
 
-  ByteBuffer read(Path relativePath) throws IOException;
+  ByteString read(Path relativePath) throws IOException;
 
   void write(Path relativePath, ByteBuffer data) throws IOException;
 

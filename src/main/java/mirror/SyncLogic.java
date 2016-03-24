@@ -133,9 +133,8 @@ public class SyncLogic {
     try {
       long localModTime = fileAccess.getModifiedTime(path);
       if (remoteState.needsUpdate(path, localModTime)) {
-        // need to make a ByteString copy until GRPC supports ByteBuffers
-        ByteString copy = ByteString.copyFrom(this.fileAccess.read(path));
-        Update toSend = Update.newBuilder(local).setData(copy).setModTime(localModTime).setLocal(false).build();
+        ByteString data = this.fileAccess.read(path);
+        Update toSend = Update.newBuilder(local).setData(data).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
         remoteState.record(path, localModTime);
       }
