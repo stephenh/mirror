@@ -73,18 +73,22 @@ class StandardExcludeFilter {
   /** @param p should be a relative path, e.g. a/b/c.txt. */
   private boolean shouldGitIgnore(Path p) {
     return Seq
-      .iterate(p, c -> c.getParent())
+      .iterate(p.getParent(), c -> c.getParent())
       .limitUntil(Objects::isNull)
       .append(Paths.get("")) // need an extra check for the root path
+      .reverse()
       .findFirst(c -> shouldIgnore(c, p))
       .isPresent();
   }
 
   private boolean shouldIgnore(Path directory, Path p) {
+    // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
+    // to call is match with just foo.txt, and not the dir1/dir2 prefix
+    String relative = p.toString().substring(directory.toString().length()).replaceAll("^/", "");
     List<FastIgnoreRule> rules = gitIgnores.get(directory);
     if (rules != null) {
       for (FastIgnoreRule rule : rules) {
-        if (rule.isMatch(p.toString(), p.toFile().isDirectory()) && rule.getResult()) {
+        if (rule.isMatch(relative, p.toFile().isDirectory()) && rule.getResult()) {
           return true;
         }
       }

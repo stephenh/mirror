@@ -373,14 +373,27 @@ public class IntergrationTest {
   @Test
   public void testRespectsGitIgnoreFile() throws Exception {
     // given that root1 has a .gitignore file
-    FileUtils.writeStringToFile(new File(root1, ".gitignore"), "*.txt");
-    // and a file that would be ignore
+    FileUtils.writeStringToFile(new File(root1, ".gitignore"), "foo.txt");
+    // and a file that would be ignored
     FileUtils.writeStringToFile(new File(root1, "foo.txt"), "foo");
     // when mirror is started
     startMirror();
     sleep();
     // then we don't sync it
     assertThat(new File(root2, "foo.txt").exists(), is(false));
+  }
+
+  @Test
+  public void testRespectsGitIgnoreFileInNestedDirectories() throws Exception {
+    // given that root1 has a .gitignore file
+    FileUtils.writeStringToFile(new File(root1, "foo/.gitignore"), "dir1/*");
+    // and a file that would be ignored
+    FileUtils.writeStringToFile(new File(root1, "foo/dir1/foo.txt"), "foo");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then we don't sync it
+    assertThat(new File(root2, "foo/dir1/foo.txt").exists(), is(false));
   }
 
   private void startMirror() throws Exception {
