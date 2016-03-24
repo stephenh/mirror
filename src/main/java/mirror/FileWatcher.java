@@ -4,6 +4,7 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
+import static org.jooq.lambda.Seq.seq;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
-import org.jooq.lambda.Seq;
 import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,13 +136,13 @@ class FileWatcher {
     directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
     List<Path> children = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-      children.addAll(Seq.seq(stream).toList());
+      children.addAll(seq(stream).toList());
     }
     // first see if we have a .gitignore directory before reading the other children
-    Seq.seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
+    seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
       excludeFilter.addGitIgnore(rootDirectory.relativize(directory), p);
     }));
-    for (Path child : Seq.seq(children).sorted()) {
+    for (Path child : seq(children).sorted()) {
       onChangedPath(child);
     }
   }
