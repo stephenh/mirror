@@ -150,4 +150,9 @@ public class NativeFileAccess implements FileAccess {
     return new long[] { millis / 1000, (millis % 1000) * 1000 };
   }
 
+  @Override
+  public long getFileSize(Path relativePath) throws IOException {
+    return resolve(relativePath).toFile().length();
+  }
+
 }

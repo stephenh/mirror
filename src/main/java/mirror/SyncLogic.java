@@ -79,14 +79,14 @@ public class SyncLogic {
   }
 
   @VisibleForTesting
-  public void poll() throws IOException {
+  public void poll() throws IOException, InterruptedException {
     Update u = changes.poll();
     if (u != null) {
       handleUpdate(u);
     }
   }
 
-  private void handleUpdate(Update u) throws IOException {
+  private void handleUpdate(Update u) throws IOException, InterruptedException {
     if (u.getPath().equals(poisonPillPath)) {
       outgoing.onCompleted();
       return;
@@ -102,8 +102,7 @@ public class SyncLogic {
     }
   }
 
-  private void handleLocal(Update local) throws IOException {
-    log.info("Local update {}", local.getPath());
+  private void handleLocal(Update local) throws IOException, InterruptedException {
     if (!local.getSymlink().isEmpty()) {
       handleLocalSymlink(local);
     } else if (local.getDelete()) {
@@ -118,6 +117,9 @@ public class SyncLogic {
     try {
       long localModTime = fileAccess.getModifiedTime(path);
       if (remoteState.needsUpdate(path, localModTime)) {
+        if (!local.getSeed()) {
+          log.info("Local symlink {}", local.getPath());
+        }
         String target = fileAccess.readSymlink(path).toString(); // in case it's changed
         Update toSend = Update.newBuilder(local).setModTime(localModTime).setSymlink(target).setLocal(false).build();
         outgoing.onNext(toSend);
@@ -128,12 +130,30 @@ public class SyncLogic {
     }
   }
 
-  private void handleLocalFile(Update local) throws IOException {
+  private void handleLocalFile(Update local) throws IOException, InterruptedException {
     Path path = Paths.get(local.getPath());
     try {
       long localModTime = fileAccess.getModifiedTime(path);
       if (remoteState.needsUpdate(path, localModTime)) {
-        ByteString data = this.fileAccess.read(path);
+        if (!local.getSeed()) {
+          log.info("Local update {}", local.getPath());
+        }
+        boolean ensureNoPartialRead = fileWasJustModified(localModTime);
+        // do some gyrations to ensure the file writer has completely written the file
+        boolean shouldBeComplete = false;
+        ByteString data = null;
+        while (!shouldBeComplete) {
+          long size1 = fileAccess.getFileSize(path);
+          data = this.fileAccess.read(path);
+          if (ensureNoPartialRead) {
+            Thread.sleep(100);
+            localModTime = fileAccess.getModifiedTime(path);
+            long size2 = fileAccess.getFileSize(path);
+            shouldBeComplete = size1 == size2;
+          } else {
+            shouldBeComplete = true; // if seeded data, assume we don't need to sleep
+          }
+        }
         Update toSend = Update.newBuilder(local).setData(data).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
         remoteState.record(path, localModTime);
@@ -147,6 +167,9 @@ public class SyncLogic {
     Path path = Paths.get(local.getPath());
     // ensure the file stayed deleted
     if (!fileAccess.exists(path) && remoteState.needsDeleted(path)) {
+      if (!local.getSeed()) {
+        log.info("Local delete {}", local.getPath());
+      }
       Update toSend = Update.newBuilder(local).setLocal(false).build();
       outgoing.onNext(toSend);
       remoteState.record(path, -1L);
@@ -154,7 +177,6 @@ public class SyncLogic {
   }
 
   private void handleRemote(Update remote) throws IOException {
-    log.info("Remote update {}", remote.getPath());
     if (!remote.getSymlink().isEmpty()) {
       handleRemoteSymlink(remote);
     } else if (remote.getDelete()) {
@@ -165,6 +187,7 @@ public class SyncLogic {
   }
 
   private void handleRemoteDelete(Update remote) throws IOException {
+    log.info("Remote delete {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     fileAccess.delete(path);
     // remember the last remote mod-time, so we don't echo back
@@ -172,6 +195,7 @@ public class SyncLogic {
   }
 
   private void handleRemoteSymlink(Update remote) throws IOException {
+    log.info("Remote symlink {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     Path target = Paths.get(remote.getSymlink());
     fileAccess.createSymlink(path, target);
@@ -183,12 +207,18 @@ public class SyncLogic {
   }
 
   private void handleRemoteFile(Update remote) throws IOException {
+    log.info("Remote update {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
     fileAccess.write(path, data);
     fileAccess.setModifiedTime(path, remote.getModTime());
     // remember the last remote mod-time, so we don't echo back
     remoteState.record(path, remote.getModTime());
+  }
+
+  /** @return whether localModTime was within the last 100ms. */
+  private static boolean fileWasJustModified(long localModTime) {
+    return (System.currentTimeMillis() - localModTime) <= 100;
   }
 
 }

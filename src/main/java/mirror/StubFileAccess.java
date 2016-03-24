@@ -88,4 +88,9 @@ public class StubFileAccess implements FileAccess {
     fileTimes.put(link, 1L);
   }
 
+  @Override
+  public long getFileSize(Path relativePath) throws IOException {
+    return 0;
+  }
+
 }

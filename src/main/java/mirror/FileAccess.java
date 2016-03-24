@@ -19,6 +19,8 @@ public interface FileAccess {
 
   void delete(Path relativePath) throws IOException;
 
+  long getFileSize(Path relativePath) throws IOException;
+
   long getModifiedTime(Path relativePath) throws IOException;
 
   void setModifiedTime(Path relativePath, long time) throws IOException;
