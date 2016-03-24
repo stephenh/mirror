@@ -71,9 +71,9 @@ public class MirrorSession {
       log.debug("Seeding {}", path);
       Path p = Paths.get(path);
       if (fs.isSymlink(p)) {
-        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSymlink(fs.readSymlink(p).toString()).build());
+        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSeed(true).setSymlink(fs.readSymlink(p).toString()).build());
       } else {
-        queue.add(Update.newBuilder().setPath(path).setLocal(true).build());
+        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSeed(true).build());
       }
     }
     queue.add(Update.newBuilder().setPath("STATUS:Initial sync complete").setLocal(true).build());

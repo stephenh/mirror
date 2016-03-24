@@ -43,5 +43,8 @@ message Update {
 
   // the target if this is a symlink
   string symlink = 6;
+
+  // whether this is a fake update to trigger a sync to remote
+  bool seed = 7;
 }
 
