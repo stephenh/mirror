@@ -1,4 +1,21 @@
 
+
+Todo
+====
+
+* Sync .gitignore files first?
+  * start with foo/bar.txt on root1/root2
+  * root1 adds foo/ to .gitignore
+  * root1 initial path won't have foo/bar.txt, root2 does
+  * root2 sees foo/bar.txt as deleted on root1
+* Handle watch event overflows by restarting session
+* Run just the client, and have it instantiate the server via SSH
+  * Ideally scp jar file if needed as well, perhaps to ~/.mirror/
+* Include file hashes to avoid sending files with different modification times
+* Support svn:ignore
+  * Possibly by converting in-memory to .gitignore
+* Handle automatic reconnecting
+
 Primary Workflow
 ================
 
