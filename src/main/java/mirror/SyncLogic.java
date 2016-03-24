@@ -73,7 +73,11 @@ public class SyncLogic {
   private void pollLoop() throws IOException, InterruptedException {
     while (!shutdown) {
       Update u = changes.take();
-      handleUpdate(u);
+      try {
+        handleUpdate(u);
+      } catch (Exception e) {
+        log.error("Exception handling " + u.getPath(), e);
+      }
     }
     isShutdown.countDown();
   }
