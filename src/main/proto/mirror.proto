@@ -46,5 +46,8 @@ message Update {
 
   // whether this is a fake update to trigger a sync to remote
   bool seed = 7;
+
+  // Whether this is a directory
+  bool directory = 8;
 }
 

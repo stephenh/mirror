@@ -111,6 +111,8 @@ public class SyncLogic {
       handleLocalSymlink(local);
     } else if (local.getDelete()) {
       handleLocalDelete(local);
+    } else if (local.getDirectory()) {
+      handleLocalDirectory(local);
     } else {
       handleLocalFile(local);
     }
@@ -166,6 +168,18 @@ public class SyncLogic {
     }
   }
 
+  private void handleLocalDirectory(Update local) throws IOException {
+    Path path = Paths.get(local.getPath());
+    if (remoteState.needsUpdate(path, local.getModTime())) {
+      if (!local.getSeed()) {
+        log.info("Local directory {}", local.getPath());
+      }
+      long localModTime = fileAccess.getModifiedTime(path);
+      outgoing.onNext(Update.newBuilder(local).setLocal(false).setModTime(localModTime).build());
+      remoteState.record(path, localModTime);
+    }
+  }
+
   private void handleLocalDelete(Update local) throws IOException {
     Path path = Paths.get(local.getPath());
     // ensure the file stayed deleted
@@ -184,6 +198,8 @@ public class SyncLogic {
       handleRemoteSymlink(remote);
     } else if (remote.getDelete()) {
       handleRemoteDelete(remote);
+    } else if (remote.getDirectory()) {
+      handleRemoteDirectory(remote);
     } else {
       handleRemoteFile(remote);
     }
@@ -216,6 +232,14 @@ public class SyncLogic {
     fileAccess.write(path, data);
     fileAccess.setModifiedTime(path, remote.getModTime());
     // remember the last remote mod-time, so we don't echo back
+    remoteState.record(path, remote.getModTime());
+  }
+
+  private void handleRemoteDirectory(Update remote) throws IOException {
+    log.info("Remote directory {}", remote.getPath());
+    Path path = Paths.get(remote.getPath());
+    fileAccess.mkdir(path);
+    fileAccess.setModifiedTime(path, remote.getModTime());
     remoteState.record(path, remote.getModTime());
   }
 

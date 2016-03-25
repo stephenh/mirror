@@ -15,6 +15,8 @@ public interface FileAccess {
 
   ByteString read(Path relativePath) throws IOException;
 
+  void mkdir(Path relativePath) throws IOException;
+
   void write(Path relativePath, ByteBuffer data) throws IOException;
 
   void delete(Path relativePath) throws IOException;
@@ -28,6 +30,8 @@ public interface FileAccess {
   boolean exists(Path relativePath) throws IOException;
 
   boolean isSymlink(Path relativePath) throws IOException;
+
+  boolean isDirectory(Path relativePath) throws IOException;
 
   Path readSymlink(Path readSymlink) throws IOException;
 

@@ -64,6 +64,15 @@ public class IntergrationTest {
   }
 
   @Test
+  public void testSimpleDirectory() throws Exception {
+    startMirror();
+    new File(root1, "foo").mkdir();
+    sleep();
+    assertThat(new File(root2, "foo").exists(), is(true));
+    assertThat(new File(root2, "foo").isDirectory(), is(true));
+  }
+
+  @Test
   public void testDeleteSimpleFile() throws Exception {
     // given a file that exists in both root1/root2
     FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
@@ -162,7 +171,6 @@ public class IntergrationTest {
     Thread.sleep(1000);
     Files.createSymbolicLink(new File(root2, "foo").toPath(), Paths.get("foo2.txt"));
     // when we start
-    System.out.println("STARTING");
     startMirror();
     sleep();
     // then we update the link on root1
@@ -411,7 +419,7 @@ public class IntergrationTest {
   }
 
   private static void sleep() throws InterruptedException {
-    Thread.sleep(500);
+    Thread.sleep(1500);
   }
 
 }

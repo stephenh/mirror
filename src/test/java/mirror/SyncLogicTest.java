@@ -73,6 +73,23 @@ public class SyncLogicTest {
   }
 
   @Test
+  public void sendLocalDirectoryToRemote() throws Exception {
+    // given a directory is created locally
+    fileAccess.mkdir(Paths.get("foo"));
+    // when we notice
+    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setLocal(true).build());
+    l.poll();
+    // then we sent it to the remote
+    assertThat(outgoing.values.size(), is(1));
+    // and we don't need to send any data
+    Update sent = outgoing.values.get(0);
+    assertThat(sent.getData().size(), is(0));
+    assertThat(sent.getModTime(), is(1L));
+    assertThat(sent.getDirectory(), is(true));
+    assertThat(sent.getLocal(), is(false));
+  }
+
+  @Test
   public void saveRemoteChangeLocally() throws Exception {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
@@ -98,6 +115,17 @@ public class SyncLogicTest {
     l.poll();
     // then we delete it locally
     assertThat(fileAccess.wasDeleted(fooDotTxt), is(true));
+  }
+
+  @Test
+  public void saveRemoteDirectoryLocally() throws Exception {
+    // given a directory is created remotely
+    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(10L).build());
+    // when we notice
+    l.poll();
+    // then we've creative it locally
+    assertThat(fileAccess.isDirectory(Paths.get("foo")), is(true));
+    assertThat(fileAccess.getModifiedTime(Paths.get("foo")), is(10L));
   }
 
   @Test

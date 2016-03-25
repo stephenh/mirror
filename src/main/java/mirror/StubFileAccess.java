@@ -13,6 +13,7 @@ import com.google.protobuf.ByteString;
 
 public class StubFileAccess implements FileAccess {
 
+  private static final byte[] directoryMarker = new byte[] { 0 };
   private Map<Path, byte[]> fileData = new HashMap<>();
   private Map<Path, Long> fileTimes = new HashMap<>();
   private List<Path> deleted = new ArrayList<>();
@@ -91,6 +92,17 @@ public class StubFileAccess implements FileAccess {
   @Override
   public long getFileSize(Path relativePath) throws IOException {
     return 0;
+  }
+
+  @Override
+  public void mkdir(Path relativePath) throws IOException {
+    fileData.put(relativePath, directoryMarker);
+    fileTimes.put(relativePath, 1L);
+  }
+
+  @Override
+  public boolean isDirectory(Path relativePath) throws IOException {
+    return fileData.get(relativePath) == directoryMarker;
   }
 
 }

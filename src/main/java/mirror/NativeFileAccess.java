@@ -54,24 +54,7 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public void write(Path relative, ByteBuffer data) throws IOException {
     Path path = rootDirectory.resolve(relative);
-    Path parent = path.getParent();
-    parent.toFile().mkdirs();
-    if (!parent.toFile().exists()) {
-      // it could be that relative has a parent that used to be a symlink, but now is not anymore...
-      boolean foundOldSymlink = false;
-      Path current = parent;
-      while (current != null) {
-        if (java.nio.file.Files.isSymbolicLink(current)) {
-          current.toFile().delete();
-          parent.toFile().mkdirs();
-          foundOldSymlink = true;
-        }
-        current = current.getParent();
-      }
-      if (!foundOldSymlink) {
-        throw new IOException("Could not create parent directory " + path.getParent());
-      }
-    }
+    mkdir(path.getParent().toAbsolutePath());
     FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     try {
       c.write(data);
@@ -153,6 +136,37 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public long getFileSize(Path relativePath) throws IOException {
     return resolve(relativePath).toFile().length();
+  }
+
+  @Override
+  public void mkdir(Path relativePath) throws IOException {
+    mkdirImpl(resolve(relativePath).toAbsolutePath());
+  }
+
+  @Override
+  public boolean isDirectory(Path relativePath) throws IOException {
+    return resolve(relativePath).toFile().isDirectory();
+  }
+  
+  /** @param path the absolute path of the directory to create */
+  private static void mkdirImpl(Path path) throws IOException {
+    path.toFile().mkdirs();
+    if (!path.toFile().exists()) {
+      // it could be that relative has a parent that used to be a symlink, but now is not anymore...
+      boolean foundOldSymlink = false;
+      Path current = path;
+      while (current != null) {
+        if (java.nio.file.Files.isSymbolicLink(current)) {
+          current.toFile().delete();
+          path.toFile().mkdirs();
+          foundOldSymlink = true;
+        }
+        current = current.getParent();
+      }
+      if (!foundOldSymlink) {
+        throw new IOException("Could not create directory " + path);
+      }
+    }
   }
 
 }

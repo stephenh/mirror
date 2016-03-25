@@ -38,7 +38,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  *
  * All of the events that we fire should use paths relative to {@code rootDirectory},
  * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
- * the path * of the event should be {@code project-a/foo.txt}.
+ * the path of the event should be {@code project-a/foo.txt}.
  */
 class FileWatcher {
 
@@ -134,13 +134,15 @@ class FileWatcher {
 
   private void onNewDirectory(Path directory) throws IOException, InterruptedException {
     directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+    Path relativePath = rootDirectory.relativize(directory);
+    queue.put(Update.newBuilder().setPath(relativePath.toString()).setDirectory(true).setLocal(true).build());
     List<Path> children = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
       children.addAll(seq(stream).toList());
     }
     // first see if we have a .gitignore directory before reading the other children
     seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
-      excludeFilter.addGitIgnore(rootDirectory.relativize(directory), p);
+      excludeFilter.addGitIgnore(relativePath, p);
     }));
     for (Path child : seq(children).sorted()) {
       onChangedPath(child);
