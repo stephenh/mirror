@@ -146,10 +146,8 @@ public class SyncLogic {
         }
         // do some gyrations to ensure the file writer has completely written the file
         boolean shouldBeComplete = false;
-        ByteString data = null;
         while (!shouldBeComplete) {
           long size1 = fileAccess.getFileSize(path);
-          data = this.fileAccess.read(path);
           if (fileWasJustModified(localModTime)) {
             Thread.sleep(100);
             localModTime = fileAccess.getModifiedTime(path);
@@ -159,6 +157,7 @@ public class SyncLogic {
             shouldBeComplete = true; // if seeded data, assume we don't need to sleep
           }
         }
+        ByteString data = this.fileAccess.read(path);
         Update toSend = Update.newBuilder(local).setData(data).setModTime(localModTime).setLocal(false).build();
         outgoing.onNext(toSend);
         remoteState.record(path, localModTime);
