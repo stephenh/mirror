@@ -149,7 +149,7 @@ public class SyncLogic {
         while (!shouldBeComplete) {
           long size1 = fileAccess.getFileSize(path);
           if (fileWasJustModified(localModTime)) {
-            Thread.sleep(100);
+            Thread.sleep(500); // 100ms was too small
             localModTime = fileAccess.getModifiedTime(path);
             long size2 = fileAccess.getFileSize(path);
             shouldBeComplete = size1 == size2;
@@ -242,9 +242,9 @@ public class SyncLogic {
     remoteState.record(path, remote.getModTime());
   }
 
-  /** @return whether localModTime was within the last 100ms. */
+  /** @return whether localModTime was within the last 2 seconds. */
   private static boolean fileWasJustModified(long localModTime) {
-    return (System.currentTimeMillis() - localModTime) <= 100;
+    return (System.currentTimeMillis() - localModTime) <= 2000;
   }
 
 }
