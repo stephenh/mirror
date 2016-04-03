@@ -1,5 +1,7 @@
 package mirror;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -7,8 +9,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import mirror.UpdateTree.Node;
 import mirror.UpdateTreeDiff.TreeResults;
 
 public class UpdateTreeDiffTest {
@@ -16,6 +20,7 @@ public class UpdateTreeDiffTest {
   private UpdateTree local = UpdateTree.newRoot();
   private UpdateTree remote = UpdateTree.newRoot();
   private TreeResults results = Mockito.mock(TreeResults.class);
+  private ArgumentCaptor<Node> nodeCapture = ArgumentCaptor.forClass(Node.class);
 
   @After
   public void after() {
@@ -203,5 +208,54 @@ public class UpdateTreeDiffTest {
     verifyNoMoreInteractions(results);
   }
 
+  @Test
+  public void skipLocalFileThatIsIgnored() {
+    // given a local file
+    local.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    // that is locally ignored
+    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
+    new UpdateTreeDiff(results).diff(local, remote);
+    // then we don't sync the local foo.txt file, but we do sync .gitignore
+    verify(results, times(1)).sendToRemote(nodeCapture.capture());
+    assertThat(nodeCapture.getValue().getName(), is(".gitignore"));
+  }
+
+  @Test
+  public void skipLocalNewFileThatIsNowIgnored() {
+    // given a local file
+    local.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    // but the remote has a .gitignore in place
+    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
+    new UpdateTreeDiff(results).diff(local, remote);
+    // then we don't sync the local file
+    verifyNoMoreInteractions(results);
+  }
+
+  @Test
+  public void skipLocalFileInAnIgnoredDirectory() {
+    // given a local file
+    local.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
+    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    // and the .gitignore exists remotely as well
+    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    new UpdateTreeDiff(results).diff(local, remote);
+    // then we don't sync the local file
+    verifyNoMoreInteractions(results);
+  }
+
+  @Test
+  public void includeLocalFileInAnIgnoredDirectoryThatIsExplicitlyIncluded() {
+    // given a local file
+    local.explicitIncludes.setRules("*.txt");
+    local.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
+    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    // and the .gitignore exists remotely as well
+    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    new UpdateTreeDiff(results).diff(local, remote);
+    // then we do
+    verify(results).sendToRemote(any());
+  }
 
 }

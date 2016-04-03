@@ -2,7 +2,6 @@ package mirror;
 
 import static org.jooq.lambda.Seq.seq;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.eclipse.jgit.ignore.FastIgnoreRule;
 import org.jooq.lambda.Seq;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -29,13 +27,14 @@ import com.google.common.collect.Lists;
 public class UpdateTree {
 
   final Node root;
+  final PathRules explicitIncludes = new PathRules();
 
   public static UpdateTree newRoot() {
-    return new UpdateTree(new Node(null, Update.newBuilder().setPath("").setDirectory(true).build()));
+    return new UpdateTree();
   }
 
-  private UpdateTree(Node root) {
-    this.root = root;
+  private UpdateTree() {
+    this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
   }
 
   public void addAll(List<Update> updates) {
@@ -71,8 +70,13 @@ public class UpdateTree {
     if (existing.isPresent()) {
       ensureStillAFileOrDirectory(existing.get(), update, name);
       existing.get().update = update;
+      // TODO update if .gitignore
     } else {
       current.children.add(new Node(current, update));
+      // kind of hacky to do it here
+      if (name.equals(".gitignore")) {
+        current.setIgnoreRules(update.getIgnoreString());
+      }
     }
   }
 
@@ -82,12 +86,12 @@ public class UpdateTree {
   }
 
   /** Either a directory or file within the tree. */
-  public static class Node {
+  public class Node {
     private final Node parent;
     private final String name;
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
-    private final List<FastIgnoreRule> ignoreRules = new ArrayList<>();
+    private final PathRules ignoreRules = new PathRules();
     private Update update;
     // State == dirty, synced, partial-ignore/full-ignore?
 
@@ -133,25 +137,24 @@ public class UpdateTree {
       return !update.getSymlink().isEmpty();
     }
 
-    /** @param p should be a relative path, e.g. a/b/c.txt. */
-    public boolean shouldIgnore() {
-      return Seq //
-        .iterate(parent, t -> t.parent)
-        .limitUntil(Objects::isNull)
-        .reverse()
-        .findFirst(c -> UpdateTree.shouldIgnore(c, this))
-        .isPresent();
+    public Update getUpdate() {
+      return update;
     }
 
-    public void addIgnoreRules(List<String> lines) throws IOException {
-      for (String line : lines) {
-        if (line.length() > 0 && !line.startsWith("#") && !line.equals("/")) {
-          FastIgnoreRule rule = new FastIgnoreRule(line);
-          if (!rule.isEmpty()) {
-            ignoreRules.add(rule);
-          }
-        }
-      }
+    /** @param p should be a relative path, e.g. a/b/c.txt. */
+    public boolean shouldIgnore() {
+      boolean gitIgnored = Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).reverse().findFirst(n -> {
+        // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
+        // to call is match with just foo.txt, and not the dir1/dir2 prefix
+        String relative = this.update.getPath().substring(n.update.getPath().length()).replaceAll("^/", "");
+        return n.ignoreRules.hasMatchingRule(relative, this.isDirectory());
+      }).isPresent();
+      boolean customIncluded = explicitIncludes.hasMatchingRule(update.getPath(), isDirectory());
+      return gitIgnored && !customIncluded;
+    }
+
+    public void setIgnoreRules(String ignoreData) {
+      ignoreRules.setRules(ignoreData);
     }
 
     @Override
@@ -168,22 +171,4 @@ public class UpdateTree {
     }
   }
 
-  private static boolean shouldIgnore(Node tree, Node path) {
-    // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
-    // to call is match with just foo.txt, and not the dir1/dir2 prefix
-    String relative = path.update.getPath().substring(tree.update.getPath().length()).replaceAll("^/", "");
-    for (FastIgnoreRule rule : tree.ignoreRules) {
-      if (rule.isMatch(relative, path.isDirectory()) && rule.getResult()) {
-        // technically need to keep going to look for a "!...", e.g. add a test case for:
-        //   $ cat .gitignore
-        //   # exclude everything except directory foo/bar
-        //   /*
-        //   !/foo
-        //   /foo/*
-        //   !/foo/bar
-        return true;
-      }
-    }
-    return false;
-  }
 }

@@ -58,15 +58,32 @@ public class UpdateTreeDiff {
       diff(queue, pair.v1, pair.v2);
     }
   }
-  
+
   private void diff(Queue<Tuple2<Node, Node>> queue, Node local, Node remote) {
-    if (local.isNewer(remote)) {
-      results.sendToRemote(local);
-    } else if (!local.isSameType(remote)) {
-      results.deleteLocally(local);
+    // if local is marked for ignore, then we're recursing just to see
+    // if we can find any custom included files.
+    if (!local.shouldIgnore()) {
+      if (local.isNewer(remote)) {
+        results.sendToRemote(local);
+      } else if (!local.isSameType(remote)) {
+        results.deleteLocally(local);
+      }
     }
+
     if (local.isDirectory()) {
-      // don't recurse if we've decided our directory is stale
+      // ensure our ignore data is up to date
+      if (remote != null && remote.isDirectory()) {
+        Optional<Node> localIgnore = seq(local.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
+        Optional<Node> remoteIgnore = seq(remote.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
+        if (remoteIgnore.isPresent() && localIgnore.isPresent() && remoteIgnore.get().isNewer(localIgnore.get())) {
+          local.setIgnoreRules(remoteIgnore.get().getUpdate().getIgnoreString());
+        } else if (remoteIgnore.isPresent() && !localIgnore.isPresent()) {
+          local.setIgnoreRules(remoteIgnore.get().getUpdate().getIgnoreString());
+        }
+      }
+
+      // we recurse into sub directories, even if this current directory
+      // is .gitignored, so that we can search for custom included files.
       if (local.isNewer(remote) || local.isSameType(remote)) {
         for (Node localChild : local.getChildren()) {
           Optional<Node> remoteChild = seq(ofNullable(remote))

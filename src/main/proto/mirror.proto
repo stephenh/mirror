@@ -49,5 +49,9 @@ message Update {
 
   // Whether this is a directory
   bool directory = 8;
+
+  // If this is a .gitignore file, we ship the ignore contents
+  // along with the Update to use during tree diffing
+  string ignoreString = 9;
 }
 
