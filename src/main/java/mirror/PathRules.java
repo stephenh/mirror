@@ -10,8 +10,12 @@ public class PathRules {
   private final List<FastIgnoreRule> rules = new ArrayList<>();
 
   public void setRules(String lines) {
+    setRules(lines.split("\n"));
+  }
+
+  public void setRules(String... lines) {
     rules.clear();
-    for (String line : lines.split("\n")) {
+    for (String line : lines) {
       if (line.length() > 0 && !line.startsWith("#") && !line.equals("/")) {
         FastIgnoreRule rule = new FastIgnoreRule(line);
         if (!rule.isEmpty()) {
@@ -35,6 +39,11 @@ public class PathRules {
       }
     }
     return false;
+  }
+
+  @Override
+  public String toString() {
+    return rules.toString();
   }
 
 }

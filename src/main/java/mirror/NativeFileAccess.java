@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +84,12 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public void delete(Path relative) throws IOException {
-    resolve(relative).toFile().delete();
+    File file = resolve(relative).toFile();
+    if (file.isDirectory()) {
+      FileUtils.deleteDirectory(file);
+    } else {
+      file.delete();
+    }
   }
 
   @Override
@@ -114,7 +121,7 @@ public class NativeFileAccess implements FileAccess {
     } else {
       Path target = parent.resolve(symlink);
       Path p = parent.relativize(target);
-      log.debug("Read reatlive symlink {} as {}, returning {}", relativePath, symlink, p);
+      log.debug("Read relative symlink {} as {}, returning {}", relativePath, symlink, p);
       return p;
     }
   }
@@ -147,7 +154,7 @@ public class NativeFileAccess implements FileAccess {
   public boolean isDirectory(Path relativePath) throws IOException {
     return resolve(relativePath).toFile().isDirectory();
   }
-  
+
   /** @param path the absolute path of the directory to create */
   private static void mkdirImpl(Path path) throws IOException {
     path.toFile().mkdirs();

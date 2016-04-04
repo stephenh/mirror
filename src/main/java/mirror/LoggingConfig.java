@@ -24,7 +24,7 @@ class LoggingConfig {
     }
 
     // Logger.getLogger("io.grpc").setLevel(Level.FINEST);
-    Logger.getLogger("mirror").setLevel(Level.INFO);
+    Logger.getLogger("mirror").setLevel(Level.FINEST);
   }
 
   public static void init() {

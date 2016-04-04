@@ -2,13 +2,14 @@ package mirror;
 
 import static java.util.Optional.ofNullable;
 import static org.jooq.lambda.Seq.seq;
-import static org.jooq.lambda.tuple.Tuple.tuple;
 
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.jooq.lambda.tuple.Tuple2;
+import org.jooq.lambda.Seq;
+
+import com.google.protobuf.Descriptors.FieldDescriptor;
 
 import mirror.UpdateTree.Node;
 
@@ -38,108 +39,109 @@ import mirror.UpdateTree.Node;
  */
 public class UpdateTreeDiff {
 
-  interface TreeResults {
-    void sendToRemote(Node node);
+  private static final FieldDescriptor updateDataField = Update.getDescriptor().findFieldByNumber(Update.DATA_FIELD_NUMBER);
 
-    void deleteLocally(Node node);
+  interface DiffResults {
+    void sendToRemote(Update update);
+
+    void saveLocally(Update update);
   }
 
-  private TreeResults results;
+  private final UpdateTree localTree;
+  private final UpdateTree remoteTree;
+  private final DiffResults results;
 
-  public UpdateTreeDiff(TreeResults results) {
+  public UpdateTreeDiff(UpdateTree localTree, UpdateTree remoteTree, DiffResults results) {
+    this.localTree = localTree;
+    this.remoteTree = remoteTree;
     this.results = results;
   }
 
-  public void diff(UpdateTree local, UpdateTree remote) {
-    Queue<Tuple2<Node, Node>> queue = new LinkedBlockingQueue<>();
-    queue.add(tuple(local.root, remote.root));
+  public void diff() {
+    Queue<Visit> queue = new LinkedBlockingQueue<>();
+    queue.add(new Visit(Optional.of(localTree.root), Optional.of(remoteTree.root)));
     while (!queue.isEmpty()) {
-      Tuple2<Node, Node> pair = queue.remove();
-      diff(queue, pair.v1, pair.v2);
+      diff(queue, queue.remove());
     }
   }
 
-  private void diff(Queue<Tuple2<Node, Node>> queue, Node local, Node remote) {
-    // if local is marked for ignore, then we're recursing just to see
-    // if we can find any custom included files.
-    if (!local.shouldIgnore()) {
-      if (local.isNewer(remote)) {
-        results.sendToRemote(local);
-      } else if (!local.isSameType(remote)) {
-        results.deleteLocally(local);
+  private void diff(Queue<Visit> queue, Visit visit) {
+    Node local = visit.local.orElse(null);
+    Node remote = visit.remote.orElse(null);
+
+    if (local != null && local.isNewer(remote)) {
+      if (!local.shouldIgnore()) {
+        results.sendToRemote(local.getUpdate());
+      }
+      remoteTree.add(local.getUpdate());
+    } else if (remote != null && remote.isNewer(local)) {
+      // if we were a directory, and this is now a file, do an explicit delete first
+      if (local != null && !local.isSameType(remote) && !local.getUpdate().getDelete()) {
+        Update delete = Update.newBuilder(local.getUpdate()).setDelete(true).build();
+        results.saveLocally(delete);
+        localTree.add(delete);
+        local = null;
+      }
+      // during the initialSync, we don't have any data in the UpdateTree (only metadata is sent),
+      // so we can't save the data locally, and instead will get be sent data-filled Updates by
+      // the remote when it does it's own initialSync
+      if (!remote.isFile() || remote.getUpdate().getDelete() || remote.getUpdate().hasField(updateDataField)) {
+        if (!remote.shouldIgnore()) {
+          results.saveLocally(remote.getUpdate());
+        }
+        // we're done with the data, so don't keep it in memory
+        remote.clearData();
+        localTree.add(remote.getUpdate());
       }
     }
 
-    if (local.isDirectory()) {
-      // ensure our ignore data is up to date
+    if (local != null && local.isDirectory()) {
+      // ensure local/remote ignore data is synced first
       if (remote != null && remote.isDirectory()) {
         Optional<Node> localIgnore = seq(local.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
         Optional<Node> remoteIgnore = seq(remote.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
         if (remoteIgnore.isPresent() && localIgnore.isPresent() && remoteIgnore.get().isNewer(localIgnore.get())) {
-          local.setIgnoreRules(remoteIgnore.get().getUpdate().getIgnoreString());
+          local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
         } else if (remoteIgnore.isPresent() && !localIgnore.isPresent()) {
-          local.setIgnoreRules(remoteIgnore.get().getUpdate().getIgnoreString());
-        }
-      }
-
-      // we recurse into sub directories, even if this current directory
-      // is .gitignored, so that we can search for custom included files.
-      if (local.isNewer(remote) || local.isSameType(remote)) {
-        for (Node localChild : local.getChildren()) {
-          Optional<Node> remoteChild = seq(ofNullable(remote))
-            .flatMap(n -> seq(n.getChildren()))
-            .findFirst(n -> n.getName().equals(localChild.getName()));
-          queue.add(tuple(localChild, remoteChild.orElse(null)));
+          local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
         }
       }
     }
+
+    // we recurse into sub directories, even if this current directory
+    // is .gitignored, so that we can search for custom included files.
+    for (String childName : Seq
+      .of(visit.local, visit.remote)
+      .flatMap(o -> seq(o)) // flatten
+      .flatMap(node -> seq(node.getChildren()))
+      .map(child -> child.getName())
+      .distinct()) {
+      Optional<Node> localChild = ofNullable(local).flatMap(n -> n.getChild(childName));
+      Optional<Node> remoteChild = ofNullable(remote).flatMap(n -> n.getChild(childName));
+      queue.add(new Visit(localChild, remoteChild));
+    }
   }
 
-  /*
-  if (local.isFile()) {
-    if (remote == null) {
-      // file does not exist on remote
-      results.sendToRemote(local);
-    } else if (remote.isFile()) {
-      // both are files, just see if we're newer
-      sendToRemoteIfNewer(local, remote);
-    } else if (remote.isDirectory() || remote.isSymlink()) {
-      sendToRemoteIfNewerOrDeleteLocally(local, remote);
-    } else {
-      throw new IllegalStateException("Unhandled remote type " + remote);
+  /**
+   * A combination of the matching local/remote node in each tree.
+   *
+   * E.g. if remote has foo.txt and bar.txt, and local only has foo.txt,
+   * there would be one Visit with remote=Some(foo.txt),local=Some(foo.txt),
+   * and another Visit with remote=Some(bar.txt),local=None.
+   */
+  private static class Visit {
+    private final Optional<Node> local;
+    private final Optional<Node> remote;
+
+    private Visit(Optional<Node> local, Optional<Node> remote) {
+      this.local = local;
+      this.remote = remote;
     }
-  } else if (local.isDirectory()) {
-    if (remote == null) {
-      // directory does not exist on remote
-      results.sendToRemote(local);
-      for (Node localChild : local.getChildren()) {
-        queue.add(tuple(localChild, null));
-      }
-    } else if (remote.isDirectory()) {
-      // both are directories, so just recurse
-      for (Node localChild : local.getChildren()) {
-        Optional<Node> remoteChild = Seq.seq(remote.getChildren()).findFirst(n -> n.getName().equals(localChild.getName()));
-        queue.add(tuple(localChild, remoteChild.orElse(null)));
-      }
-    } else if (remote.isFile() || remote.isSymlink()) {
-      sendToRemoteIfNewerOrDeleteLocally(local, remote);
-    } else {
-      throw new IllegalStateException("Unhandled remote type " + remote);
+
+    @Override
+    public String toString() {
+      return local + "/" + remote;
     }
-  } else if (local.isSymlink()) {
-    if (remote == null) {
-      // symlink does not exist on remote
-      results.sendToRemote(local);
-    } else if (remote.isSymlink()) {
-      sendToRemoteIfNewer(local, remote);
-    } else if (remote.isFile() || remote.isDirectory()) {
-      sendToRemoteIfNewerOrDeleteLocally(local, remote);
-    } else {
-      throw new IllegalStateException("Unhandled remote type " + remote);
-    }
-  } else {
-    throw new IllegalStateException("Unhandled local type " + local);
   }
-  */
 
 }

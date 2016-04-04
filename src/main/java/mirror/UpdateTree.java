@@ -1,6 +1,8 @@
 package mirror;
 
+import static com.google.protobuf.TextFormat.shortDebugString;
 import static org.jooq.lambda.Seq.seq;
+import static org.jooq.lambda.tuple.Tuple.tuple;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -8,11 +10,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.jooq.lambda.Seq;
+import org.jooq.lambda.tuple.Tuple2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 
 /**
  * A tree of updates, e.g. both files and directories.
@@ -26,8 +35,14 @@ import com.google.common.collect.Lists;
  */
 public class UpdateTree {
 
+  private static final Logger log = LoggerFactory.getLogger(UpdateTree.class);
   final Node root;
-  final PathRules explicitIncludes = new PathRules();
+  final PathRules extraIncludes = new PathRules();
+  final PathRules extraExcludes = new PathRules();
+
+  public interface Visitor {
+    void visit(Node node);
+  }
 
   public static UpdateTree newRoot() {
     return new UpdateTree();
@@ -35,6 +50,9 @@ public class UpdateTree {
 
   private UpdateTree() {
     this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
+    // IntergrationTest currently depends on these valuesj
+    extraExcludes.setRules("tmp", "temp", "target", "build");
+    extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project");
   }
 
   public void addAll(List<Update> updates) {
@@ -48,42 +66,77 @@ public class UpdateTree {
    * it's directory foo added first.
    */
   public void add(Update update) {
-    if (!update.getData().isEmpty()) {
-      throw new IllegalArgumentException("UpdateTree should not have any data");
-    }
     if (update.getPath().startsWith("/") || update.getPath().endsWith("/")) {
       throw new IllegalArgumentException("Update path should not start or end with slash: " + update.getPath());
     }
-    List<Path> parts = Lists.newArrayList(Paths.get(update.getPath()));
+    Tuple2<Node, Optional<Node>> t = find(update.getPath());
+    Node parent = t.v1;
+    Optional<Node> existing = t.v2;
+    if (existing.isPresent()) {
+      existing.get().setUpdate(update);
+    } else {
+      parent.addChild(new Node(parent, update));
+    }
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    visit(node -> sb.append(node.getPath() //
+      + " mod="
+      + node.getModTime()
+      + " deleted="
+      + node.getUpdate().getDelete()).append("\n"));
+    return sb.toString();
+  }
+
+  /** Visits each node in the tree, in breadth-first order. */
+  private void visit(Visitor visitor) {
+    Queue<Node> queue = new LinkedBlockingQueue<Node>();
+    queue.add(root);
+    while (!queue.isEmpty()) {
+      Node node = queue.remove();
+      visitor.visit(node);
+      queue.addAll(node.children);
+    }
+  }
+
+  /** @return a tuple of the path's parent directory, the path's file name, and the existing node if found */
+  private Tuple2<Node, Optional<Node>> find(String path) {
+    if ("".equals(path)) {
+      return tuple(null, Optional.of(root));
+    }
+    List<Path> parts = Lists.newArrayList(Paths.get(path));
     // find parent directory
     int i = 0;
+    // use an array so we can use current in the lambda on line 88
     Node current = root;
     for (; i < parts.size() - 1; i++) {
       String name = parts.get(i).getFileName().toString();
-      current = seq(current.children).findFirst(t -> t.name.equals(name)).orElseThrow(() -> {
-        return new IllegalArgumentException("Directory " + name + " not found for update " + update.getPath());
+      // lambdas need final variables
+      final Node fc = current;
+      final int fi = i;
+      current = seq(current.children).findFirst(t -> t.name.equals(name)).orElseGet(() -> {
+        String dir = Joiner.on("/").join(parts.subList(0, fi + 1));
+        Node child = new Node(fc, Update.newBuilder().setPath(dir).setModTime(0).build());
+        fc.addChild(child);
+        return child;
       });
     }
     // now handle the last part which is the file name
     String name = parts.get(i).getFileName().toString();
     Optional<Node> existing = Seq.seq(current.children).findFirst(t -> t.name.equals(name));
-    if (existing.isPresent()) {
-      ensureStillAFileOrDirectory(existing.get(), update, name);
-      existing.get().update = update;
-      // TODO update if .gitignore
-    } else {
-      current.children.add(new Node(current, update));
-      // kind of hacky to do it here
-      if (name.equals(".gitignore")) {
-        current.setIgnoreRules(update.getIgnoreString());
-      }
-    }
+    return tuple(current, existing);
   }
 
   @VisibleForTesting
   List<Node> getChildren() {
     return root.children;
   }
+
+  public enum NodeType {
+    File, Directory, Symlink
+  };
 
   /** Either a directory or file within the tree. */
   public class Node {
@@ -92,37 +145,84 @@ public class UpdateTree {
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
     private final PathRules ignoreRules = new PathRules();
-    private Update update;
     // State == dirty, synced, partial-ignore/full-ignore?
+    // we keep a copy of the modTime so that SyncLogic can mutate it
+    // to mark that we've sent paths back to the remote.
+    private Update update;
 
     private Node(Node parent, Update update) {
       this.parent = parent;
       this.update = update;
-      this.name = Paths.get(update.getPath()).getFileName().toString();
+      name = Paths.get(update.getPath()).getFileName().toString();
     }
 
     boolean isSameType(Node o) {
-      return o != null && ((isFile() && o.isFile()) //
-        || (isDirectory() && o.isDirectory())
-        || (isSymlink() && o.isSymlink()));
+      return getType() == o.getType();
+    }
+
+    private NodeType getType() {
+      return isDirectory() ? NodeType.Directory : isSymlink() ? NodeType.Symlink : NodeType.File;
+    }
+
+    Update getUpdate() {
+      return update;
+    }
+
+    void addChild(Node child) {
+      children.add(child);
+      if (child.getName().equals(".gitignore")) {
+        setIgnoreRules(child.getUpdate().getIgnoreString());
+      }
+    }
+
+    void setUpdate(Update update) {
+      if (!this.update.getPath().equals(update.getPath())) {
+        throw new IllegalStateException("Update path for a node should not change: " + this.update.getPath() + " vs. " + update.getPath());
+      }
+      // The best we can do for guessing the mod time of deletions
+      // is to take the old, known mod time and just tick 1
+      if (update.getDelete()) {
+        int tick = this.update.getDelete() ? 0 : 1;
+        update = Update.newBuilder(update).setModTime(getModTime() + tick).build();
+      }
+      // TODO update parent directory's ignore rules if this is a .gitignore file
+      this.update = update;
+      // If we're no longer a directory, or we got deleted, clear our children
+      if (!isDirectory() || update.getDelete()) {
+        children.clear();
+      }
     }
 
     boolean isNewer(Node o) {
-      return o == null || getModTime() > o.getModTime();
+      boolean newer = o == null || getModTime() > o.getModTime();
+      if (newer) {
+        log.debug("[{}] is newer than [{}]", shortDebugString(getUpdate()), o == null ? "-" : shortDebugString(o.getUpdate()));
+      }
+      return newer;
     }
 
-    @VisibleForTesting
     String getName() {
       return name;
     }
 
-    @VisibleForTesting
+    String getPath() {
+      return update.getPath();
+    }
+
+    Optional<Node> getChild(String name) {
+      return seq(children).findFirst(c -> c.getName().equals(name));
+    }
+
     List<Node> getChildren() {
       return children;
     }
 
     long getModTime() {
       return update.getModTime();
+    }
+
+    void clearData() {
+      this.update = Update.newBuilder(update).setData(ByteString.EMPTY).build();
     }
 
     boolean isFile() {
@@ -137,20 +237,22 @@ public class UpdateTree {
       return !update.getSymlink().isEmpty();
     }
 
-    public Update getUpdate() {
-      return update;
+    String getIgnoreString() {
+      return update.getIgnoreString();
     }
 
     /** @param p should be a relative path, e.g. a/b/c.txt. */
     public boolean shouldIgnore() {
+      String path = update.getPath();
       boolean gitIgnored = Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).reverse().findFirst(n -> {
         // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
         // to call is match with just foo.txt, and not the dir1/dir2 prefix
-        String relative = this.update.getPath().substring(n.update.getPath().length()).replaceAll("^/", "");
+        String relative = path.substring(n.update.getPath().length()).replaceAll("^/", "");
         return n.ignoreRules.hasMatchingRule(relative, this.isDirectory());
       }).isPresent();
-      boolean customIncluded = explicitIncludes.hasMatchingRule(update.getPath(), isDirectory());
-      return gitIgnored && !customIncluded;
+      boolean extraIncluded = extraIncludes.hasMatchingRule(path, isDirectory());
+      boolean extraExcluded = extraExcludes.hasMatchingRule(path, isDirectory());
+      return (gitIgnored || extraExcluded) && !extraIncluded;
     }
 
     public void setIgnoreRules(String ignoreData) {
@@ -160,14 +262,6 @@ public class UpdateTree {
     @Override
     public String toString() {
       return name;
-    }
-  }
-
-  private static void ensureStillAFileOrDirectory(Node e, Update update, String name) {
-    if (!e.isDirectory() && update.getDirectory()) {
-      throw new IllegalArgumentException("Adding directory " + name + " already exists as a file");
-    } else if (e.isDirectory() && !update.getDirectory()) {
-      throw new IllegalArgumentException("Adding file " + name + " already exists as a directory");
     }
   }
 

@@ -43,7 +43,7 @@ public class MirrorClient {
 
   /** Connects to the server and starts a sync session. */
   public void startSession(MirrorStub stub) {
-    session = new MirrorSession(root);
+    session = new MirrorSession("[client]", root);
 
     try {
       // 1. see what our current state is
@@ -51,11 +51,11 @@ public class MirrorClient {
       log.info("Client has " + localState.size() + " paths");
 
       // 2. send it to the server, so they can send back any stale/missing paths we have
-      SettableFuture<PathState> remoteState = SettableFuture.create();
+      SettableFuture<List<Update>> remoteState = SettableFuture.create();
       stub.initialSync(InitialSyncRequest.newBuilder().addAllState(localState).build(), new StreamObserver<InitialSyncResponse>() {
         @Override
         public void onNext(InitialSyncResponse value) {
-          remoteState.set(new PathState(value.getStateList()));
+          remoteState.set(value.getStateList());
         }
 
         @Override
@@ -69,9 +69,8 @@ public class MirrorClient {
         }
       });
 
-      session.setInitialRemoteState(remoteState.get());
+      session.addInitialRemoteUpdates(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");
-      session.seedQueueForInitialSync(new PathState(localState));
 
       StreamObserver<Update> outgoingChanges = null;
 
@@ -94,6 +93,7 @@ public class MirrorClient {
 
       outgoingChanges = stub.streamUpdates(incomingChanges);
 
+      session.initialSync(outgoingChanges);
       session.startPolling(outgoingChanges);
     } catch (Exception e) {
       throw new RuntimeException(e);

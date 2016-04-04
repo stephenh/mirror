@@ -26,11 +26,14 @@ class StandardExcludeFilter {
   private static final Logger log = LoggerFactory.getLogger(StandardExcludeFilter.class);
   private final Map<Path, List<FastIgnoreRule>> gitIgnores = new HashMap<>();
 
+  // TODO svn:ignore support eventually
+  // svn propget -R svn:ignore | grep -v "^$" | sed "s/\(\(.*\) - \)\(.*\)/\2\/\3/g" | sort >> .gitignore
+
   public void addGitIgnore(Path relativeParent, Path p) throws IOException {
     List<FastIgnoreRule> rules = new ArrayList<>();
-    for (String txt : FileUtils.readLines(p.toFile())) {
-      if (txt.length() > 0 && !txt.startsWith("#") && !txt.equals("/")) { //$NON-NLS-1$ //$NON-NLS-2$
-        FastIgnoreRule rule = new FastIgnoreRule(txt);
+    for (String line : FileUtils.readLines(p.toFile())) {
+      if (line.length() > 0 && !line.startsWith("#") && !line.equals("/")) {
+        FastIgnoreRule rule = new FastIgnoreRule(line);
         if (!rule.isEmpty()) {
           rules.add(rule);
         }

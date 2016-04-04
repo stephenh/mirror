@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,7 +147,9 @@ public class IntergrationTest {
       FileUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
       Files.createSymbolicLink(new File(root, "foo").toPath(), Paths.get("foo1.txt"));
     }
+    sleep();
     startMirror();
+    sleep();
     // when the symlink is updated on root1
     new File(root1, "foo").delete();
     Files.createSymbolicLink(root1.toPath().resolve("foo"), Paths.get("foo2.txt"));
@@ -306,7 +307,7 @@ public class IntergrationTest {
   }
 
   @Test
-  public void testExcludeDirectories() throws Exception {
+  public void testSkipIgnoredDirectories() throws Exception {
     // given a file that exists within an ignored directory
     FileUtils.writeStringToFile(new File(root1, "tmp/foo.txt"), "abc");
     // when mirror is started
@@ -362,15 +363,13 @@ public class IntergrationTest {
   }
 
   @Test
-  @Ignore
   public void testRealPathThatIsNowASymlink() throws Exception {
     // given that root2 thought src was a real path
     new File(root2, "src").mkdir();
     FileUtils.writeStringToFile(new File(root2, "src/foo.txt"), "foo");
-    new File(root2, "src/foo.txt").setLastModified(1000);
+    sleep();
     // but now it's a symlink
     Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
-    NativeFileAccess.setModifiedTimeForSymlink(root1.toPath().resolve("src"), 2000);
     // when mirror is started
     startMirror();
     sleep();

@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * state of the server.
  *
  * The initial PathStates are also used to bring the server/client into
- * intial sync before starting the two-way streaming sync.
+ * initial sync before starting the two-way streaming sync.
  */
 public class PathState {
 
@@ -51,6 +51,9 @@ public class PathState {
     Long modTime = paths.get(path);
     boolean needsUpdate = modTime == null || modTime.longValue() < potentiallyNewerModTime;
     log.debug("{} has mod time {} vs. {} so needsUpdate={}", path, modTime, potentiallyNewerModTime, needsUpdate);
+    if (path.toString().contains("ChimeraQuota")) {
+      log.info("{} has mod time {} vs. {} so needsUpdate={}", path, modTime, potentiallyNewerModTime, needsUpdate);
+    }
     return needsUpdate;
   }
 

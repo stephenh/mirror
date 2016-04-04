@@ -36,7 +36,7 @@ public class MirrorServer implements Mirror {
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     // start a new session
     // TODO handle if there is an existing session
-    currentSession = new MirrorSession(root);
+    currentSession = new MirrorSession("[server]", root);
     log.info("Starting new session");
     try {
       // get our current state
@@ -44,8 +44,7 @@ public class MirrorServer implements Mirror {
       log.info("Server has " + serverState.size() + " paths");
       log.info("Client has " + request.getStateList().size() + " paths");
       // record the client's current state
-      currentSession.setInitialRemoteState(new PathState(request.getStateList()));
-      currentSession.seedQueueForInitialSync(new PathState(serverState));
+      currentSession.addInitialRemoteUpdates(request.getStateList());
       // send back our state for the client to seed their own sync queue with our missing/stale paths
       responseObserver.onNext(InitialSyncResponse.newBuilder().addAllState(serverState).build());
       responseObserver.onCompleted();
@@ -76,6 +75,7 @@ public class MirrorServer implements Mirror {
           outgoingUpdates.onCompleted();
         }
       };
+      currentSession.initialSync(outgoingUpdates);
       // look for file system updates to send back to the client
       currentSession.startPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
       return incomingUpdates;

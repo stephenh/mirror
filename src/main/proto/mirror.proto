@@ -22,10 +22,10 @@ message InitialSyncResponse {
 }
 
 message Update {
-  // The relative path from our sync root, e.g. ./foo.txt.
+  // The relative path from our sync root, e.g. foo.txt, dir1, dir1/bar.txt.
   string path = 1;
 
-  // The file modification time.
+  // The file/directory/symlink modification time.
   int64 modTime = 2;
 
   // Whether this path is being deleted.
@@ -35,7 +35,7 @@ message Update {
   // is detected; instead we fill it in right before we put the event
   // on the wire (in case we can avoid/skip the event, e.g. if it's an echo).
   bytes data = 4;
-  
+
   // Our SyncLogic is easier to implement if we have a shared queue of
   // both remote+local changes, so we use this flag to differentiate
   // locally-generated Update events from remote-received Update events.
@@ -43,9 +43,6 @@ message Update {
 
   // the target if this is a symlink
   string symlink = 6;
-
-  // whether this is a fake update to trigger a sync to remote
-  bool seed = 7;
 
   // Whether this is a directory
   bool directory = 8;

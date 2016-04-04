@@ -3,14 +3,10 @@ package mirror;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.WatchService;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.grpc.stub.StreamObserver;
 
@@ -29,18 +25,20 @@ import io.grpc.stub.StreamObserver;
  */
 public class MirrorSession {
 
-  private static final Logger log = LoggerFactory.getLogger(MirrorSession.class);
-  private final FileAccess fs;
+  private final FileAccess fileAccess;
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
   private final FileWatcher watcher;
+  private final UpdateTree localTree = UpdateTree.newRoot();
+  private final UpdateTree remoteTree = UpdateTree.newRoot();
+  private final String role;
   private SyncLogic sync;
-  private PathState initialRemoteState;
 
-  public MirrorSession(Path root) {
-    this.fs = new NativeFileAccess(root);
+  public MirrorSession(String role, Path root) {
+    this.role = role;
+    this.fileAccess = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(watchService, root, queue, new StandardExcludeFilter());
+      watcher = new FileWatcher(watchService, root, queue);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -51,37 +49,26 @@ public class MirrorSession {
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
-    List<Update> initial = watcher.performInitialScan();
+    List<Update> initialUpdates = watcher.performInitialScan();
+    localTree.addAll(initialUpdates);
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
-    watcher.startPolling();
-    return new InitialState(fs).prepare(initial);
+    watcher.startWatching();
+    return initialUpdates;
   }
 
-  public void setInitialRemoteState(PathState initialRemoteState) {
-    this.initialRemoteState = initialRemoteState;
+  public void addInitialRemoteUpdates(List<Update> remoteInitialUpdates) {
+    this.remoteTree.addAll(remoteInitialUpdates);
   }
 
   /** Pretend we have local file events for anything the remote side needs from us. */
-  public void seedQueueForInitialSync(PathState initialLocalState) throws IOException {
-    List<String> paths = this.initialRemoteState.getPathsToFetch(initialLocalState);
-    log.info("Queueing {} paths to send to the remote host", paths.size());
-    for (String path : paths) {
-      log.debug("Seeding {}", path);
-      Path p = Paths.get(path);
-      if (fs.isSymlink(p)) {
-        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSeed(true).setSymlink(fs.readSymlink(p).toString()).build());
-      } else {
-        queue.add(Update.newBuilder().setPath(path).setLocal(true).setSeed(true).build());
-      }
-    }
-    queue.add(Update.newBuilder().setPath("STATUS:Initial sync complete").setLocal(true).build());
+  public void initialSync(StreamObserver<Update> outgoingChanges) throws IOException {
+    new UpdateTreeDiff(localTree, remoteTree, new DiffApplier(role, outgoingChanges, fileAccess)).diff();
   }
 
   public void startPolling(StreamObserver<Update> outgoingChanges) throws IOException {
-    sync = new SyncLogic(queue, outgoingChanges, fs);
-    sync.addRemoteState(initialRemoteState);
+    sync = new SyncLogic(role, queue, outgoingChanges, fileAccess, localTree, remoteTree);
     sync.startPolling();
   }
 

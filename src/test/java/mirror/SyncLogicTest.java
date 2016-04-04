@@ -25,7 +25,9 @@ public class SyncLogicTest {
   private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
-  private final SyncLogic l = new SyncLogic(changes, outgoing, fileAccess);
+  private final UpdateTree localTree = UpdateTree.newRoot();
+  private final UpdateTree remoteTree = UpdateTree.newRoot();
+  private final SyncLogic l = new SyncLogic("client", changes, outgoing, fileAccess, localTree, remoteTree);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {
@@ -49,14 +51,12 @@ public class SyncLogicTest {
   @Test
   public void sendLocalDeleteToRemote() throws Exception {
     // given we have an existing local file
+    localTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // that also exists on the remote
-    PathState remoteState = new PathState();
-    remoteState.record(fooDotTxt, 1L);
-    l.addRemoteState(remoteState);
+    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // and it is deleted locally
-    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     fileAccess.delete(fooDotTxt);
     // when we notice
     l.poll();
@@ -77,7 +77,7 @@ public class SyncLogicTest {
     // given a directory is created locally
     fileAccess.mkdir(Paths.get("foo"));
     // when we notice
-    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setLocal(true).build());
+    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1L).setLocal(true).build());
     l.poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
@@ -118,7 +118,7 @@ public class SyncLogicTest {
   }
 
   @Test
-  public void saveRemoteDirectoryLocally() throws Exception {
+  public void saveRemoteDirectoryToLocally() throws Exception {
     // given a directory is created remotely
     changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(10L).build());
     // when we notice
@@ -148,11 +148,11 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted remotely
-    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     // when we notice and save that delete locally
     l.poll();
-    changes.add(Update.newBuilder(u).setLocal(true).build());
+    assertThat(fileAccess.exists(fooDotTxt), is(false));
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // then we don't echo it back out to the remote
     l.poll();
     assertThat(outgoing.values.isEmpty(), is(true));
@@ -180,8 +180,7 @@ public class SyncLogicTest {
   @Test
   public void saveRemoteSymlink() throws Exception {
     // given a symlink is created remotely
-    Update u = Update.newBuilder().setPath("foo.txt").setSymlink("bar").setModTime(10L).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setSymlink("bar").setModTime(10L).build());
     // when we notice
     l.poll();
     // then we've saved it locally
@@ -189,8 +188,7 @@ public class SyncLogicTest {
     assertThat(target.toString(), is("bar"));
     assertThat(fileAccess.getModifiedTime(fooDotTxt), is(10L));
     // and when we notice the local event
-    Update u2 = Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").setModTime(10L).build();
-    changes.add(u2);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").setModTime(10L).build());
     l.poll();
     // then we don't echo it back to the remote
     assertThat(outgoing.values.isEmpty(), is(true));
@@ -212,8 +210,7 @@ public class SyncLogicTest {
   @Test
   public void skipSymlinkBeingQueuedButThenDeleted() throws Exception {
     // given we detected a local symlink
-    Update u = Update.newBuilder().setPath("foo.txt").setSymlink("bar.txt").setLocal(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setSymlink("bar.txt").setLocal(true).build());
     // but it does not exist on disk anymore
     assertThat(fileAccess.exists(fooDotTxt), is(false));
     // when we notice
@@ -225,15 +222,15 @@ public class SyncLogicTest {
   @Test
   public void handleFilesGettingDeletedThenReCreated() throws Exception {
     // given we detect a local delete
+    localTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // and it also exists on the remote
-    PathState remoteState = new PathState();
-    remoteState.record(fooDotTxt, 1L);
-    l.addRemoteState(remoteState);
+    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     l.poll();
+    assertThat(outgoing.values.size(), is(1));
     // and then file is re-created
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
-    // when we notice
+    fileAccess.setModifiedTime(fooDotTxt, 3L);
     changes.add(Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data)).setLocal(true).build());
     l.poll();
     // then we issue both the delete+create
@@ -245,9 +242,7 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // that also exists on the remote
-    PathState remoteState = new PathState();
-    remoteState.record(fooDotTxt, 1L);
-    l.addRemoteState(remoteState);
+    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // and it is deleted locally
     Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
     changes.add(u);
