@@ -97,18 +97,8 @@ public class UpdateTreeDiff {
       }
     }
 
-    if (local != null && local.isDirectory()) {
-      // ensure local/remote ignore data is synced first
-      if (remote != null && remote.isDirectory()) {
-        Optional<Node> localIgnore = seq(local.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
-        Optional<Node> remoteIgnore = seq(remote.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
-        if (remoteIgnore.isPresent() && localIgnore.isPresent() && remoteIgnore.get().isNewer(localIgnore.get())) {
-          local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
-        } else if (remoteIgnore.isPresent() && !localIgnore.isPresent()) {
-          local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
-        }
-      }
-    }
+    // ensure local/remote ignore data is synced first
+    ensureGitIgnoreIsSynced(local, remote);
 
     // we recurse into sub directories, even if this current directory
     // is .gitignored, so that we can search for custom included files.
@@ -121,6 +111,18 @@ public class UpdateTreeDiff {
       Optional<Node> localChild = ofNullable(local).flatMap(n -> n.getChild(childName));
       Optional<Node> remoteChild = ofNullable(remote).flatMap(n -> n.getChild(childName));
       queue.add(new Visit(localChild, remoteChild));
+    }
+  }
+
+  private void ensureGitIgnoreIsSynced(Node local, Node remote) {
+    if (local != null && local.isDirectory() && remote != null && remote.isDirectory()) {
+      Optional<Node> localIgnore = seq(local.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
+      Optional<Node> remoteIgnore = seq(remote.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
+      if (remoteIgnore.isPresent() && localIgnore.isPresent() && remoteIgnore.get().isNewer(localIgnore.get())) {
+        local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
+      } else if (remoteIgnore.isPresent() && !localIgnore.isPresent()) {
+        local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
+      }
     }
   }
 
