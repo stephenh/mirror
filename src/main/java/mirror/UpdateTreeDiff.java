@@ -16,7 +16,7 @@ import mirror.UpdateTree.Node;
 /**
  * Diffs two trees to bring the local/remote directories into sync.
  *
- * For each node:
+ * For each node, the possible combinations are:
  * - file/file, local/remote is newer
  * - dir/dir, remote/local is newer
  * - symlink/symlink, local/remote is newer
@@ -25,17 +25,19 @@ import mirror.UpdateTree.Node;
  * - dir/symlink, local/remote is newer
  * - symlink/file, local/remote is newer
  * 
- * - null/file
- * - file/null
- * - symlink/null
- * - null/symlink
- * - dir/null
- * - null/dir
+ * - missing/file
+ * - file/missing
+ * - symlink/missing
+ * - missing/symlink
+ * - dir/missing
+ * - missing/dir
  * 
- * The total possible outcomes are:
- * - send our file/dir/symlink to remote
- * - wait for update file/dir/symlink to be sent from remote
- * - move our file/dir/symlink because it's going to be replaced
+ * Although there are a lot of cases, there are four possible outcomes:
+ * 
+ * - send our local file/dir/symlink to the remote peer
+ * - save the remote file/dir/symlink to our local copy 
+ * - do nothing because they are in sync
+ * - do nothing because the remote hasn't sent their copy yet
  */
 public class UpdateTreeDiff {
 
