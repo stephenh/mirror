@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Consumer;
 
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple2;
@@ -40,17 +41,13 @@ public class UpdateTree {
   final PathRules extraIncludes = new PathRules();
   final PathRules extraExcludes = new PathRules();
 
-  public interface Visitor {
-    void visit(Node node);
-  }
-
   public static UpdateTree newRoot() {
     return new UpdateTree();
   }
 
   private UpdateTree() {
     this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
-    // IntergrationTest currently depends on these valuesj
+    // IntegrationTest currently depends on these values
     extraExcludes.setRules("tmp", "temp", "target", "build");
     extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project");
   }
@@ -91,25 +88,25 @@ public class UpdateTree {
   }
 
   /** Visits each node in the tree, in breadth-first order. */
-  private void visit(Visitor visitor) {
+  private void visit(Consumer<Node> visitor) {
     Queue<Node> queue = new LinkedBlockingQueue<Node>();
     queue.add(root);
     while (!queue.isEmpty()) {
       Node node = queue.remove();
-      visitor.visit(node);
+      visitor.accept(node);
       queue.addAll(node.children);
     }
   }
 
-  /** @return a tuple of the path's parent directory, the path's file name, and the existing node if found */
+  /** @return a tuple of the path's parent directory and the existing node (if found) */
   private Tuple2<Node, Optional<Node>> find(String path) {
     if ("".equals(path)) {
       return tuple(null, Optional.of(root));
     }
+    // breaks up "foo/bar/zaz.txt", into [foo, bar, zaz.txt]
     List<Path> parts = Lists.newArrayList(Paths.get(path));
     // find parent directory
     int i = 0;
-    // use an array so we can use current in the lambda on line 88
     Node current = root;
     for (; i < parts.size() - 1; i++) {
       String name = parts.get(i).getFileName().toString();
@@ -125,7 +122,7 @@ public class UpdateTree {
     }
     // now handle the last part which is the file name
     String name = parts.get(i).getFileName().toString();
-    Optional<Node> existing = Seq.seq(current.children).findFirst(t -> t.name.equals(name));
+    Optional<Node> existing = seq(current.children).findFirst(t -> t.name.equals(name));
     return tuple(current, existing);
   }
 
