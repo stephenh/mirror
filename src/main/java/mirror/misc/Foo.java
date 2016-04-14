@@ -13,5 +13,19 @@ public class Foo {
     System.out.println(Files.exists(p));
     System.out.println(Files.exists(p, LinkOption.NOFOLLOW_LINKS));
     System.out.println(Files.readSymbolicLink(p));
+
+    /*
+    Path root = Paths.get("/home/stephen/dir1");
+    FileWatcher f = new FileWatcher(FileSystems.getDefault().newWatchService(), root, new LinkedBlockingQueue<Update>() {
+      @Override
+      public void put(Update u) throws InterruptedException {
+        System.out.println("PUT " + u);
+        super.put(u);
+      }
+    });
+    f.performInitialScan();
+    f.startWatching();
+    System.in.read();
+    */
   }
 }
