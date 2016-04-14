@@ -1,4 +1,4 @@
-package mirror;
+package mirror.misc;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -6,6 +6,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.file.Paths;
 
 import org.junit.Test;
+
+import mirror.misc.Digest;
 
 public class DigestTest {
 

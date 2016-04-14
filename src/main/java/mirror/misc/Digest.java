@@ -1,4 +1,4 @@
-package mirror;
+package mirror.misc;
 
 import static java.nio.file.Files.exists;
 
@@ -19,6 +19,10 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Stopwatch;
 
+import mirror.FileWatcher;
+import mirror.Update;
+
+/** Tests how quickly creating MD5s of a directory tree would take. */
 public class Digest {
 
   public static void main(String[] args) throws Exception {
@@ -27,7 +31,7 @@ public class Digest {
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
     FileWatcher r = new FileWatcher(watchService, root, queue);
-    List<Update> initial =r.performInitialScan();
+    List<Update> initial = r.performInitialScan();
     s.stop();
 
     System.out.println("scan took " + s.elapsed(TimeUnit.MILLISECONDS) + " millis");

@@ -1,4 +1,4 @@
-package mirror;
+package mirror.misc;
 
 import java.nio.file.Files;
 import java.nio.file.LinkOption;

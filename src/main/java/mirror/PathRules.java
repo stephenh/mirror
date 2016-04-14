@@ -5,10 +5,14 @@ import java.util.List;
 
 import org.eclipse.jgit.ignore.FastIgnoreRule;
 
+/**
+ * Keeps a list of .gitignore-style rules, and handles eval paths against the rules.
+ */
 public class PathRules {
 
   private final List<FastIgnoreRule> rules = new ArrayList<>();
 
+  /** @param lines the new rules, new line delimited, e.g. from a .gitignore file. */
   public void setRules(String lines) {
     setRules(lines.split("\n"));
   }
@@ -25,6 +29,7 @@ public class PathRules {
     }
   }
 
+  /** @return true if we should ignore {@code path} */
   public boolean hasMatchingRule(String path, boolean isDirectory) {
     for (FastIgnoreRule rule : rules) {
       if (rule.isMatch(path, isDirectory) && rule.getResult()) {

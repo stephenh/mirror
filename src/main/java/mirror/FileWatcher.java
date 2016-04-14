@@ -47,7 +47,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
  * the path of the event should be {@code project-a/foo.txt}.
  */
-class FileWatcher {
+public class FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(FileWatcher.class);
   private final Set<Path> watchedDirectories = new HashSet<>();

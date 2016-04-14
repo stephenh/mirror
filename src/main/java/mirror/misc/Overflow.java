@@ -1,4 +1,4 @@
-package mirror;
+package mirror.misc;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
@@ -16,6 +16,7 @@ import java.nio.file.WatchService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Tests the behavior of WatchService overflowing. */
 public class Overflow {
 
   public static void main(final String[] args) throws InterruptedException, IOException {
