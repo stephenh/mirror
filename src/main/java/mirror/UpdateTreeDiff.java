@@ -76,6 +76,8 @@ public class UpdateTreeDiff {
         results.sendToRemote(local.getUpdate());
       }
       remoteTree.add(local.getUpdate());
+      // might eventually be cute to do:
+      // remote = remoteTree.add(local.getUpdate());
     } else if (remote != null && remote.isNewer(local)) {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !local.isSameType(remote) && !local.getUpdate().getDelete()) {
@@ -84,10 +86,11 @@ public class UpdateTreeDiff {
         localTree.add(delete);
         local = null;
       }
-      // during the initialSync, we don't have any data in the UpdateTree (only metadata is sent),
-      // so we can't save the data locally, and instead will get be sent data-filled Updates by
-      // the remote when it does it's own initialSync
-      if (!remote.isFile() || remote.getUpdate().getDelete() || remote.getUpdate().hasField(updateDataField)) {
+      // during the initial sync, we don't have any remote data in the UpdateTree (only metadata is sent),
+      // so we can't save the data locally, and instead soon-ish we should be sent data-filled Updates by
+      // the remote when it does it's own initial sync
+      boolean skipBecauseNoData = remote.isFile() && !remote.getUpdate().getDelete() && !remote.getUpdate().hasField(updateDataField);
+      if (!skipBecauseNoData) {
         if (!remote.shouldIgnore()) {
           results.saveLocally(remote.getUpdate());
         }
