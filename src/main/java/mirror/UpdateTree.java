@@ -1,6 +1,5 @@
 package mirror;
 
-import static com.google.protobuf.TextFormat.shortDebugString;
 import static org.jooq.lambda.Seq.seq;
 import static org.jooq.lambda.tuple.Tuple.tuple;
 
@@ -36,7 +35,6 @@ import com.google.protobuf.ByteString;
  */
 public class UpdateTree {
 
-  private static final Logger log = LoggerFactory.getLogger(UpdateTree.class);
   final Node root;
   final PathRules extraIncludes = new PathRules();
   final PathRules extraExcludes = new PathRules();
@@ -192,9 +190,6 @@ public class UpdateTree {
 
     boolean isNewer(Node o) {
       boolean newer = o == null || getModTime() > o.getModTime();
-      if (newer) {
-        log.debug("[{}] is newer than [{}]", shortDebugString(getUpdate()), o == null ? "-" : shortDebugString(o.getUpdate()));
-      }
       return newer;
     }
 
