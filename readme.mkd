@@ -3,33 +3,43 @@
 Todo
 ====
 
-* Sync .gitignore files first?
-  * start with foo/bar.txt on root1/root2
-  * root1 adds foo/ to .gitignore
-  * root1 initial path won't have foo/bar.txt, root2 does
-  * root2 sees foo/bar.txt as deleted on root1
+* Configuration
+  * Right now include/exclude settings are hardcoded, should be configurable
+  * Use command line parameters? Config file? Both?
 * Handle watch event overflows by restarting session
-* Run just the client, and have it instantiate the server via SSH
-  * Ideally scp jar file if needed as well, perhaps to ~/.mirror/
+* Handle network disconnections by restarting session 
+  * Ideally would be as sexy as mosh--the client just waits patiently until server is available again
+* Handle various IOExceptions will inevitably happen, probably by restarting session
+* Really easy setup/install process, e.g.:
+  * Currently you have to run `java -cp ...` and `java -cp ...` on both sides
+  * Should the server-side be an always-running daemon? Same thing with the client-side?
+  * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
 * Include file hashes to avoid sending files with different modification times
+  * See Digest for an experiment; it's not that slow
 * Support svn:ignore
+  * Or else just suggest users use git-svn for all svn repos
   * Possibly by converting in-memory to .gitignore
-* Handle automatic reconnecting
+* Support .git/info/exclude
+* Should syncing .git be a good idea?
 
 Primary Workflow
 ================
 
 Mirror is built to support a desktop/laptop workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
 
-This is fairly common, but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts from the build process, e.g.:
+This is fairly common (see "Comparison to Existing Options" section below), but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts from the build process, e.g.:
 
 * On your laptop, save `projectA/foo.java`
   * Mirror sends `foo.java` to the desktop
 * On your desktop, the build system picks up the `projectA/foo.java` change and creates `projectA-snapshot.jar`
   * Mirror sends `projectA-snapshot.jar` back to the laptop
-* On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. in project B
+* On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. when editing `projectB/bar.java`
 
-Granted, the IDE will also do local compilation of `projectA/foo.java`, but when working on larger/more complex projects, e.g. with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), using `projectX-snapshot.jar` artifacts is sometimes the only way to do reliable cross-project code reuse (instead of the much easier, but more limited in-IDE project/workspace references).
+Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally (and on projects I'd worked on previously to the environment I need mirror for) the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the classpath for `projectB`.
+
+However, for some larger/more complex projects and build tools, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), the IDE just can't reproduce the esoteric build process to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
+
+And this scenario (local edits, remotely-built cross-project artifacts) is exactly what Mirror is built to address.
 
 Goals
 =====
