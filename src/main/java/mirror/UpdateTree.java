@@ -46,7 +46,7 @@ public class UpdateTree {
   private UpdateTree() {
     this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
     // IntegrationTest currently depends on these values
-    extraExcludes.setRules("tmp", "temp", "target", "build");
+    extraExcludes.setRules("tmp", "temp", "target", "build", "bin", ".*");
     extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project");
   }
 
