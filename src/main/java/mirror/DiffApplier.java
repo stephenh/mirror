@@ -16,7 +16,7 @@ import mirror.UpdateTreeDiff.DiffResults;
 /**
  * Applies the results from {@link UpdateTreeDiff} to both the local disk and to our remote peer.
  */
-public class DiffApplier implements DiffResults {
+public class DiffApplier {
 
   private static final Logger log = LoggerFactory.getLogger(DiffApplier.class);
 
@@ -31,8 +31,12 @@ public class DiffApplier implements DiffResults {
     this.fileAccess = fileAccess;
   }
 
-  @Override
-  public void sendToRemote(Update update) {
+  public void apply(DiffResults results) {
+    results.saveLocally.forEach(this::saveLocally);
+    results.sendToRemote.forEach(this::sendToRemote);
+  }
+
+  private void sendToRemote(Update update) {
     try {
       Update.Builder b = Update.newBuilder(update).setLocal(false);
       if (!update.getDirectory() && update.getSymlink().isEmpty() && !update.getDelete()) {
@@ -48,8 +52,7 @@ public class DiffApplier implements DiffResults {
     }
   }
 
-  @Override
-  public void saveLocally(Update remote) {
+  private void saveLocally(Update remote) {
     try {
       if (remote.getDelete()) {
         deleteLocally(remote);

@@ -15,8 +15,6 @@ import java.util.function.Consumer;
 
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple2;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
@@ -47,7 +45,7 @@ public class UpdateTree {
     this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
     // IntegrationTest currently depends on these values
     extraExcludes.setRules("tmp", "temp", "target", "build", "bin", ".*");
-    extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project");
+    extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project", ".gitignore");
   }
 
   public void addAll(List<Update> updates) {

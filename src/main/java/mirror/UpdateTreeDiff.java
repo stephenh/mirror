@@ -3,6 +3,8 @@ package mirror;
 import static java.util.Optional.ofNullable;
 import static org.jooq.lambda.Seq.seq;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -43,37 +45,36 @@ public class UpdateTreeDiff {
 
   private static final FieldDescriptor updateDataField = Update.getDescriptor().findFieldByNumber(Update.DATA_FIELD_NUMBER);
 
-  interface DiffResults {
-    void sendToRemote(Update update);
-
-    void saveLocally(Update update);
+  public static class DiffResults {
+    public final List<Update> sendToRemote = new ArrayList<>();
+    public final List<Update> saveLocally = new ArrayList<>();
   }
 
   private final UpdateTree localTree;
   private final UpdateTree remoteTree;
-  private final DiffResults results;
 
-  public UpdateTreeDiff(UpdateTree localTree, UpdateTree remoteTree, DiffResults results) {
+  public UpdateTreeDiff(UpdateTree localTree, UpdateTree remoteTree) {
     this.localTree = localTree;
     this.remoteTree = remoteTree;
-    this.results = results;
   }
 
-  public void diff() {
+  public DiffResults diff() {
+    DiffResults results = new DiffResults();
     Queue<Visit> queue = new LinkedBlockingQueue<>();
     queue.add(new Visit(Optional.of(localTree.root), Optional.of(remoteTree.root)));
     while (!queue.isEmpty()) {
-      diff(queue, queue.remove());
+      diff(results, queue, queue.remove());
     }
+    return results;
   }
 
-  private void diff(Queue<Visit> queue, Visit visit) {
+  private void diff(DiffResults results, Queue<Visit> queue, Visit visit) {
     Node local = visit.local.orElse(null);
     Node remote = visit.remote.orElse(null);
 
     if (local != null && local.isNewer(remote)) {
       if (!local.shouldIgnore()) {
-        results.sendToRemote(local.getUpdate());
+        results.sendToRemote.add(local.getUpdate());
       }
       remoteTree.add(local.getUpdate());
       // might eventually be cute to do:
@@ -82,7 +83,7 @@ public class UpdateTreeDiff {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !local.isSameType(remote) && !local.getUpdate().getDelete()) {
         Update delete = Update.newBuilder(local.getUpdate()).setDelete(true).build();
-        results.saveLocally(delete);
+        results.saveLocally.add(delete);
         localTree.add(delete);
         local = null;
       }
@@ -92,7 +93,7 @@ public class UpdateTreeDiff {
       boolean skipBecauseNoData = remote.isFile() && !remote.getUpdate().getDelete() && !remote.getUpdate().hasField(updateDataField);
       if (!skipBecauseNoData) {
         if (!remote.shouldIgnore()) {
-          results.saveLocally(remote.getUpdate());
+          results.saveLocally.add(remote.getUpdate());
         }
         // we're done with the data, so don't keep it in memory
         remote.clearData();

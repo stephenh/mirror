@@ -9,6 +9,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import io.grpc.stub.StreamObserver;
+import mirror.UpdateTreeDiff.DiffResults;
 
 /**
  * Represents a session of an initial sync plus on-going synchronization of
@@ -64,7 +65,8 @@ public class MirrorSession {
 
   /** Pretend we have local file events for anything the remote side needs from us. */
   public void initialSync(StreamObserver<Update> outgoingChanges) throws IOException {
-    new UpdateTreeDiff(localTree, remoteTree, new DiffApplier(role, outgoingChanges, fileAccess)).diff();
+    DiffResults r = new UpdateTreeDiff(localTree, remoteTree).diff();
+    new DiffApplier(role, outgoingChanges, fileAccess).apply(r);
   }
 
   public void startPolling(StreamObserver<Update> outgoingChanges) throws IOException {

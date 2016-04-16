@@ -15,6 +15,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import io.grpc.stub.StreamObserver;
+import mirror.UpdateTreeDiff.DiffResults;
 
 /**
  * Implements the steady-state (post-initial sync) two-way sync logic.
@@ -124,7 +125,8 @@ public class SyncLogic {
   }
 
   private void diff() {
-    new UpdateTreeDiff(localTree, remoteTree, new DiffApplier(role, outgoing, fileAccess)).diff();
+    DiffResults r = new UpdateTreeDiff(localTree, remoteTree).diff();
+    new DiffApplier(role, outgoing, fileAccess).apply(r);
   }
 
   /**
