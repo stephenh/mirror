@@ -10,6 +10,8 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.jooq.lambda.Seq;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
@@ -43,11 +45,17 @@ import mirror.UpdateTree.Node;
  */
 public class UpdateTreeDiff {
 
+  private static final Logger log = LoggerFactory.getLogger(UpdateTreeDiff.class);
   private static final FieldDescriptor updateDataField = Update.getDescriptor().findFieldByNumber(Update.DATA_FIELD_NUMBER);
 
   public static class DiffResults {
     public final List<Update> sendToRemote = new ArrayList<>();
     public final List<Update> saveLocally = new ArrayList<>();
+
+    @Override
+    public String toString() {
+      return "[sendToRemote=" + sendToRemote.size() + ",saveLocally=" + saveLocally.size() + "]";
+    }
   }
 
   private final UpdateTree localTree;
@@ -60,11 +68,13 @@ public class UpdateTreeDiff {
 
   public DiffResults diff() {
     DiffResults results = new DiffResults();
-    Queue<Visit> queue = new LinkedBlockingQueue<>();
-    queue.add(new Visit(Optional.of(localTree.root), Optional.of(remoteTree.root)));
-    while (!queue.isEmpty()) {
-      diff(results, queue, queue.remove());
-    }
+    Utils.time(log, "diff", () -> {
+      Queue<Visit> queue = new LinkedBlockingQueue<>();
+      queue.add(new Visit(Optional.of(localTree.root), Optional.of(remoteTree.root)));
+      while (!queue.isEmpty()) {
+        diff(results, queue, queue.remove());
+      }
+    });
     return results;
   }
 

@@ -17,6 +17,14 @@ public class Utils {
     return "[" + TextFormat.shortDebugString(u).replace(": ", ":") + "]";
   }
 
+  public static void time(Logger log, String action, Runnable r) {
+    log.info("Starting " + action);
+    long start = System.currentTimeMillis();
+    r.run();
+    long stop = System.currentTimeMillis();
+    log.info("Completed " + action + ": " + (stop - start) + "ms");
+  }
+
   /** @return the contents of {@code path}, after doing a best-effort attempt to ensure it's done being written. */
   public static ByteString readDataFully(FileAccess fileAccess, Path path) throws IOException, InterruptedException {
     // do some gyrations to ensure the file writer has completely written the file
