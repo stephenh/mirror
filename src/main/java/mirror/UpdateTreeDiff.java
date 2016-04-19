@@ -116,16 +116,20 @@ public class UpdateTreeDiff {
 
     // we recurse into sub directories, even if this current directory
     // is .gitignored, so that we can search for custom included files.
-    for (String childName : Seq
-      .of(visit.local, visit.remote)
-      .flatMap(o -> seq(o)) // flatten
-      .flatMap(node -> seq(node.getChildren()))
-      .map(child -> child.getName())
-      .distinct()) {
+    for (String childName : combinedChildNames(visit.local, visit.remote)) {
       Optional<Node> localChild = ofNullable(local).flatMap(n -> n.getChild(childName));
       Optional<Node> remoteChild = ofNullable(remote).flatMap(n -> n.getChild(childName));
       queue.add(new Visit(localChild, remoteChild));
     }
+  }
+
+  private static Seq<String> combinedChildNames(Optional<Node> local, Optional<Node> remote) {
+    return Seq
+      .of(local, remote)
+      .flatMap(o -> seq(o)) // flatten
+      .flatMap(node -> seq(node.getChildren()))
+      .map(child -> child.getName())
+      .distinct();
   }
 
   private void ensureGitIgnoreIsSynced(Node local, Node remote) {

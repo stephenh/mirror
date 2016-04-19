@@ -75,23 +75,12 @@ public class UpdateTree {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    visit(node -> sb.append(node.getPath() //
+    visit(root, node -> sb.append(node.getPath() //
       + " mod="
       + node.getModTime()
       + " deleted="
       + node.getUpdate().getDelete()).append("\n"));
     return sb.toString();
-  }
-
-  /** Visits each node in the tree, in breadth-first order. */
-  private void visit(Consumer<Node> visitor) {
-    Queue<Node> queue = new LinkedBlockingQueue<Node>();
-    queue.add(root);
-    while (!queue.isEmpty()) {
-      Node node = queue.remove();
-      visitor.accept(node);
-      queue.addAll(node.children);
-    }
   }
 
   /** @return a tuple of the path's parent directory and the existing node (if found) */
@@ -142,6 +131,7 @@ public class UpdateTree {
     // we keep a copy of the modTime so that SyncLogic can mutate it
     // to mark that we've sent paths back to the remote.
     private Update update;
+    private Boolean shouldIgnore;
 
     private Node(Node parent, Update update) {
       this.parent = parent;
@@ -233,6 +223,9 @@ public class UpdateTree {
 
     /** @param p should be a relative path, e.g. a/b/c.txt. */
     public boolean shouldIgnore() {
+      if (shouldIgnore != null) {
+        return shouldIgnore;
+      }
       String path = update.getPath();
       boolean gitIgnored = Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).reverse().findFirst(n -> {
         // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
@@ -242,16 +235,29 @@ public class UpdateTree {
       }).isPresent();
       boolean extraIncluded = extraIncludes.hasMatchingRule(path, isDirectory());
       boolean extraExcluded = extraExcludes.hasMatchingRule(path, isDirectory());
-      return (gitIgnored || extraExcluded) && !extraIncluded;
+      shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
+      return shouldIgnore;
     }
 
     public void setIgnoreRules(String ignoreData) {
       ignoreRules.setRules(ignoreData);
+      visit(this, n -> n.shouldIgnore = null);
     }
 
     @Override
     public String toString() {
       return name;
+    }
+  }
+
+  /** Visits each node in the tree, in breadth-first order. */
+  private static void visit(Node start, Consumer<Node> visitor) {
+    Queue<Node> queue = new LinkedBlockingQueue<Node>();
+    queue.add(start);
+    while (!queue.isEmpty()) {
+      Node node = queue.remove();
+      visitor.accept(node);
+      queue.addAll(node.children);
     }
   }
 
