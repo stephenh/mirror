@@ -4,7 +4,6 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
-import static org.jooq.lambda.Seq.seq;
 
 import java.io.File;
 import java.io.IOException;
@@ -152,16 +151,8 @@ public class FileWatcher {
     if (!watchedDirectories.containsValue(directory)) {
       WatchKey key = directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
       watchedDirectories.put(key, directory);
-      List<Path> children = new ArrayList<>();
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-        children.addAll(seq(stream).toList());
-      }
-      // first see if we have a .gitignore
-      seq(children).findFirst(p -> p.getFileName().toString().equals(".gitignore")).ifPresent(Unchecked.consumer(p -> {
-        onChangedPath(p);
-      }));
-      for (Path child : seq(children).sorted()) {
-        onChangedPath(child);
+        stream.forEach(Unchecked.consumer(this::onChangedPath));
       }
     }
   }
