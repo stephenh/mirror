@@ -170,7 +170,7 @@ public class FileWatcher {
       targetPath = symlink.toString();
     }
     String relativePath = toRelativePath(path);
-    log.debug("Symlink changed {}, relative={}, target={}", path, relativePath, targetPath);
+    log.trace("Symlink {}, relative={}, target={}", path, relativePath, targetPath);
     queue.put(Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setModTime(lastModified(path)).setLocal(true).build());
   }
 

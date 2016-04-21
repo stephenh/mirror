@@ -15,14 +15,13 @@ import mirror.UpdateTreeDiff.DiffResults;
 public class UpdateTreeDiffTest {
 
   private static final ByteString data = ByteString.copyFrom(new byte[] { 1, 2, 3, 4 });
-  private UpdateTree local = UpdateTree.newRoot();
-  private UpdateTree remote = UpdateTree.newRoot();
+  private UpdateTree tree = UpdateTree.newRoot();
   private DiffResults results = null;
 
   @Test
   public void sendLocalNewFileToRemote() {
     // given a local file that is new
-    local.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo.txt");
@@ -34,8 +33,8 @@ public class UpdateTreeDiffTest {
   @Test
   public void sendLocalChangedFileToRemote() {
     // given a local file that is newer
-    local.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo.txt");
@@ -45,12 +44,12 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalMissingFileThatIsOnRemote() {
     // given a remote file that does not exist locally (and we don't have data for it yet)
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     diff();
     // then we don't do anything
     assertNoResults();
     // and when we do have data, then we will save it
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).setData(data).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).setData(data).build());
     diff();
     assertSaveLocally("foo.txt");
   }
@@ -58,13 +57,13 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalStaleFileThatIsOnRemote() {
     // given a remote file that is stale locally (and we don't have data for it yet)
-    local.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
     diff();
     // then we don't do anything
     assertNoResults();
     // and when we do have data, then we will save it
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
     diff();
     assertSaveLocally("foo.txt");
   }
@@ -72,7 +71,7 @@ public class UpdateTreeDiffTest {
   @Test
   public void sendLocalNewSymlinkToRemote() {
     // given a local symlink that is new
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo");
@@ -81,8 +80,8 @@ public class UpdateTreeDiffTest {
   @Test
   public void sendLocalChangedSymlinkToRemote() {
     // given a local symlink that is chagned
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar2").build());
-    remote.add(Update.newBuilder().setPath("foo").setModTime(1L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar2").build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).setSymlink("bar").build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo");
@@ -91,7 +90,7 @@ public class UpdateTreeDiffTest {
   @Test
   public void sendLocalNewDirectoryToRemote() {
     // given a local directory that is new
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo");
@@ -100,8 +99,8 @@ public class UpdateTreeDiffTest {
   @Test
   public void sendLocalNewNestedFileToRemote() {
     // given a local file that is new
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(2L).build());
     diff();
     // then we send the file to the remote
     assertSendToRemote("foo", "foo/foo.txt");
@@ -110,9 +109,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalFileThatIsNowADirectory() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // that is a newer directory on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
     diff();
     // then we delete the file
     assertSaveLocally("foo", "foo");
@@ -124,9 +123,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalFileThatIsNowASymlink() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // that is a newer symlink on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
     diff();
     // then we delete the file
     assertSaveLocally("foo", "foo");
@@ -137,9 +136,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void leaveLocalFileThatWasADirectory() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // that is an older directory on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
     diff();
     // then we send our file to the remote, and leave it alone locally
     assertSendToRemote("foo");
@@ -149,9 +148,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalDirectoryThatIsNowAFile() {
     // given a local directory
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
     // that is now a file on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
     // then we delete the directory
     assertSaveLocally("foo");
@@ -161,17 +160,17 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalDirectoryThatIsNowASymlink() {
     // given a local directory
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
     // that is now a symlink on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
     diff();
     // then we delete the directory
     assertSaveLocally("foo", "foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
     assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    assertThat(local.getChildren().get(0).getUpdate().getSymlink(), is("bar"));
-    assertThat(local.getChildren().get(0).getChildren().size(), is(0));
+    assertThat(tree.getChildren().get(0).getLocal().getSymlink(), is("bar"));
+    assertThat(tree.getChildren().get(0).getChildren().size(), is(0));
     // and when we diff again
     diff();
     // then we don't re-delete it
@@ -192,10 +191,10 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalDirectoryThatIsNowASymlinkDuringSync() {
     // given a local directory
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
     // that is now a symlink on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
     // instead of initialDiff
     diff();
     assertSaveLocally("foo", "foo");
@@ -212,9 +211,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void leavelLocalDirectoryThatWasAFile() {
     // given a local directory
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
     // that is an older file file on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).build());
     diff();
     // then we send our directory to the remote, and leave it alone locally
     assertSendToRemote("foo");
@@ -224,9 +223,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalSymlinkThatIsNowAFile() {
     // given a local symlink
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     // that is now a file on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
     // then we delete the symlink
     assertSaveLocally("foo");
@@ -240,9 +239,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteLocalSymlinkThatIsNowADirectory() {
     // given a local symlink
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     // that is now a directory on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
     diff();
     // then we delete the symlink
     assertSaveLocally("foo", "foo");
@@ -253,9 +252,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void leaveLocalSymlinkThatWasAFile() {
     // given a local symlink
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     // that is an older file on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).build());
     diff();
     // then we send our symlink to the remote, and leave it alone locally
     assertSendToRemote("foo");
@@ -265,10 +264,10 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalFileIfParentDirectoryHasBeenRemoved() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).setSymlink("bar").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).setSymlink("bar").build());
     // but the directory is now a symlink on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     diff();
     // then we delete our local foo and don't send anything to the remote
     assertSaveLocally("foo", "foo");
@@ -280,9 +279,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalFileThatIsIgnored() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // that is locally ignored
-    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
+    tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
     diff();
     // then we don't sync the local foo.txt file, but we do sync .gitignore
     assertNoSaveLocally();
@@ -292,9 +291,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalNewFileThatIsNowIgnored() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // but the remote has a .gitignore in place
-    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
+    tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
     diff();
     // then we don't sync the local file
     assertNoResults();
@@ -303,11 +302,11 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalFileInAnIgnoredDirectory() {
     // given a local file
-    local.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
-    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
     // and the .gitignore exists remotely as well
-    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
     diff();
     // then we don't sync the local file
     assertNoResults();
@@ -316,9 +315,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipRemoteFileThatIsIgnored() {
     // given a remote file
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // that is remotely ignored
-    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").setData(data).build());
+    tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").setData(data).build());
     diff();
     // then we don't sync the local foo.txt file, but we do sync .gitignore
     assertSaveLocally(".gitignore");
@@ -327,12 +326,12 @@ public class UpdateTreeDiffTest {
   @Test
   public void includeLocalFileInAnIgnoredDirectoryThatIsExplicitlyIncluded() {
     // given a local file
-    local.extraIncludes.setRules("*.txt");
-    local.add(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
-    local.add(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
-    local.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    tree.extraIncludes.setRules("*.txt");
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
     // and the .gitignore exists remotely as well
-    remote.add(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
+    tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
     diff();
     // then we do
     assertSendToRemote("foo/foo.txt");
@@ -341,15 +340,15 @@ public class UpdateTreeDiffTest {
   @Test
   public void saveNewRemoteFileLocally() {
     // given a remote file that is new
-    remote.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
     diff();
     // then we save the file to locally
     assertSaveLocally("foo.txt");
     // assertThat(nodeCapture.getValue().getUpdate().getData(), is(data));
     // and then clear the data from the tree afterwards
-    Node foo = remote.getChildren().get(0);
+    Node foo = tree.getChildren().get(0);
     assertThat(foo.getName(), is("foo.txt"));
-    assertThat(foo.getUpdate().getData().size(), is(0));
+    assertThat(foo.getRemote().getData().size(), is(0));
     // and we don't resave it again on the next diff
     diff();
     assertNoResults();
@@ -358,7 +357,7 @@ public class UpdateTreeDiffTest {
   @Test
   public void saveNewRemoteDirectoryLocally() {
     // given a remote directory that is new
-    remote.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
     diff();
     // then we save the directory to locally
     assertSaveLocally("foo");
@@ -370,9 +369,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void saveNewRemoteDirectoryAndThenFileLocally() {
     // given a remote directory that is new
-    remote.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
     // and it also has a file in it
-    remote.add(Update.newBuilder().setPath("foo/bar.txt").setData(data).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo/bar.txt").setData(data).setModTime(2L).build());
     diff();
     // then we save the directory to locally
     assertSaveLocally("foo", "foo/bar.txt");
@@ -384,10 +383,10 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteWhenFileDeletedLocally() {
     // given a file that exists on both local and remote
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
-    remote.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // and it is deleted locally
-    local.add(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
     diff();
     // then we send the delete to the remote
     assertSendToRemote("foo");
@@ -401,10 +400,10 @@ public class UpdateTreeDiffTest {
   @Test
   public void deleteWhenFileDeletedRemote() {
     // given a file that exists on both local and remote
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
-    remote.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // and it is deleted on the remote
-    remote.add(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
     diff();
     // then we delete it locally
     assertSaveLocally("foo");
@@ -418,17 +417,17 @@ public class UpdateTreeDiffTest {
   @Test
   public void recreateWhenFileDeletedAndCreatedLocally() {
     // given a file that exists on both local and remote
-    local.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
-    remote.add(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // and it is deleted locally
-    local.add(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
     diff();
     // then we send the delete to the remote
     assertSendToRemote("foo");
     assertThat(results.sendToRemote.get(0).getDelete(), is(true));
     assertThat(results.sendToRemote.get(0).getLocal(), is(false));
     // when it's re-created locally
-    local.add(Update.newBuilder().setPath("foo").setModTime(4L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(4L).build());
     diff();
     // then we send the delete to the remote
     assertThat(results.sendToRemote.get(0).getDelete(), is(false));
@@ -439,7 +438,7 @@ public class UpdateTreeDiffTest {
   }
 
   private void diff() {
-    results = new UpdateTreeDiff(local, remote).diff();
+    results = new UpdateTreeDiff(tree).diff();
   }
 
   private void assertNoResults() {

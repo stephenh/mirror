@@ -25,9 +25,8 @@ public class SyncLogicTest {
   private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
-  private final UpdateTree localTree = UpdateTree.newRoot();
-  private final UpdateTree remoteTree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic("client", changes, outgoing, fileAccess, localTree, remoteTree);
+  private final UpdateTree tree = UpdateTree.newRoot();
+  private final SyncLogic l = new SyncLogic("client", changes, outgoing, fileAccess, tree);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {
@@ -51,10 +50,10 @@ public class SyncLogicTest {
   @Test
   public void sendLocalDeleteToRemote() throws Exception {
     // given we have an existing local file
-    localTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // that also exists on the remote
-    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // and it is deleted locally
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     fileAccess.delete(fooDotTxt);
@@ -222,10 +221,10 @@ public class SyncLogicTest {
   @Test
   public void handleFilesGettingDeletedThenReCreated() throws Exception {
     // given we detect a local delete
-    localTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // and it also exists on the remote
-    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     l.poll();
     assertThat(outgoing.values.size(), is(1));
     // and then file is re-created
@@ -242,7 +241,7 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // that also exists on the remote
-    remoteTree.add(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // and it is deleted locally
     Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
     changes.add(u);

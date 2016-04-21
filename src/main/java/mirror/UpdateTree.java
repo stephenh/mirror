@@ -42,14 +42,12 @@ public class UpdateTree {
   }
 
   private UpdateTree() {
-    this.root = new Node(null, Update.newBuilder().setPath("").setDirectory(true).build());
+    this.root = new Node(null, "");
+    this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
+    this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());
     // IntegrationTest currently depends on these values
     extraExcludes.setRules("tmp", "temp", "target", "build", "bin", ".*");
     extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project", ".gitignore");
-  }
-
-  public void addAll(List<Update> updates) {
-    updates.forEach(this::add);
   }
 
   /**
@@ -58,28 +56,45 @@ public class UpdateTree {
    * We assume the updates come in a certain order, e.g. foo/bar.txt should have
    * it's directory foo added first.
    */
-  public void add(Update update) {
+  public void addLocal(Update local) {
+    addUpdate(local, true);
+  }
+
+  public void addRemote(Update remote) {
+    addUpdate(remote, false);
+  }
+
+  private void addUpdate(Update update, boolean local) {
     if (update.getPath().startsWith("/") || update.getPath().endsWith("/")) {
       throw new IllegalArgumentException("Update path should not start or end with slash: " + update.getPath());
     }
     Tuple2<Node, Optional<Node>> t = find(update.getPath());
-    Node parent = t.v1;
     Optional<Node> existing = t.v2;
-    if (existing.isPresent()) {
-      existing.get().setUpdate(update);
-    } else {
-      parent.addChild(new Node(parent, update));
+    if (!existing.isPresent()) {
+      Node parent = t.v1;
+      Node child = new Node(parent, update.getPath());
+      parent.addChild(child);
+      existing = Optional.of(child);
     }
+    if (local) {
+      existing.get().setLocal(update);
+    } else {
+      existing.get().setRemote(update);
+    }
+  }
+
+  public void visit(Consumer<Node> visitor) {
+    visit(root, visitor);
   }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    visit(root, node -> sb.append(node.getPath() //
-      + " mod="
-      + node.getModTime()
-      + " deleted="
-      + node.getUpdate().getDelete()).append("\n"));
+    visit(node -> sb.append(node.getPath() //
+      + " local="
+      + node.local.getModTime()
+      + " remote="
+      + node.remote.getModTime()).append("\n"));
     return sb.toString();
   }
 
@@ -98,17 +113,16 @@ public class UpdateTree {
       // lambdas need final variables
       final Node fc = current;
       final int fi = i;
-      current = seq(current.children).findFirst(t -> t.name.equals(name)).orElseGet(() -> {
+      current = current.getChild(name).orElseGet(() -> {
         String dir = Joiner.on("/").join(parts.subList(0, fi + 1));
-        Node child = new Node(fc, Update.newBuilder().setPath(dir).setModTime(0).build());
+        Node child = new Node(fc, dir);
         fc.addChild(child);
         return child;
       });
     }
     // now handle the last part which is the file name
     String name = parts.get(i).getFileName().toString();
-    Optional<Node> existing = seq(current.children).findFirst(t -> t.name.equals(name));
-    return tuple(current, existing);
+    return tuple(current, current.getChild(name));
   }
 
   @VisibleForTesting
@@ -123,62 +137,74 @@ public class UpdateTree {
   /** Either a directory or file within the tree. */
   public class Node {
     private final Node parent;
+    private final String path;
     private final String name;
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
     private final PathRules ignoreRules = new PathRules();
     // State == dirty, synced, partial-ignore/full-ignore?
-    // we keep a copy of the modTime so that SyncLogic can mutate it
-    // to mark that we've sent paths back to the remote.
-    private Update update;
+    private Update local;
+    private Update remote;
     private Boolean shouldIgnore;
 
-    private Node(Node parent, Update update) {
+    private Node(Node parent, String path) {
       this.parent = parent;
-      this.update = update;
-      name = Paths.get(update.getPath()).getFileName().toString();
+      this.path = path;
+      this.name = Paths.get(path).getFileName().toString();
     }
 
-    boolean isSameType(Node o) {
-      return getType() == o.getType();
+    boolean isSameType() {
+      return getType(local) == getType(remote);
     }
 
-    private NodeType getType() {
-      return isDirectory() ? NodeType.Directory : isSymlink() ? NodeType.Symlink : NodeType.File;
-    }
-
-    Update getUpdate() {
-      return update;
+    private NodeType getType(Update u) {
+      return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
     }
 
     void addChild(Node child) {
       children.add(child);
-      if (child.getName().equals(".gitignore")) {
-        setIgnoreRules(child.getUpdate().getIgnoreString());
-      }
     }
 
-    void setUpdate(Update update) {
-      if (!this.update.getPath().equals(update.getPath())) {
-        throw new IllegalStateException("Update path for a node should not change: " + this.update.getPath() + " vs. " + update.getPath());
+    Update getRemote() {
+      return remote;
+    }
+
+    void setRemote(Update remote) {
+      if (!path.equals(remote.getPath())) {
+        throw new IllegalStateException("Path is not correct: " + path + " vs. " + remote.getPath());
+      }
+      this.remote = remote;
+      updateParentIgnoreRulesIfNeeded();
+    }
+
+    Update getLocal() {
+      return local;
+    }
+
+    void setLocal(Update local) {
+      if (!path.equals(local.getPath())) {
+        throw new IllegalStateException("Path is not correct: " + path + " vs. " + local.getPath());
       }
       // The best we can do for guessing the mod time of deletions
       // is to take the old, known mod time and just tick 1
-      if (update.getDelete()) {
-        int tick = this.update.getDelete() ? 0 : 1;
-        update = Update.newBuilder(update).setModTime(getModTime() + tick).build();
+      if (local != null && local.getDelete()) {
+        int tick = this.local.getDelete() ? 0 : 1;
+        local = Update.newBuilder(local).setModTime(this.local.getModTime() + tick).build();
       }
-      // TODO update parent directory's ignore rules if this is a .gitignore file
-      this.update = update;
+      this.local = local;
       // If we're no longer a directory, or we got deleted, clear our children
-      if (!isDirectory() || update.getDelete()) {
+      if (!isDirectory(local) || local.getDelete()) {
         children.clear();
       }
+      updateParentIgnoreRulesIfNeeded();
     }
 
-    boolean isNewer(Node o) {
-      boolean newer = o == null || getModTime() > o.getModTime();
-      return newer;
+    boolean isRemoteNewer() {
+      return remote != null && (local == null || local.getModTime() < remote.getModTime());
+    }
+
+    boolean isLocalNewer() {
+      return local != null && (remote == null || local.getModTime() > remote.getModTime());
     }
 
     String getName() {
@@ -186,7 +212,7 @@ public class UpdateTree {
     }
 
     String getPath() {
-      return update.getPath();
+      return path;
     }
 
     Optional<Node> getChild(String name) {
@@ -197,41 +223,36 @@ public class UpdateTree {
       return children;
     }
 
-    long getModTime() {
-      return update.getModTime();
-    }
-
     void clearData() {
-      this.update = Update.newBuilder(update).setData(ByteString.EMPTY).build();
+      remote = Update.newBuilder(remote).setData(ByteString.EMPTY).build();
     }
 
-    boolean isFile() {
-      return !isDirectory() && !isSymlink();
+    boolean isFile(Update u) {
+      return !isDirectory(u) && !isSymlink(u);
     }
 
     boolean isDirectory() {
-      return update.getDirectory();
+      return local != null ? isDirectory(local) : remote != null ? isDirectory(remote) : false;
     }
 
-    boolean isSymlink() {
-      return !update.getSymlink().isEmpty();
+    boolean isDirectory(Update u) {
+      return u.getDirectory();
     }
 
-    String getIgnoreString() {
-      return update.getIgnoreString();
+    boolean isSymlink(Update u) {
+      return !u.getSymlink().isEmpty();
     }
 
     /** @param p should be a relative path, e.g. a/b/c.txt. */
-    public boolean shouldIgnore() {
+    boolean shouldIgnore() {
       if (shouldIgnore != null) {
         return shouldIgnore;
       }
-      String path = update.getPath();
       boolean gitIgnored = Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).reverse().findFirst(n -> {
         // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
         // to call is match with just foo.txt, and not the dir1/dir2 prefix
-        String relative = path.substring(n.update.getPath().length()).replaceAll("^/", "");
-        return n.ignoreRules.hasMatchingRule(relative, this.isDirectory());
+        String relative = path.substring(n.path.length()).replaceAll("^/", "");
+        return n.ignoreRules.hasMatchingRule(relative, isDirectory());
       }).isPresent();
       boolean extraIncluded = extraIncludes.hasMatchingRule(path, isDirectory());
       boolean extraExcluded = extraExcludes.hasMatchingRule(path, isDirectory());
@@ -239,7 +260,18 @@ public class UpdateTree {
       return shouldIgnore;
     }
 
-    public void setIgnoreRules(String ignoreData) {
+    void updateParentIgnoreRulesIfNeeded() {
+      if (!".gitignore".equals(name)) {
+        return;
+      }
+      if (isLocalNewer()) {
+        parent.setIgnoreRules(local.getIgnoreString());
+      } else if (isRemoteNewer()) {
+        parent.setIgnoreRules(remote.getIgnoreString());
+      }
+    }
+
+    void setIgnoreRules(String ignoreData) {
       ignoreRules.setRules(ignoreData);
       visit(this, n -> n.shouldIgnore = null);
     }

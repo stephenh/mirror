@@ -1,15 +1,8 @@
 package mirror;
 
-import static java.util.Optional.ofNullable;
-import static org.jooq.lambda.Seq.seq;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import org.jooq.lambda.Seq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,111 +51,49 @@ public class UpdateTreeDiff {
     }
   }
 
-  private final UpdateTree localTree;
-  private final UpdateTree remoteTree;
+  private final UpdateTree tree;
 
-  public UpdateTreeDiff(UpdateTree localTree, UpdateTree remoteTree) {
-    this.localTree = localTree;
-    this.remoteTree = remoteTree;
+  public UpdateTreeDiff(UpdateTree tree) {
+    this.tree = tree;
   }
 
   public DiffResults diff() {
     DiffResults results = new DiffResults();
-    Utils.time(log, "diff", () -> {
-      Queue<Visit> queue = new LinkedBlockingQueue<>();
-      queue.add(new Visit(Optional.of(localTree.root), Optional.of(remoteTree.root)));
-      while (!queue.isEmpty()) {
-        diff(results, queue, queue.remove());
-      }
-    });
+    Utils.time(log, "diff", () -> tree.visit(node -> diff(results, node)));
     return results;
   }
 
-  private void diff(DiffResults results, Queue<Visit> queue, Visit visit) {
-    Node local = visit.local.orElse(null);
-    Node remote = visit.remote.orElse(null);
+  private void diff(DiffResults results, Node node) {
+    Update local = node.getLocal();
+    Update remote = node.getRemote();
 
-    if (local != null && local.isNewer(remote)) {
-      if (!local.shouldIgnore()) {
-        results.sendToRemote.add(local.getUpdate());
+    if (node.isLocalNewer()) {
+      if (!node.shouldIgnore()) {
+        results.sendToRemote.add(local);
       }
-      remoteTree.add(local.getUpdate());
+      node.setRemote(local);
       // might eventually be cute to do:
       // remote = remoteTree.add(local.getUpdate());
-    } else if (remote != null && remote.isNewer(local)) {
+    } else if (node.isRemoteNewer()) {
       // if we were a directory, and this is now a file, do an explicit delete first
-      if (local != null && !local.isSameType(remote) && !local.getUpdate().getDelete()) {
-        Update delete = Update.newBuilder(local.getUpdate()).setDelete(true).build();
+      if (local != null && !node.isSameType() && !local.getDelete()) {
+        Update delete = Update.newBuilder(local).setDelete(true).build();
         results.saveLocally.add(delete);
-        localTree.add(delete);
+        node.setLocal(delete);
         local = null;
       }
       // during the initial sync, we don't have any remote data in the UpdateTree (only metadata is sent),
       // so we can't save the data locally, and instead soon-ish we should be sent data-filled Updates by
       // the remote when it does it's own initial sync
-      boolean skipBecauseNoData = remote.isFile() && !remote.getUpdate().getDelete() && !remote.getUpdate().hasField(updateDataField);
+      boolean skipBecauseNoData = node.isFile(remote) && !remote.getDelete() && !remote.hasField(updateDataField);
       if (!skipBecauseNoData) {
-        if (!remote.shouldIgnore()) {
-          results.saveLocally.add(remote.getUpdate());
+        if (!node.shouldIgnore()) {
+          results.saveLocally.add(remote);
         }
         // we're done with the data, so don't keep it in memory
-        remote.clearData();
-        localTree.add(remote.getUpdate());
+        node.clearData();
+        node.setLocal(remote);
       }
-    }
-
-    // ensure local/remote ignore data is synced first
-    ensureGitIgnoreIsSynced(local, remote);
-
-    // we recurse into sub directories, even if this current directory
-    // is .gitignored, so that we can search for custom included files.
-    for (String childName : combinedChildNames(visit.local, visit.remote)) {
-      Optional<Node> localChild = ofNullable(local).flatMap(n -> n.getChild(childName));
-      Optional<Node> remoteChild = ofNullable(remote).flatMap(n -> n.getChild(childName));
-      queue.add(new Visit(localChild, remoteChild));
-    }
-  }
-
-  private static Seq<String> combinedChildNames(Optional<Node> local, Optional<Node> remote) {
-    return Seq
-      .of(local, remote)
-      .flatMap(o -> seq(o)) // flatten
-      .flatMap(node -> seq(node.getChildren()))
-      .map(child -> child.getName())
-      .distinct();
-  }
-
-  private void ensureGitIgnoreIsSynced(Node local, Node remote) {
-    if (local != null && local.isDirectory() && remote != null && remote.isDirectory()) {
-      Optional<Node> localIgnore = seq(local.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
-      Optional<Node> remoteIgnore = seq(remote.getChildren()).findFirst(n -> n.getName().equals(".gitignore"));
-      if (remoteIgnore.isPresent() && localIgnore.isPresent() && remoteIgnore.get().isNewer(localIgnore.get())) {
-        local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
-      } else if (remoteIgnore.isPresent() && !localIgnore.isPresent()) {
-        local.setIgnoreRules(remoteIgnore.get().getIgnoreString());
-      }
-    }
-  }
-
-  /**
-   * A combination of the matching local/remote node in each tree.
-   *
-   * E.g. if remote has foo.txt and bar.txt, and local only has foo.txt,
-   * there would be one Visit with remote=Some(foo.txt),local=Some(foo.txt),
-   * and another Visit with remote=Some(bar.txt),local=None.
-   */
-  private static class Visit {
-    private final Optional<Node> local;
-    private final Optional<Node> remote;
-
-    private Visit(Optional<Node> local, Optional<Node> remote) {
-      this.local = local;
-      this.remote = remote;
-    }
-
-    @Override
-    public String toString() {
-      return local + "/" + remote;
     }
   }
 

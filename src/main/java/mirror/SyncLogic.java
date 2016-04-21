@@ -32,24 +32,16 @@ public class SyncLogic {
   private final BlockingQueue<Update> changes;
   private final StreamObserver<Update> outgoing;
   private final FileAccess fileAccess;
-  private final UpdateTree localTree;
-  private final UpdateTree remoteTree;
+  private final UpdateTree tree;
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
 
-  public SyncLogic(
-    String role,
-    BlockingQueue<Update> changes,
-    StreamObserver<Update> outgoing,
-    FileAccess fileAccess,
-    UpdateTree localTree,
-    UpdateTree remoteTree) {
+  public SyncLogic(String role, BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess, UpdateTree tree) {
     this.role = role;
     this.changes = changes;
     this.outgoing = outgoing;
     this.fileAccess = fileAccess;
-    this.localTree = localTree;
-    this.remoteTree = remoteTree;
+    this.tree = tree;
   }
 
   /**
@@ -114,18 +106,18 @@ public class SyncLogic {
 
   private void handleLocal(Update local) throws IOException, InterruptedException {
     if (!isStaleLocalUpdate(local)) {
-      localTree.add(readLatestTimeAndSymlink(local));
+      tree.addLocal(readLatestTimeAndSymlink(local));
       diff();
     }
   }
 
   private void handleRemote(Update remote) throws IOException {
-    remoteTree.add(remote);
+    tree.addRemote(remote);
     diff();
   }
 
   private void diff() {
-    DiffResults r = new UpdateTreeDiff(localTree, remoteTree).diff();
+    DiffResults r = new UpdateTreeDiff(tree).diff();
     new DiffApplier(role, outgoing, fileAccess).apply(r);
   }
 

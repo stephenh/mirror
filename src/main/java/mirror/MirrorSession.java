@@ -29,8 +29,7 @@ public class MirrorSession {
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
   private final FileWatcher watcher;
-  private final UpdateTree localTree = UpdateTree.newRoot();
-  private final UpdateTree remoteTree = UpdateTree.newRoot();
+  private final UpdateTree tree = UpdateTree.newRoot();
   private final String role;
   private SyncLogic sync;
 
@@ -51,7 +50,7 @@ public class MirrorSession {
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
     List<Update> initialUpdates = watcher.performInitialScan();
-    localTree.addAll(initialUpdates);
+    initialUpdates.forEach(u -> tree.addLocal(u));
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
@@ -60,17 +59,17 @@ public class MirrorSession {
   }
 
   public void addInitialRemoteUpdates(List<Update> remoteInitialUpdates) {
-    this.remoteTree.addAll(remoteInitialUpdates);
+    remoteInitialUpdates.forEach(u -> tree.addRemote(u));
   }
 
   /** Pretend we have local file events for anything the remote side needs from us. */
   public void initialSync(StreamObserver<Update> outgoingChanges) throws IOException {
-    DiffResults r = new UpdateTreeDiff(localTree, remoteTree).diff();
+    DiffResults r = new UpdateTreeDiff(tree).diff();
     new DiffApplier(role, outgoingChanges, fileAccess).apply(r);
   }
 
   public void startPolling(StreamObserver<Update> outgoingChanges) throws IOException {
-    sync = new SyncLogic(role, queue, outgoingChanges, fileAccess, localTree, remoteTree);
+    sync = new SyncLogic(role, queue, outgoingChanges, fileAccess, tree);
     sync.startPolling();
   }
 
