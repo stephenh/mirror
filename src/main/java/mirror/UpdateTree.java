@@ -187,7 +187,7 @@ public class UpdateTree {
       }
       // The best we can do for guessing the mod time of deletions
       // is to take the old, known mod time and just tick 1
-      if (local != null && local.getDelete()) {
+      if (local != null && this.local != null && local.getDelete() && local.getModTime() == 0L) {
         int tick = this.local.getDelete() ? 0 : 1;
         local = Update.newBuilder(local).setModTime(this.local.getModTime() + tick).build();
       }

@@ -108,8 +108,7 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted remotely
-    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     // when we notice
     l.poll();
     // then we delete it locally
