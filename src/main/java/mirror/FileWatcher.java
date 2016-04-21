@@ -8,6 +8,7 @@ import static org.jooq.lambda.Seq.seq;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -16,9 +17,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.commons.io.FileUtils;
@@ -26,6 +25,9 @@ import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
@@ -38,7 +40,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 public class FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(FileWatcher.class);
-  private final Set<Path> watchedDirectories = new HashSet<>();
+  // Use a synchronizedBiMap because technically performInitialScan and startPolling use different threads
+  private final BiMap<WatchKey, Path> watchedDirectories = Maps.synchronizedBiMap(HashBiMap.create());
   private final Path rootDirectory;
   private final BlockingQueue<Update> queue;
   private final WatchService watchService;
@@ -47,6 +50,10 @@ public class FileWatcher {
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     this.queue = queue;
+  }
+
+  public void stop() throws IOException {
+    watchService.close();
   }
 
   /**
@@ -81,21 +88,29 @@ public class FileWatcher {
 
   private void watchLoop() throws IOException, InterruptedException {
     while (true) {
-      WatchKey watchKey = watchService.take();
-      Path parentDir = (Path) watchKey.watchable();
-      for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
-        WatchEvent.Kind<?> eventKind = watchEvent.kind();
-        if (eventKind == OVERFLOW) {
-          throw new RuntimeException("Overflow");
+      try {
+        WatchKey watchKey = watchService.take();
+        // We can't use this:
+        // Path parentDir = (Path) watchKey.watchable();
+        // Because it might be stale when the directory renames, see:
+        // https://bugs.openjdk.java.net/browse/JDK-7057783
+        Path parentDir = watchedDirectories.get(watchKey);
+        for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
+          WatchEvent.Kind<?> eventKind = watchEvent.kind();
+          if (eventKind == OVERFLOW) {
+            throw new RuntimeException("Overflow");
+          }
+          Path child = parentDir.resolve((Path) watchEvent.context());
+          if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
+            onChangedPath(child);
+          } else if (eventKind == ENTRY_DELETE) {
+            onRemovedPath(child);
+          }
         }
-        Path child = parentDir.resolve((Path) watchEvent.context());
-        if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
-          onChangedPath(child);
-        } else if (eventKind == ENTRY_DELETE) {
-          onRemovedPath(child);
-        }
+        watchKey.reset();
+      } catch (ClosedWatchServiceException e) {
+        // shutting down
       }
-      watchKey.reset();
     }
   }
 
@@ -134,9 +149,9 @@ public class FileWatcher {
       .setModTime(lastModified(directory))
       .build());
     // but only setup a new watcher for new directories
-    if (!watchedDirectories.contains(directory)) {
-      directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-      watchedDirectories.add(directory);
+    if (!watchedDirectories.containsValue(directory)) {
+      WatchKey key = directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+      watchedDirectories.put(key, directory);
       List<Path> children = new ArrayList<>();
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
         children.addAll(seq(stream).toList());
