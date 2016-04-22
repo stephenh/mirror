@@ -133,9 +133,9 @@ public class SyncLogic {
    */
   private boolean isStaleLocalUpdate(Update local) throws IOException {
     Path path = Paths.get(local.getPath());
-    boolean stillDeleted = local.getDelete() && fileAccess.exists(path);
-    boolean stillExists = !local.getDelete() && !fileAccess.exists(path);
-    return stillDeleted || stillExists;
+    boolean stillDeleted = local.getDelete() && !fileAccess.exists(path);
+    boolean stillExists = !local.getDelete() && fileAccess.exists(path);
+    return !(stillDeleted || stillExists);
   }
 
   /**
