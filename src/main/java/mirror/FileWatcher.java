@@ -137,7 +137,11 @@ public class FileWatcher {
     // event.)
     queue.put(Update.newBuilder().setPath(toRelativePath(path)).setDelete(true).setLocal(true).build());
     // in case this was a deleted directory, we'll want to start watching it again if it's re-created
-    watchedDirectories.remove(path);
+    WatchKey key = watchedDirectories.inverse().get(path);
+    if (key != null) {
+      watchedDirectories.remove(key);
+      key.cancel();
+    }
   }
 
   private void onChangedDirectory(Path directory) throws IOException, InterruptedException {
