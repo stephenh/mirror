@@ -136,12 +136,13 @@ public class SyncLogic {
    * The FileWatcher is fast enough that it could actually read a "too new" mod time
    * in between a) and b).
    */
-  private Update readLatestTimeAndSymlink(Update local) throws IOException {
+  private Update readLatestTimeAndSymlink(Update local) {
     if (!local.getDelete()) {
       try {
-        local = Update.newBuilder(local).setModTime(fileAccess.getModifiedTime(Paths.get(local.getPath()))).build();
+        Path path = Paths.get(local.getPath());
+        local = Update.newBuilder(local).setModTime(fileAccess.getModifiedTime(path)).build();
         if (!local.getSymlink().isEmpty()) {
-          local = Update.newBuilder(local).setSymlink(fileAccess.readSymlink(Paths.get(local.getPath())).toString()).build();
+          local = Update.newBuilder(local).setSymlink(fileAccess.readSymlink(path).toString()).build();
         }
       } catch (IOException e) {
         // ignore as the path was probably deleted
