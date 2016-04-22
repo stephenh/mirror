@@ -40,7 +40,7 @@ public class FileWatcherTest {
   }
 
   @Test
-  public void testFileRename() throws Exception {
+  public void testDirectoryRename() throws Exception {
     // given a directory is created
     File dir1 = new File(dir, "dir1");
     dir1.mkdir();
