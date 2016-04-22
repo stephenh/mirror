@@ -52,6 +52,8 @@ public class SyncLogic {
   public void startPolling() {
     Runnable runnable = () -> {
       try {
+        // do an initial diff
+        diff();
         pollLoop();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

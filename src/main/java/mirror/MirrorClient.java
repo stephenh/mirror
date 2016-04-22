@@ -93,8 +93,7 @@ public class MirrorClient {
 
       outgoingChanges = stub.streamUpdates(incomingChanges);
 
-      session.initialSync(outgoingChanges);
-      session.startPolling(outgoingChanges);
+      session.diffAndStartPolling(outgoingChanges);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

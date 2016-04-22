@@ -75,9 +75,8 @@ public class MirrorServer implements Mirror {
           outgoingUpdates.onCompleted();
         }
       };
-      currentSession.initialSync(outgoingUpdates);
       // look for file system updates to send back to the client
-      currentSession.startPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
+      currentSession.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
       return incomingUpdates;
     } catch (Exception e) {
       throw new RuntimeException(e);
