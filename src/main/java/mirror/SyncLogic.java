@@ -96,25 +96,14 @@ public class SyncLogic {
       outgoing.onCompleted();
       return;
     }
-    if (u.getPath().startsWith("STATUS:")) {
-      // this is kind of hacky...
-      log.info(role + " " + u.getPath().replace("STATUS:", ""));
-    } else if (u.getLocal()) {
-      handleLocal(u);
+    if (u.getLocal()) {
+      if (isStaleLocalUpdate(u)) {
+        return;
+      }
+      tree.addLocal(readLatestTimeAndSymlink(u));
     } else {
-      handleRemote(u);
+      tree.addRemote(u);
     }
-  }
-
-  private void handleLocal(Update local) throws IOException, InterruptedException {
-    if (!isStaleLocalUpdate(local)) {
-      tree.addLocal(readLatestTimeAndSymlink(local));
-      diff();
-    }
-  }
-
-  private void handleRemote(Update remote) throws IOException {
-    tree.addRemote(remote);
     diff();
   }
 
