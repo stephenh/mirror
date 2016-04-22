@@ -64,7 +64,8 @@ public class FileWatcher {
    * This scan is performed on-thread and so this method blocks until complete.
    */
   public List<Update> performInitialScan() throws IOException, InterruptedException {
-    onChangedDirectory(rootDirectory);
+    // use onChangedPath because it has some try/catch logic
+    onChangedPath(rootDirectory);
     List<Update> updates = new ArrayList<>(queue.size());
     queue.drainTo(updates);
     return updates;
@@ -119,14 +120,16 @@ public class FileWatcher {
     // always recurse into directories so that even if we're excluding target/*,
     // if we are including target/scala-2.10/src_managed, then we can match those
     // paths even though we're ignoring some of the cruft around it
-    if (Files.isDirectory(path) && !Files.isSymbolicLink(path)) {
-      onChangedDirectory(path);
-    } else {
-      if (Files.isSymbolicLink(path)) {
+    try {
+      if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+        onChangedDirectory(path);
+      } else if (Files.isSymbolicLink(path)) {
         onChangedSymbolicLink(path);
       } else {
         onChangedFile(path);
       }
+    } catch (NoSuchFileException | FileNotFoundException e) {
+      // if a file gets deleted while getting the mod time/etc., just ignore it
     }
   }
 
@@ -165,15 +168,11 @@ public class FileWatcher {
 
   private void onChangedFile(Path file) throws InterruptedException, IOException {
     String relativePath = toRelativePath(file);
-    try {
-      Update.Builder b = Update.newBuilder().setPath(relativePath).setModTime(lastModified(file)).setLocal(true);
-      if (file.getFileName().toString().equals(".gitignore")) {
-        b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
-      }
-      queue.put(b.build());
-    } catch (NoSuchFileException | FileNotFoundException e) {
-      // if the file get deleted while getting the mod time, just ignore it
+    Update.Builder b = Update.newBuilder().setPath(relativePath).setModTime(lastModified(file)).setLocal(true);
+    if (file.getFileName().toString().equals(".gitignore")) {
+      b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
     }
+    queue.put(b.build());
   }
 
   private void onChangedSymbolicLink(Path path) throws IOException, InterruptedException {
