@@ -6,11 +6,13 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -159,11 +161,15 @@ public class FileWatcher {
 
   private void onChangedFile(Path file) throws InterruptedException, IOException {
     String relativePath = toRelativePath(file);
-    Update.Builder b = Update.newBuilder().setPath(relativePath).setModTime(lastModified(file)).setLocal(true);
-    if (file.getFileName().toString().equals(".gitignore")) {
-      b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
+    try {
+      Update.Builder b = Update.newBuilder().setPath(relativePath).setModTime(lastModified(file)).setLocal(true);
+      if (file.getFileName().toString().equals(".gitignore")) {
+        b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
+      }
+      queue.put(b.build());
+    } catch (NoSuchFileException | FileNotFoundException e) {
+      // if the file get deleted while getting the mod time, just ignore it
     }
-    queue.put(b.build());
   }
 
   private void onChangedSymbolicLink(Path path) throws IOException, InterruptedException {
