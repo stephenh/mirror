@@ -46,6 +46,18 @@ Then:
 * On add/change from file system:
   * Send file + mtime to server
 
+Threads
+=======
+
+Both sides should have:
+
+* One thread for inotify (`FileWatcher`)
+  * Writes to inbound queue
+* grpc thread(s) listening stream
+  * Writes to inbound queue
+* One thread diffing trees (`SyncLogic`)
+  * Writes to outbound queue
+* One thread putting updates on the wire
 
 
 

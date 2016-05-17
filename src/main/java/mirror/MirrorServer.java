@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NettyServerBuilder;
-import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.Mirror;
 
@@ -76,41 +75,11 @@ public class MirrorServer implements Mirror {
         }
       };
       // look for file system updates to send back to the client
-      currentSession.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
+      // currentSession.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingUpdates));
+      currentSession.diffAndStartPolling(outgoingUpdates);
       return incomingUpdates;
     } catch (Exception e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  private static class BlockingStreamObserver<T> implements StreamObserver<T> {
-    private CallStreamObserver<T> delegate;
-
-    private BlockingStreamObserver(StreamObserver<T> delegate) {
-      this.delegate = (CallStreamObserver<T>) delegate;
-    }
-
-    @Override
-    public void onNext(T value) {
-      while (!delegate.isReady()) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
-        }
-      }
-      delegate.onNext(value);
-    }
-
-    @Override
-    public void onError(Throwable t) {
-      delegate.onError(t);
-    }
-
-    @Override
-    public void onCompleted() {
-      delegate.onCompleted();
     }
   }
 

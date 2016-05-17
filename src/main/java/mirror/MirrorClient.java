@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +12,12 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.SettableFuture;
 
 import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientCall.Listener;
+import io.grpc.Metadata;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
 
@@ -72,8 +77,6 @@ public class MirrorClient {
       session.addInitialRemoteUpdates(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");
 
-      StreamObserver<Update> outgoingChanges = null;
-
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override
         public void onNext(Update update) {
@@ -91,9 +94,63 @@ public class MirrorClient {
         }
       };
 
-      outgoingChanges = stub.streamUpdates(incomingChanges);
+      // StreamObserver<Update> outgoingChanges = stub.streamUpdates(incomingChanges);
 
-      session.diffAndStartPolling(outgoingChanges);
+      ClientCall<Update, Update> call = stub.getChannel().newCall(MirrorGrpc.METHOD_STREAM_UPDATES, stub.getCallOptions());
+      AtomicReference<Runnable> onReady = new AtomicReference<>();
+      call.start(new Listener<Update>() {
+        @Override
+        public void onMessage(Update message) {
+          incomingChanges.onNext(message);
+          call.request(1);
+        }
+
+        @Override
+        public void onReady() {
+          Runnable r = onReady.get();
+          if (r != null) {
+            r.run();
+          }
+        }
+      }, new Metadata());
+      call.request(1);
+      CallStreamObserver<Update> outgoingChanges = new CallStreamObserver<Update>() {
+        public void onNext(Update value) {
+          call.sendMessage(value);
+        }
+
+        @Override
+        public void onError(Throwable t) {
+          call.cancel("Cancel because of onError", t);
+        }
+
+        @Override
+        public void onCompleted() {
+          call.halfClose();
+        }
+
+        @Override
+        public boolean isReady() {
+          return call.isReady();
+        }
+
+        @Override
+        public void setOnReadyHandler(Runnable onReadyHandler) {
+          onReady.set(onReadyHandler);
+        }
+
+        @Override
+        public void disableAutoInboundFlowControl() {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void request(int count) {
+          call.request(count);
+        }
+      };
+
+      session.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingChanges));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

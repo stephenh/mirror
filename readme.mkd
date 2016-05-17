@@ -16,6 +16,7 @@ Todo
   * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
 * Include file hashes to avoid sending files with different modification times
   * See Digest for an experiment; it's not that slow
+* Use file hashes to detect renames
 * Support svn:ignore
   * Or else just suggest users use git-svn for all svn repos
   * Possibly by converting in-memory to .gitignore
