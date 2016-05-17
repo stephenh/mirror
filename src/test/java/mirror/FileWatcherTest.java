@@ -27,7 +27,9 @@ public class FileWatcherTest {
   @Before
   public void clearFiles() throws Exception {
     LoggingConfig.init();
-    FileUtils.forceDelete(dir);
+    if (dir.exists()) {
+      FileUtils.forceDelete(dir);
+    }
     dir.mkdirs();
     watcher = new FileWatcher(FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
     watcher.performInitialScan();

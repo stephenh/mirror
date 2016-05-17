@@ -1,54 +1,60 @@
 package mirror;
 
 import static mirror.Utils.debugString;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.stub.StreamObserver;
-import mirror.UpdateTreeDiff.DiffResults;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-/**
- * Applies the results from {@link UpdateTreeDiff} to both the local disk and to our remote peer.
- */
-public class DiffApplier {
+public class SaveToLocal {
 
-  private static final Logger log = LoggerFactory.getLogger(DiffApplier.class);
-
-  // just for debugging/log messages, e.g. client/server 
-  private final String role;
-  private final StreamObserver<Update> outgoingChanges;
+  private static final Logger log = LoggerFactory.getLogger(SaveToLocal.class);
+  private final BlockingQueue<Update> results;
   private final FileAccess fileAccess;
 
-  public DiffApplier(String role, StreamObserver<Update> outgoingChanges, FileAccess fileAccess) {
-    this.role = role;
-    this.outgoingChanges = outgoingChanges;
+  public SaveToLocal(Queues queues, FileAccess fileAccess) {
+    this.results = queues.saveToLocal;
     this.fileAccess = fileAccess;
   }
 
-  public void apply(DiffResults results) {
-    results.saveLocally.forEach(this::saveLocally);
-    results.sendToRemote.forEach(this::sendToRemote);
+  public void start() {
+    Runnable runnable = () -> {
+      try {
+        pollLoop();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        // TODO need to signal that our connection needs reset
+        throw new RuntimeException(e);
+      }
+    };
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SaveToLocal-%s").build().newThread(runnable).start();
   }
 
-  private void sendToRemote(Update update) {
-    try {
-      Update.Builder b = Update.newBuilder(update).setLocal(false);
-      if (!update.getDirectory() && update.getSymlink().isEmpty() && !update.getDelete()) {
-        b.setData(Utils.readDataFully(fileAccess, Paths.get(update.getPath())));
+  public void stop() throws InterruptedException {
+  }
+
+  private void pollLoop() throws InterruptedException {
+    while (true) {
+      Update u = results.take();
+      try {
+        saveLocally(u);
+      } catch (Exception e) {
+        log.error("Exception with results " + u, e);
       }
-      log.debug(role + " sending to remote " + update.getPath());
-      outgoingChanges.onNext(b.build());
-    } catch (InterruptedException e) {
-      log.error(role + " interrupted " + debugString(update), e);
-      Thread.currentThread().interrupt();
-    } catch (IOException e) {
-      log.error(role + " could not read " + debugString(update), e);
+    }
+  }
+
+  @VisibleForTesting
+  void drain() throws Exception {
+    while (!results.isEmpty()) {
+      saveLocally(results.take());
     }
   }
 
@@ -64,7 +70,7 @@ public class DiffApplier {
         saveFileLocally(remote);
       }
     } catch (IOException e) {
-      log.error(role + " error saving " + debugString(remote), e);
+      log.error("Error saving " + debugString(remote), e);
     }
   }
 
@@ -73,13 +79,13 @@ public class DiffApplier {
   // different type, e.g. a file -> a directory), but we end up ignoring
   // this stale delete event with isStaleLocalUpdate
   private void deleteLocally(Update remote) throws IOException {
-    log.info(role + " deleting {}", remote.getPath());
+    log.info("Deleting {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     fileAccess.delete(path);
   }
 
   private void saveSymlinkLocally(Update remote) throws IOException {
-    log.info(role + " symlink {}", remote.getPath());
+    log.info("Symlink {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     Path target = Paths.get(remote.getSymlink());
     fileAccess.createSymlink(path, target);
@@ -89,14 +95,14 @@ public class DiffApplier {
   }
 
   private void createDirectoryLocally(Update remote) throws IOException {
-    log.info(role + " directory {}", remote.getPath());
+    log.info("Directory {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     fileAccess.mkdir(path);
     fileAccess.setModifiedTime(path, remote.getModTime());
   }
 
   private void saveFileLocally(Update remote) throws IOException {
-    log.info(role + " remote update {}", remote.getPath());
+    log.info("Remote update {}", remote.getPath());
     Path path = Paths.get(remote.getPath());
     ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
     fileAccess.write(path, data);

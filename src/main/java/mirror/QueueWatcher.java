@@ -1,25 +1,20 @@
 package mirror;
 
-import java.util.Queue;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import mirror.UpdateTreeDiff.DiffResults;
-
 public class QueueWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(QueueWatcher.class);
-  private final Queue<Update> incomingUpdates;
-  private final Queue<DiffResults> outgoingDiffs;
+  private final Queues queues;
   private int lastUpdates;
-  private int lastDiffs;
+  private int lastLocal;
+  private int lastRemote;
 
   public QueueWatcher(Queues queues) {
-    this.incomingUpdates = queues.incomingQueue;
-    this.outgoingDiffs = queues.resultQueue;
+    this.queues = queues;
   }
 
   public void startWatching() {
@@ -40,12 +35,14 @@ public class QueueWatcher {
 
   private void pollLoop() throws InterruptedException {
     while (true) {
-      int updates = incomingUpdates.size();
-      int diffs = outgoingDiffs.size();
-      if (updates != lastUpdates || diffs != lastDiffs) {
-        log.info("Queues: updates=" + updates + ", diffs=" + diffs);
+      int updates = queues.incomingQueue.size();
+      int local = queues.saveToLocal.size();
+      int remote = queues.saveToRemote.size();
+      if (updates != lastUpdates || local != lastLocal || remote != lastRemote) {
+        log.info("Queues: updates=" + updates + ", local=" + local + ", remote=" + remote);
         lastUpdates = updates;
-        lastDiffs = diffs;
+        lastLocal = local;
+        lastRemote = remote;
       }
       Thread.sleep(1000);
     }

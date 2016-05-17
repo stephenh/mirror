@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import org.jooq.lambda.tuple.Tuple2;
@@ -34,18 +33,14 @@ public class SyncLogic {
 
   private static final Logger log = LoggerFactory.getLogger(SyncLogic.class);
   private static final Update shutdownUpdate = Update.newBuilder().build();
-  private final String role;
-  private final BlockingQueue<Update> changes;
-  private final BlockingQueue<DiffResults> results;
+  private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
 
-  public SyncLogic(String role, Queues queues, FileAccess fileAccess, UpdateTree tree) {
-    this.role = role;
-    this.changes = queues.incomingQueue;
-    this.results = queues.resultQueue;
+  public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
+    this.queues = queues;
     this.fileAccess = fileAccess;
     this.tree = tree;
   }
@@ -67,13 +62,13 @@ public class SyncLogic {
         throw new RuntimeException(e);
       }
     };
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SyncLogic-" + role + "-%s").build().newThread(runnable).start();
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SyncLogic-%s").build().newThread(runnable).start();
   }
 
   public void stop() throws InterruptedException {
     shutdown = true;
-    changes.clear();
-    changes.add(shutdownUpdate);
+    queues.incomingQueue.clear();
+    queues.incomingQueue.add(shutdownUpdate);
     isShutdown.await();
   }
 
@@ -90,7 +85,7 @@ public class SyncLogic {
         }
         diff();
       } catch (Exception e) {
-        log.error(role + " exception", e);
+        log.error("Exception", e);
       }
     }
     isShutdown.countDown();
@@ -100,20 +95,20 @@ public class SyncLogic {
   private List<Update> getNextBatchOrBlock() throws InterruptedException {
     List<Update> updates = new ArrayList<>();
     // block for at least one
-    Update update = changes.take();
+    Update update = queues.incomingQueue.take();
     // then try to grab more if they size
     do {
       if (update != null) {
         updates.add(update);
       }
-      update = changes.poll();
+      update = queues.incomingQueue.poll();
     } while (update != null && updates.size() <= 1000);
     return updates;
   }
 
   @VisibleForTesting
   void poll() throws IOException, InterruptedException {
-    Update u = changes.poll();
+    Update u = queues.incomingQueue.poll();
     if (u != null) {
       handleUpdate(u);
       diff();
@@ -133,7 +128,8 @@ public class SyncLogic {
 
   private void diff() {
     DiffResults r = new UpdateTreeDiff(tree).diff();
-    results.add(r);
+    r.saveLocally.forEach(queues.saveToLocal::add);
+    r.sendToRemote.forEach(queues.saveToRemote::add);
   }
 
   /**

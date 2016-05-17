@@ -49,7 +49,7 @@ public class MirrorClient {
 
   /** Connects to the server and starts a sync session. */
   public void startSession(MirrorStub stub) {
-    session = new MirrorSession("[client]", root);
+    session = new MirrorSession(root);
 
     try {
       // 1. see what our current state is

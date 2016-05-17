@@ -35,7 +35,7 @@ public class MirrorServer implements Mirror {
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     // start a new session
     // TODO handle if there is an existing session
-    currentSession = new MirrorSession("[server]", root);
+    currentSession = new MirrorSession(root);
     log.info("Starting new session");
     try {
       // get our current state

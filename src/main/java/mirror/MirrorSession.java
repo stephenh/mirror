@@ -26,13 +26,14 @@ public class MirrorSession {
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
   private final QueueWatcher queueWatcher = new QueueWatcher(queues);
-  private StreamObserver<Update> outgoingChanges;
+  private final SaveToLocal saveToLocal;
   private final FileWatcher watcher;
   private final UpdateTree tree = UpdateTree.newRoot();
   private final SyncLogic sync;
-  private ResultsSender sender;
+  private SaveToRemote saveToRemote;
+  private StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(String role, Path root) {
+  public MirrorSession(Path root) {
     this.fileAccess = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
@@ -40,8 +41,10 @@ public class MirrorSession {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    sync = new SyncLogic(role, queues, fileAccess, tree);
+    sync = new SyncLogic(queues, fileAccess, tree);
     queueWatcher.startWatching();
+    saveToLocal = new SaveToLocal(queues, fileAccess);
+    saveToLocal.start();
   }
 
   public void addRemoteUpdate(Update update) {
@@ -65,8 +68,8 @@ public class MirrorSession {
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) throws IOException {
     this.outgoingChanges = outgoingChanges;
     sync.startPolling();
-    sender = new ResultsSender("", queues.resultQueue, outgoingChanges, fileAccess);
-    sender.startSending();
+    saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
+    saveToRemote.start();
   }
 
   public void stop() throws InterruptedException, IOException {
@@ -75,7 +78,8 @@ public class MirrorSession {
     }
     watcher.stop();
     sync.stop();
-    sender.stop();
+    saveToLocal.stop();
+    saveToRemote.stop();
     queueWatcher.stop();
   }
 }

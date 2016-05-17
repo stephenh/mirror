@@ -26,8 +26,8 @@ public class SyncLogicTest {
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic("client", queues, fileAccess, tree);
-  
+  private final SyncLogic l = new SyncLogic(queues, fileAccess, tree);
+
   @Test
   public void sendLocalChangeToRemote() throws Exception {
     // given we have an existing local file
@@ -320,9 +320,8 @@ public class SyncLogicTest {
 
   private void poll() throws Exception {
     l.poll();
-    while (!queues.resultQueue.isEmpty()) {
-      new DiffApplier("client", outgoing, fileAccess).apply(queues.resultQueue.take());
-    }
+    new SaveToLocal(queues, fileAccess).drain();
+    new SaveToRemote(queues, fileAccess, outgoing).drain();
   }
 
 }
