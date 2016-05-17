@@ -15,10 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.grpc.Channel;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.internal.ServerImpl;
-import io.grpc.netty.NegotiationType;
-import io.grpc.netty.NettyChannelBuilder;
-import io.grpc.netty.NettyServerBuilder;
 import mirror.MirrorGrpc.MirrorStub;
 
 public class IntegrationTest {
@@ -51,6 +50,7 @@ public class IntegrationTest {
       log.info("stopping server");
       rpc.shutdown();
     }
+    rpc.shutdown();
     rpc.awaitTermination();
   }
 
@@ -122,7 +122,22 @@ public class IntegrationTest {
     FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
     sleep();
     // then it is also replicated back to root1
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abcd"));
+    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
+  }
+
+  @Test
+  public void testSeveralFilesFromServerToClient() throws Exception {
+    startMirror();
+    // given a root1 change
+    int i = 0;
+    for (; i < 100; i++) {
+      FileUtils.writeStringToFile(new File(root2, "foo" + i + ".txt"), "abc");
+    }
+    sleep();
+    sleep();
+    // and it is replicated to root2
+    assertThat(FileUtils.readFileToString(new File(root1, "foo0.txt")), is("abc"));
+    assertThat(FileUtils.readFileToString(new File(root1, "foo" + (i - 1) + ".txt")), is("abc"));
   }
 
   @Test
@@ -406,11 +421,13 @@ public class IntegrationTest {
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
-    rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
+    // rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
     rpc.start();
     log.info("started server");
     // client
-    Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
+    // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
+    Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
     client = new MirrorClient(root2.toPath());
     client.startSession(stub);
