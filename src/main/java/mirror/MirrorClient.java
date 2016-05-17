@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -156,7 +157,7 @@ public class MirrorClient {
     }
   }
 
-  public void stop() throws InterruptedException {
+  public void stop() throws InterruptedException, IOException {
     session.stop();
   }
 }

@@ -9,6 +9,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import io.grpc.stub.StreamObserver;
+import mirror.UpdateTreeDiff.DiffResults;
 
 /**
  * Represents a session of an initial sync plus on-going synchronization of
@@ -26,25 +27,29 @@ import io.grpc.stub.StreamObserver;
 public class MirrorSession {
 
   private final FileAccess fileAccess;
-  private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
+  private final BlockingQueue<Update> incomingQueue = new ArrayBlockingQueue<>(1_000_000);
+  private final BlockingQueue<DiffResults> resultQueue = new ArrayBlockingQueue<>(1_000_000);
+  private final QueueWatcher queueWatcher = new QueueWatcher(incomingQueue, resultQueue);
+  private StreamObserver<Update> outgoingChanges;
   private final FileWatcher watcher;
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final String role;
-  private SyncLogic sync;
+  private final SyncLogic sync;
+  private ResultsSender sender;
 
   public MirrorSession(String role, Path root) {
-    this.role = role;
     this.fileAccess = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(watchService, root, queue);
+      watcher = new FileWatcher(watchService, root, incomingQueue);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+    sync = new SyncLogic(role, incomingQueue, resultQueue, fileAccess, tree);
+    queueWatcher.startWatching();
   }
 
   public void addRemoteUpdate(Update update) {
-    queue.add(update);
+    incomingQueue.add(update);
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
@@ -62,11 +67,19 @@ public class MirrorSession {
   }
 
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) throws IOException {
-    sync = new SyncLogic(role, queue, outgoingChanges, fileAccess, tree);
+    this.outgoingChanges = outgoingChanges;
     sync.startPolling();
+    sender = new ResultsSender("", resultQueue, outgoingChanges, fileAccess);
+    sender.startSending();
   }
 
-  public void stop() throws InterruptedException {
+  public void stop() throws InterruptedException, IOException {
+    if (outgoingChanges != null) {
+      outgoingChanges.onCompleted();
+    }
+    watcher.stop();
     sync.stop();
+    sender.stop();
+    queueWatcher.stop();
   }
 }

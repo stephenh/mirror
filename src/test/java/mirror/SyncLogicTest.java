@@ -16,6 +16,7 @@ import org.junit.Test;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
+import mirror.UpdateTreeDiff.DiffResults;
 
 public class SyncLogicTest {
 
@@ -23,11 +24,12 @@ public class SyncLogicTest {
   private final static byte[] data = new byte[] { 1, 2, 3, 4 };
   private final static byte[] data2 = new byte[] { 1, 2, 3, 4, 5, 6 };
   private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
+  private final BlockingQueue<DiffResults> results = new ArrayBlockingQueue<>(10);
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic("client", changes, outgoing, fileAccess, tree);
-
+  private final SyncLogic l = new SyncLogic("client", changes, results, fileAccess, tree);
+  
   @Test
   public void sendLocalChangeToRemote() throws Exception {
     // given we have an existing local file
@@ -36,7 +38,7 @@ public class SyncLogicTest {
     Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
     changes.add(u);
     // when we notice
-    l.poll();
+    poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and it has the correct data
@@ -58,7 +60,7 @@ public class SyncLogicTest {
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     fileAccess.delete(fooDotTxt);
     // when we notice
-    l.poll();
+    poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and we don't need to send any data
@@ -77,7 +79,7 @@ public class SyncLogicTest {
     fileAccess.mkdir(Paths.get("foo"));
     // when we notice
     changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1L).setLocal(true).build());
-    l.poll();
+    poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and we don't need to send any data
@@ -96,7 +98,7 @@ public class SyncLogicTest {
     Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).setModTime(10L).build();
     changes.add(u);
     // when we notice
-    l.poll();
+    poll();
     // then we've saved it locally
     ByteString data = fileAccess.read(fooDotTxt);
     assertThat(data.toByteArray(), is(data2));
@@ -110,7 +112,7 @@ public class SyncLogicTest {
     // and it is deleted remotely
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     // when we notice
-    l.poll();
+    poll();
     // then we delete it locally
     assertThat(fileAccess.wasDeleted(fooDotTxt), is(true));
   }
@@ -120,7 +122,7 @@ public class SyncLogicTest {
     // given a directory is created remotely
     changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(10L).build());
     // when we notice
-    l.poll();
+    poll();
     // then we've creative it locally
     assertThat(fileAccess.isDirectory(Paths.get("foo")), is(true));
     assertThat(fileAccess.getModifiedTime(Paths.get("foo")), is(10L));
@@ -134,10 +136,10 @@ public class SyncLogicTest {
     Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).build();
     changes.add(u);
     // when we notice and save that write locally
-    l.poll();
+    poll();
     changes.add(Update.newBuilder(u).setLocal(true).build());
     // then we don't echo it back out to the remote
-    l.poll();
+    poll();
     assertThat(outgoing.values.isEmpty(), is(true));
   }
 
@@ -148,11 +150,11 @@ public class SyncLogicTest {
     // and it is deleted remotely
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     // when we notice and save that delete locally
-    l.poll();
+    poll();
     assertThat(fileAccess.exists(fooDotTxt), is(false));
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // then we don't echo it back out to the remote
-    l.poll();
+    poll();
     assertThat(outgoing.values.isEmpty(), is(true));
   }
 
@@ -163,7 +165,7 @@ public class SyncLogicTest {
     // when we notice
     Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").build();
     changes.add(u);
-    l.poll();
+    poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
     // and it has the correct data
@@ -180,14 +182,14 @@ public class SyncLogicTest {
     // given a symlink is created remotely
     changes.add(Update.newBuilder().setPath("foo.txt").setSymlink("bar").setModTime(10L).build());
     // when we notice
-    l.poll();
+    poll();
     // then we've saved it locally
     Path target = fileAccess.readSymlink(fooDotTxt);
     assertThat(target.toString(), is("bar"));
     assertThat(fileAccess.getModifiedTime(fooDotTxt), is(10L));
     // and when we notice the local event
     changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").setModTime(10L).build());
-    l.poll();
+    poll();
     // then we don't echo it back to the remote
     assertThat(outgoing.values.isEmpty(), is(true));
   }
@@ -200,7 +202,7 @@ public class SyncLogicTest {
     // but it does not exist on disk anymore
     assertThat(fileAccess.exists(fooDotTxt), is(false));
     // when we notice
-    l.poll();
+    poll();
     // then we handle it with no errors
     assertThat(outgoing.values.size(), is(0));
   }
@@ -212,7 +214,7 @@ public class SyncLogicTest {
     // but it does not exist on disk anymore
     assertThat(fileAccess.exists(fooDotTxt), is(false));
     // when we notice
-    l.poll();
+    poll();
     // then we handle it with no errors
     assertThat(outgoing.values.size(), is(0));
   }
@@ -224,13 +226,13 @@ public class SyncLogicTest {
     changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // and it also exists on the remote
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
-    l.poll();
+    poll();
     assertThat(outgoing.values.size(), is(1));
     // and then file is re-created
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     fileAccess.setModifiedTime(fooDotTxt, 3L);
     changes.add(Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data)).setLocal(true).build());
-    l.poll();
+    poll();
     // then we issue both the delete+create
     assertThat(outgoing.values.size(), is(2));
   }
@@ -247,7 +249,7 @@ public class SyncLogicTest {
     // but our delete is stale (it's since been recreated)
     // fileAccess.delete(fooDotTxt);
     // when we notice
-    l.poll();
+    poll();
     // then we don't send the delete to the remote
     assertThat(outgoing.values.size(), is(0));
   }
@@ -261,8 +263,8 @@ public class SyncLogicTest {
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data2), 3L);
     changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
     // when we notice
-    l.poll();
-    l.poll();
+    poll();
+    poll();
     // then we also send one update event to the remote
     assertThat(outgoing.values.size(), is(1));
     // and it has the correct data
@@ -282,8 +284,8 @@ public class SyncLogicTest {
     fileAccess.setModifiedTime(fooDotTxt, 3L);
     changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar2").build());
     // when we notice
-    l.poll();
-    l.poll();
+    poll();
+    poll();
     // then we sent it to the remote only once
     assertThat(outgoing.values.size(), is(1));
     // and it has the correct data
@@ -315,6 +317,13 @@ public class SyncLogicTest {
     @Override
     public void onCompleted() {
       completed = true;
+    }
+  }
+
+  private void poll() throws Exception {
+    l.poll();
+    while (!results.isEmpty()) {
+      new DiffApplier("client", outgoing, fileAccess).apply(results.take());
     }
   }
 

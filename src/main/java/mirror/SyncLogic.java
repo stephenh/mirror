@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import io.grpc.stub.StreamObserver;
 import mirror.UpdateTreeDiff.DiffResults;
 
 /**
@@ -35,19 +33,19 @@ import mirror.UpdateTreeDiff.DiffResults;
 public class SyncLogic {
 
   private static final Logger log = LoggerFactory.getLogger(SyncLogic.class);
-  private static final String poisonPillPath = "SHUTDOWN NOW";
+  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final String role;
   private final BlockingQueue<Update> changes;
-  private final StreamObserver<Update> outgoing;
+  private final BlockingQueue<DiffResults> results;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
 
-  public SyncLogic(String role, BlockingQueue<Update> changes, StreamObserver<Update> outgoing, FileAccess fileAccess, UpdateTree tree) {
+  public SyncLogic(String role, BlockingQueue<Update> changes, BlockingQueue<DiffResults> results, FileAccess fileAccess, UpdateTree tree) {
     this.role = role;
     this.changes = changes;
-    this.outgoing = outgoing;
+    this.results = results;
     this.fileAccess = fileAccess;
     this.tree = tree;
   }
@@ -75,7 +73,7 @@ public class SyncLogic {
   public void stop() throws InterruptedException {
     shutdown = true;
     changes.clear();
-    changes.add(Update.newBuilder().setPath(poisonPillPath).build());
+    changes.add(shutdownUpdate);
     isShutdown.await();
   }
 
@@ -83,17 +81,10 @@ public class SyncLogic {
     while (!shutdown) {
       try {
         List<Update> batch = getNextBatchOrBlock();
-
-        // print out what came in locally
-        Map<String, List<Tuple2<String, Update>>> byExt = seq(batch) //
-          .filter(u -> u.getLocal())
-          .map(u -> tuple(defaultIfEmpty(substringAfterLast(u.getPath(), "."), "<dir>"), u))
-          .groupBy(t -> t.v1());
-        String exts = seq(byExt).map(t -> t.v1() + "=" + t.v2().size()).toString(", ");
-        if (!exts.isEmpty()) {
-          log.info("Local updates: " + exts);
+        if (seq(batch).anyMatch(u -> u == shutdownUpdate)) {
+          break;
         }
-
+        logLocalUpdates(batch);
         for (Update u : batch) {
           handleUpdate(u);
         }
@@ -121,7 +112,7 @@ public class SyncLogic {
   }
 
   @VisibleForTesting
-  public void poll() throws IOException, InterruptedException {
+  void poll() throws IOException, InterruptedException {
     Update u = changes.poll();
     if (u != null) {
       handleUpdate(u);
@@ -130,10 +121,6 @@ public class SyncLogic {
   }
 
   private void handleUpdate(Update u) throws IOException, InterruptedException {
-    if (u.getPath().equals(poisonPillPath)) {
-      outgoing.onCompleted();
-      return;
-    }
     if (u.getLocal()) {
       if (isStaleLocalUpdate(u)) {
         return;
@@ -146,7 +133,7 @@ public class SyncLogic {
 
   private void diff() {
     DiffResults r = new UpdateTreeDiff(tree).diff();
-    new DiffApplier(role, outgoing, fileAccess).apply(r);
+    results.add(r);
   }
 
   /**
@@ -186,6 +173,18 @@ public class SyncLogic {
       }
     }
     return local;
+  }
+
+  private static void logLocalUpdates(List<Update> batch) {
+    // print out what came in locally
+    Map<String, List<Tuple2<String, Update>>> byExt = seq(batch) //
+      .filter(u -> u.getLocal())
+      .map(u -> tuple(defaultIfEmpty(substringAfterLast(u.getPath(), "."), "<dir>"), u))
+      .groupBy(t -> t.v1());
+    String exts = seq(byExt).map(t -> t.v1() + "=" + t.v2().size()).toString(", ");
+    if (!exts.isEmpty()) {
+      log.info("Local updates: " + exts);
+    }
   }
 
 }
