@@ -17,9 +17,9 @@ public class QueueWatcher {
   private int lastUpdates;
   private int lastDiffs;
 
-  public QueueWatcher(Queue<Update> incomingUpdates, Queue<DiffResults> outgoingDiffs) {
-    this.incomingUpdates = incomingUpdates;
-    this.outgoingDiffs = outgoingDiffs;
+  public QueueWatcher(Queues queues) {
+    this.incomingUpdates = queues.incomingQueue;
+    this.outgoingDiffs = queues.resultQueue;
   }
 
   public void startWatching() {

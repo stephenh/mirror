@@ -5,11 +5,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.WatchService;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 
 import io.grpc.stub.StreamObserver;
-import mirror.UpdateTreeDiff.DiffResults;
 
 /**
  * Represents a session of an initial sync plus on-going synchronization of
@@ -27,9 +24,8 @@ import mirror.UpdateTreeDiff.DiffResults;
 public class MirrorSession {
 
   private final FileAccess fileAccess;
-  private final BlockingQueue<Update> incomingQueue = new ArrayBlockingQueue<>(1_000_000);
-  private final BlockingQueue<DiffResults> resultQueue = new ArrayBlockingQueue<>(1_000_000);
-  private final QueueWatcher queueWatcher = new QueueWatcher(incomingQueue, resultQueue);
+  private final Queues queues = new Queues();
+  private final QueueWatcher queueWatcher = new QueueWatcher(queues);
   private StreamObserver<Update> outgoingChanges;
   private final FileWatcher watcher;
   private final UpdateTree tree = UpdateTree.newRoot();
@@ -40,16 +36,16 @@ public class MirrorSession {
     this.fileAccess = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(watchService, root, incomingQueue);
+      watcher = new FileWatcher(watchService, root, queues.incomingQueue);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    sync = new SyncLogic(role, incomingQueue, resultQueue, fileAccess, tree);
+    sync = new SyncLogic(role, queues, fileAccess, tree);
     queueWatcher.startWatching();
   }
 
   public void addRemoteUpdate(Update update) {
-    incomingQueue.add(update);
+    queues.incomingQueue.add(update);
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
@@ -69,7 +65,7 @@ public class MirrorSession {
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) throws IOException {
     this.outgoingChanges = outgoingChanges;
     sync.startPolling();
-    sender = new ResultsSender("", resultQueue, outgoingChanges, fileAccess);
+    sender = new ResultsSender("", queues.resultQueue, outgoingChanges, fileAccess);
     sender.startSending();
   }
 

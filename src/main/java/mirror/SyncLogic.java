@@ -42,10 +42,10 @@ public class SyncLogic {
   private volatile boolean shutdown = false;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
 
-  public SyncLogic(String role, BlockingQueue<Update> changes, BlockingQueue<DiffResults> results, FileAccess fileAccess, UpdateTree tree) {
+  public SyncLogic(String role, Queues queues, FileAccess fileAccess, UpdateTree tree) {
     this.role = role;
-    this.changes = changes;
-    this.results = results;
+    this.changes = queues.incomingQueue;
+    this.results = queues.resultQueue;
     this.fileAccess = fileAccess;
     this.tree = tree;
   }

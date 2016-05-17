@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import org.junit.Test;
@@ -16,19 +15,18 @@ import org.junit.Test;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
-import mirror.UpdateTreeDiff.DiffResults;
 
 public class SyncLogicTest {
 
   private static final Path fooDotTxt = Paths.get("foo.txt");
   private final static byte[] data = new byte[] { 1, 2, 3, 4 };
   private final static byte[] data2 = new byte[] { 1, 2, 3, 4, 5, 6 };
-  private final BlockingQueue<Update> changes = new ArrayBlockingQueue<>(10);
-  private final BlockingQueue<DiffResults> results = new ArrayBlockingQueue<>(10);
+  private final Queues queues = new Queues();
+  private final BlockingQueue<Update> changes = queues.incomingQueue;
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic("client", changes, results, fileAccess, tree);
+  private final SyncLogic l = new SyncLogic("client", queues, fileAccess, tree);
   
   @Test
   public void sendLocalChangeToRemote() throws Exception {
@@ -322,8 +320,8 @@ public class SyncLogicTest {
 
   private void poll() throws Exception {
     l.poll();
-    while (!results.isEmpty()) {
-      new DiffApplier("client", outgoing, fileAccess).apply(results.take());
+    while (!queues.resultQueue.isEmpty()) {
+      new DiffApplier("client", outgoing, fileAccess).apply(queues.resultQueue.take());
     }
   }
 
