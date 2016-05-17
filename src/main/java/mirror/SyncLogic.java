@@ -1,13 +1,21 @@
 package mirror;
 
+import static org.apache.commons.lang3.StringUtils.defaultIfEmpty;
+import static org.apache.commons.lang3.StringUtils.substringAfterLast;
+import static org.jooq.lambda.Seq.seq;
+import static org.jooq.lambda.tuple.Tuple.tuple;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +82,19 @@ public class SyncLogic {
   private void pollLoop() throws InterruptedException {
     while (!shutdown) {
       try {
-        for (Update u : getNextBatchOrBlock()) {
+        List<Update> batch = getNextBatchOrBlock();
+
+        // print out what came in locally
+        Map<String, List<Tuple2<String, Update>>> byExt = seq(batch) //
+          .filter(u -> u.getLocal())
+          .map(u -> tuple(defaultIfEmpty(substringAfterLast(u.getPath(), "."), "<dir>"), u))
+          .groupBy(t -> t.v1());
+        String exts = seq(byExt).map(t -> t.v1() + "=" + t.v2().size()).toString(", ");
+        if (!exts.isEmpty()) {
+          log.info("Local updates: " + exts);
+        }
+
+        for (Update u : batch) {
           handleUpdate(u);
         }
         diff();
@@ -96,7 +116,7 @@ public class SyncLogic {
         updates.add(update);
       }
       update = changes.poll();
-    } while (update != null && updates.size() <= 100);
+    } while (update != null && updates.size() <= 1000);
     return updates;
   }
 
