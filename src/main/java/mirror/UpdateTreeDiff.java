@@ -3,9 +3,6 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 import mirror.UpdateTree.Node;
@@ -38,7 +35,7 @@ import mirror.UpdateTree.Node;
  */
 public class UpdateTreeDiff {
 
-  private static final Logger log = LoggerFactory.getLogger(UpdateTreeDiff.class);
+  // private static final Logger log = LoggerFactory.getLogger(UpdateTreeDiff.class);
   private static final FieldDescriptor updateDataField = Update.getDescriptor().findFieldByNumber(Update.DATA_FIELD_NUMBER);
 
   public static class DiffResults {
@@ -59,7 +56,8 @@ public class UpdateTreeDiff {
 
   public DiffResults diff() {
     DiffResults results = new DiffResults();
-    Utils.time(log, "diff", () -> tree.visit(node -> diff(results, node)));
+    // Utils.time(log, "diff", () -> tree.visit(node -> diff(results, node)));
+    tree.visit(node -> diff(results, node));
     return results;
   }
 
