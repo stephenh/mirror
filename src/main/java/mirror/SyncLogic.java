@@ -1,10 +1,10 @@
 package mirror;
 
-import static mirror.Utils.debugString;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
@@ -73,14 +73,31 @@ public class SyncLogic {
 
   private void pollLoop() throws InterruptedException {
     while (!shutdown) {
-      Update u = changes.take();
       try {
-        handleUpdate(u);
+        for (Update u : getNextBatchOrBlock()) {
+          handleUpdate(u);
+        }
+        diff();
       } catch (Exception e) {
-        log.error(role + " exception handling " + debugString(u), e);
+        log.error(role + " exception", e);
       }
     }
     isShutdown.countDown();
+  }
+
+  // see if we have up to N more updates
+  private List<Update> getNextBatchOrBlock() throws InterruptedException {
+    List<Update> updates = new ArrayList<>();
+    // block for at least one
+    Update update = changes.take();
+    // then try to grab more if they size
+    do {
+      if (update != null) {
+        updates.add(update);
+      }
+      update = changes.poll();
+    } while (update != null && updates.size() <= 100);
+    return updates;
   }
 
   @VisibleForTesting
@@ -88,6 +105,7 @@ public class SyncLogic {
     Update u = changes.poll();
     if (u != null) {
       handleUpdate(u);
+      diff();
     }
   }
 
@@ -104,7 +122,6 @@ public class SyncLogic {
     } else {
       tree.addRemote(u);
     }
-    diff();
   }
 
   private void diff() {
