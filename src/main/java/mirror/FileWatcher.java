@@ -102,6 +102,10 @@ public class FileWatcher {
           if (eventKind == OVERFLOW) {
             throw new RuntimeException("Overflow");
           }
+          if (parentDir == null) {
+            log.error("Missing parentDir for " + watchKey + "/" + watchEvent.context());
+            continue;
+          }
           Path child = parentDir.resolve((Path) watchEvent.context());
           if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
             onChangedPath(child);
