@@ -17,7 +17,6 @@ class BlockingStreamObserver<T> implements StreamObserver<T> {
     this.delegate.setOnReadyHandler(() -> {
       synchronized (lock) {
         lock.notifyAll(); // wake up our thread
-        System.out.println("NOW READY");
       }
     });
   }
@@ -26,7 +25,6 @@ class BlockingStreamObserver<T> implements StreamObserver<T> {
   public void onNext(T value) {
     synchronized (lock) {
       while (!delegate.isReady()) {
-        System.out.println("NOT READY");
         try {
           lock.wait();
         } catch (InterruptedException e) {
