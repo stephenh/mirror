@@ -1,7 +1,6 @@
 package mirror;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.WatchService;
 import java.util.List;
@@ -32,21 +31,16 @@ public class MirrorSession {
   private final MirrorSessionState state = new MirrorSessionState();
   private final QueueWatcher queueWatcher = new QueueWatcher(state, queues);
   private final SaveToLocal saveToLocal;
-  private final FileWatcher watcher;
+  private final FileWatcher fileWatcher;
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic sync;
+  private final SyncLogic syncLogic;
   private SaveToRemote saveToRemote;
   private StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(Path root) {
+  public MirrorSession(Path root, WatchService watchService) {
     this.fileAccess = new NativeFileAccess(root);
-    try {
-      WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(state, watchService, root, queues.incomingQueue);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    sync = new SyncLogic(state, queues, fileAccess, tree);
+    fileWatcher = new FileWatcher(state, watchService, root, queues.incomingQueue);
+    syncLogic = new SyncLogic(state, queues, fileAccess, tree);
     queueWatcher.start();
     saveToLocal = new SaveToLocal(state, queues, fileAccess);
     saveToLocal.start();
@@ -54,8 +48,8 @@ public class MirrorSession {
       if (outgoingChanges != null) {
         outgoingChanges.onCompleted();
       }
-      watcher.stop();
-      sync.stop();
+      fileWatcher.stop();
+      syncLogic.stop();
       saveToLocal.stop();
       queueWatcher.stop();
       if (saveToRemote != null) {
@@ -73,12 +67,12 @@ public class MirrorSession {
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
-    List<Update> initialUpdates = watcher.performInitialScan();
+    List<Update> initialUpdates = fileWatcher.performInitialScan();
     initialUpdates.forEach(u -> tree.addLocal(u));
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
-    watcher.start();
+    fileWatcher.start();
     return initialUpdates;
   }
 
@@ -88,7 +82,7 @@ public class MirrorSession {
 
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
-    sync.start();
+    syncLogic.start();
     saveToRemote = new SaveToRemote(state, queues, fileAccess, outgoingChanges);
     saveToRemote.start();
   }

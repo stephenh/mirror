@@ -1,10 +1,12 @@
 package mirror;
 
+import static mirror.Utils.newWatchService;
 import static mirror.Utils.withTimeout;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.WatchService;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -35,7 +37,7 @@ public class MirrorClient {
 
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl());
+    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl(), newWatchService());
     client.startSession(stub);
 
     // TODO something better
@@ -46,13 +48,15 @@ public class MirrorClient {
   private final Path localRoot;
   private final Path remoteRoot;
   private final ConnectionDetector detector;
+  private final WatchService watchService;
   private volatile MirrorSession session;
   private volatile boolean stopped;
 
-  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector) {
+  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector, WatchService watchService) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
     this.detector = detector;
+    this.watchService = watchService;
   }
 
   /** Connects to the server and starts a sync session. */
@@ -60,7 +64,7 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session");
 
-    session = new MirrorSession(localRoot.toAbsolutePath());
+    session = new MirrorSession(localRoot.toAbsolutePath(), watchService);
     session.addStoppedCallback(() -> {
       if (!stopped) {
         startSession(stub);

@@ -1,5 +1,6 @@
 package mirror;
 
+import static mirror.Utils.newWatchService;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -429,7 +430,7 @@ public class IntegrationTest {
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
-    client = new MirrorClient(root2.toPath(), root1.toPath(), new ConnectionDetector.Impl());
+    client = new MirrorClient(root2.toPath(), root1.toPath(), new ConnectionDetector.Impl(), newWatchService());
     client.startSession(stub);
     log.info("started client");
   }
