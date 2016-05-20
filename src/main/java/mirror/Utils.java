@@ -13,6 +13,34 @@ public class Utils {
 
   private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
+  @FunctionalInterface
+  public interface InterruptedSupplier<T> {
+    T get() throws InterruptedException;
+  }
+
+  @FunctionalInterface
+  public interface InterruptedRunnable {
+    void run() throws InterruptedException;
+  }
+
+  public static void handleInterrupt(InterruptedRunnable r) {
+    try {
+      r.run();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static <T> T handleInterrupt(InterruptedSupplier<T> f) {
+    try {
+      return f.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
+  }
+
   public static String debugString(Update u) {
     return "[" + TextFormat.shortDebugString(u).replace(": ", ":") + "]";
   }

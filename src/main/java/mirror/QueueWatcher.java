@@ -1,13 +1,7 @@
 package mirror;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class QueueWatcher extends AbstractThreaded {
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-public class QueueWatcher {
-
-  private static final Logger log = LoggerFactory.getLogger(QueueWatcher.class);
   private final Queues queues;
   private int lastUpdates;
   private int lastLocal;
@@ -17,24 +11,9 @@ public class QueueWatcher {
     this.queues = queues;
   }
 
-  public void startWatching() {
-    Runnable runnable = () -> {
-      try {
-        pollLoop();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        // TODO need to signal that our connection needs reset
-        throw new RuntimeException(e);
-      }
-    };
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("QueueWatcher-%s").build().newThread(runnable).start();
-  }
-
-  public void stop() throws InterruptedException {
-  }
-
-  private void pollLoop() throws InterruptedException {
-    while (true) {
+  @Override
+  protected void pollLoop() throws InterruptedException {
+    while (!shutdown) {
       int updates = queues.incomingQueue.size();
       int local = queues.saveToLocal.size();
       int remote = queues.saveToRemote.size();
@@ -44,7 +23,7 @@ public class QueueWatcher {
         lastLocal = local;
         lastRemote = remote;
       }
-      Thread.sleep(1000);
+      Thread.sleep(250);
     }
   }
 

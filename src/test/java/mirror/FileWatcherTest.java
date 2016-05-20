@@ -33,7 +33,7 @@ public class FileWatcherTest {
     dir.mkdirs();
     watcher = new FileWatcher(FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
     watcher.performInitialScan();
-    watcher.startWatching();
+    watcher.start();
   }
 
   @After

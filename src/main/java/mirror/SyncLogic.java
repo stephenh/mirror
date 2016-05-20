@@ -11,14 +11,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 import org.jooq.lambda.tuple.Tuple2;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import mirror.UpdateTreeDiff.DiffResults;
 
@@ -29,15 +25,12 @@ import mirror.UpdateTreeDiff.DiffResults;
  * either persist it locally or send it out remotely, while also considering
  * whether we've since had a newer/conflicting change.
  */
-public class SyncLogic {
+public class SyncLogic extends AbstractThreaded {
 
-  private static final Logger log = LoggerFactory.getLogger(SyncLogic.class);
   private static final Update shutdownUpdate = Update.newBuilder().build();
   private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
-  private volatile boolean shutdown = false;
-  private final CountDownLatch isShutdown = new CountDownLatch(1);
 
   public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
     this.queues = queues;
@@ -45,34 +38,9 @@ public class SyncLogic {
     this.tree = tree;
   }
 
-  /**
-   * Starts polling for changes.
-   *
-   * Polling happens on a separate thread, so this method does not block.
-   */
-  public void startPolling() {
-    Runnable runnable = () -> {
-      try {
-        // do an initial diff
-        diff();
-        pollLoop();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        // TODO need to signal that our connection needs reset
-        throw new RuntimeException(e);
-      }
-    };
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SyncLogic-%s").build().newThread(runnable).start();
-  }
-
-  public void stop() throws InterruptedException {
-    shutdown = true;
-    queues.incomingQueue.clear();
-    queues.incomingQueue.add(shutdownUpdate);
-    isShutdown.await();
-  }
-
-  private void pollLoop() throws InterruptedException {
+  @Override
+  protected void pollLoop() throws InterruptedException {
+    diff(); // do an initial diff
     while (!shutdown) {
       try {
         List<Update> batch = getNextBatchOrBlock();
@@ -88,7 +56,12 @@ public class SyncLogic {
         log.error("Exception", e);
       }
     }
-    isShutdown.countDown();
+  }
+
+  @Override
+  protected void doStop() {
+    queues.incomingQueue.clear();
+    queues.incomingQueue.add(shutdownUpdate);
   }
 
   // see if we have up to N more updates
@@ -171,7 +144,7 @@ public class SyncLogic {
     return local;
   }
 
-  private static void logLocalUpdates(List<Update> batch) {
+  private void logLocalUpdates(List<Update> batch) {
     // print out what came in locally
     Map<String, List<Tuple2<String, Update>>> byExt = seq(batch) //
       .filter(u -> u.getLocal())

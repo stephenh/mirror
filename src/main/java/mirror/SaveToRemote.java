@@ -6,17 +6,13 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import io.grpc.stub.StreamObserver;
 
-public class SaveToRemote {
+public class SaveToRemote extends AbstractThreaded {
 
-  private static final Logger log = LoggerFactory.getLogger(SaveToRemote.class);
+  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> results;
   private final StreamObserver<Update> outgoingChanges;
@@ -27,31 +23,25 @@ public class SaveToRemote {
     this.outgoingChanges = outgoingChanges;
   }
 
-  public void start() {
-    Runnable runnable = () -> {
-      try {
-        pollLoop();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        // TODO need to signal that our connection needs reset
-        throw new RuntimeException(e);
-      }
-    };
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("SaveToLocal-%s").build().newThread(runnable).start();
-  }
-
-  public void stop() throws InterruptedException {
-  }
-
-  private void pollLoop() throws InterruptedException {
-    while (true) {
+  @Override
+  protected void pollLoop() throws InterruptedException {
+    while (!shutdown) {
       Update u = results.take();
+      if (u == shutdownUpdate) {
+        return;
+      }
       try {
         sendToRemote(u);
       } catch (Exception e) {
         log.error("Exception with results " + u, e);
       }
     }
+  }
+
+  @Override
+  protected void doStop() throws InterruptedException {
+    results.clear();
+    results.add(shutdownUpdate);
   }
 
   @VisibleForTesting

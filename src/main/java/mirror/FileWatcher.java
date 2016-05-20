@@ -23,13 +23,10 @@ import java.util.concurrent.BlockingQueue;
 
 import org.apache.commons.io.FileUtils;
 import org.jooq.lambda.Unchecked;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Recursively watches a directory for changes and sends them to a BlockingQueue for processing.
@@ -38,9 +35,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
  * the path of the event should be {@code project-a/foo.txt}.
  */
-public class FileWatcher {
+public class FileWatcher extends AbstractThreaded {
 
-  private static final Logger log = LoggerFactory.getLogger(FileWatcher.class);
   // Use a synchronizedBiMap because technically performInitialScan and startPolling use different threads
   private final BiMap<WatchKey, Path> watchedDirectories = Maps.synchronizedBiMap(HashBiMap.create());
   private final Path rootDirectory;
@@ -51,10 +47,6 @@ public class FileWatcher {
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     this.queue = queue;
-  }
-
-  public void stop() throws IOException {
-    watchService.close();
   }
 
   /**
@@ -71,24 +63,17 @@ public class FileWatcher {
     return updates;
   }
 
-  /**
-   * Starts watching for changes.
-   *
-   * Polling happens on a separate thread, so this method does not block.
-   */
-  public void startWatching() throws IOException, InterruptedException {
-    Runnable runnable = () -> {
-      try {
-        watchLoop();
-      } catch (Exception e) {
-        // TODO need to signal that our connection needs reset
-        throw new RuntimeException(e);
-      }
-    };
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("FileWatcher-%s").build().newThread(runnable).start();
+  @Override
+  protected void doStop() {
+    try {
+      watchService.close();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
-  private void watchLoop() throws IOException, InterruptedException {
+  @Override
+  protected void pollLoop() {
     while (true) {
       try {
         WatchKey watchKey = watchService.take();
@@ -114,8 +99,13 @@ public class FileWatcher {
           }
         }
         watchKey.reset();
+      } catch (IOException io) {
+        throw new RuntimeException(io);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        break;
       } catch (ClosedWatchServiceException e) {
-        // shutting down
+        break; // shutting down
       }
     }
   }

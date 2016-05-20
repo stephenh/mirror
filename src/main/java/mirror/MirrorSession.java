@@ -42,7 +42,7 @@ public class MirrorSession {
       throw new RuntimeException(e);
     }
     sync = new SyncLogic(queues, fileAccess, tree);
-    queueWatcher.startWatching();
+    queueWatcher.start();
     saveToLocal = new SaveToLocal(queues, fileAccess);
     saveToLocal.start();
   }
@@ -57,7 +57,7 @@ public class MirrorSession {
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
-    watcher.startWatching();
+    watcher.start();
     return initialUpdates;
   }
 
@@ -67,7 +67,7 @@ public class MirrorSession {
 
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) throws IOException {
     this.outgoingChanges = outgoingChanges;
-    sync.startPolling();
+    sync.start();
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     saveToRemote.start();
   }
