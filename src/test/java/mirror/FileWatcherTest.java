@@ -31,7 +31,7 @@ public class FileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new FileWatcher(FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
+    watcher = new FileWatcher(new MirrorSessionState(), FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
     watcher.performInitialScan();
     watcher.start();
   }

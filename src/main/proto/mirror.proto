@@ -9,6 +9,8 @@ service Mirror {
   rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {}
 
   rpc StreamUpdates(stream Update) returns (stream Update) {}
+
+  rpc Ping(PingRequest) returns (PingResponse) {}
 }
 
 // Message for the client's initial state.
@@ -54,3 +56,8 @@ message Update {
   string ignoreString = 9;
 }
 
+message PingRequest {
+}
+
+message PingResponse {
+}

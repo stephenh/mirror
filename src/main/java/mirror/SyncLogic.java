@@ -1,5 +1,6 @@
 package mirror;
 
+import static mirror.Utils.handleInterrupt;
 import static org.apache.commons.lang3.StringUtils.defaultIfEmpty;
 import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.jooq.lambda.Seq.seq;
@@ -32,7 +33,8 @@ public class SyncLogic extends AbstractThreaded {
   private final FileAccess fileAccess;
   private final UpdateTree tree;
 
-  public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
+  public SyncLogic(MirrorSessionState state, Queues queues, FileAccess fileAccess, UpdateTree tree) {
+    super(state);
     this.queues = queues;
     this.fileAccess = fileAccess;
     this.tree = tree;
@@ -99,10 +101,10 @@ public class SyncLogic extends AbstractThreaded {
     }
   }
 
-  private void diff() {
+  private void diff() throws InterruptedException {
     DiffResults r = new UpdateTreeDiff(tree).diff();
-    r.saveLocally.forEach(queues.saveToLocal::add);
-    r.sendToRemote.forEach(queues.saveToRemote::add);
+    r.saveLocally.forEach(handleInterrupt(u -> queues.saveToLocal.put(u)));
+    r.sendToRemote.forEach(handleInterrupt(u -> queues.saveToRemote.put(u)));
   }
 
   /**

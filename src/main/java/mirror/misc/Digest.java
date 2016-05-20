@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Stopwatch;
 
 import mirror.FileWatcher;
+import mirror.MirrorSessionState;
 import mirror.Update;
 
 /** Tests how quickly creating MD5s of a directory tree would take. */
@@ -30,7 +31,7 @@ public class Digest {
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
-    FileWatcher r = new FileWatcher(watchService, root, queue);
+    FileWatcher r = new FileWatcher(new MirrorSessionState(), watchService, root, queue);
     List<Update> initial = r.performInitialScan();
     s.stop();
 

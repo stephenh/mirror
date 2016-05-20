@@ -1,5 +1,7 @@
 package mirror;
 
+import static mirror.Utils.withTimeout;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,13 +30,14 @@ public class MirrorClient {
 
     String host = args[0];
     Integer port = Integer.parseInt(args[1]);
-    Path remoteRoot = Paths.get(args[2]).toAbsolutePath();
-    Path localRoot = Paths.get(args[3]).toAbsolutePath();
+    Path remoteRoot = Paths.get(args[2]);
+    Path localRoot = Paths.get(args[3]);
 
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(localRoot, remoteRoot);
+    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl());
     client.startSession(stub);
+
     // TODO something better
     CountDownLatch cl = new CountDownLatch(1);
     cl.await();
@@ -42,19 +45,30 @@ public class MirrorClient {
 
   private final Path localRoot;
   private final Path remoteRoot;
-  private MirrorSession session;
+  private final ConnectionDetector detector;
+  private volatile MirrorSession session;
+  private volatile boolean stopped;
 
-  public MirrorClient(Path localRoot, Path remoteRoot) {
+  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
+    this.detector = detector;
   }
 
   /** Connects to the server and starts a sync session. */
   public void startSession(MirrorStub stub) {
-    session = new MirrorSession(localRoot);
+    detector.blockUntilConnected(stub);
+    log.info("Connected, starting session");
 
+    session = new MirrorSession(localRoot.toAbsolutePath());
+    session.addStoppedCallback(() -> {
+      if (!stopped) {
+        startSession(stub);
+      }
+    });
+
+    // 1. see what our current state is
     try {
-      // 1. see what our current state is
       List<Update> localState = session.calcInitialState();
       log.info("Client has " + localState.size() + " paths");
 
@@ -62,7 +76,9 @@ public class MirrorClient {
       SettableFuture<Integer> sessionId = SettableFuture.create();
       SettableFuture<List<Update>> remoteState = SettableFuture.create();
 
-      stub.initialSync(InitialSyncRequest
+      // Ideally this would be a blocking/sync call, but it looks like because
+      // one of our RPC methods is streaming, then this one is as well
+      withTimeout(stub).initialSync(InitialSyncRequest
         .newBuilder() //
         .setRemotePath(remoteRoot.toString())
         .addAllState(localState)
@@ -76,11 +92,11 @@ public class MirrorClient {
           @Override
           public void onError(Throwable t) {
             log.error("Error from incoming server stream", t);
+            session.stop();
           }
 
           @Override
           public void onCompleted() {
-            log.info("onCompleted called on the client incoming stream");
           }
         });
 
@@ -96,11 +112,13 @@ public class MirrorClient {
         @Override
         public void onError(Throwable t) {
           log.error("Error from incoming server stream", t);
+          session.stop();
         }
 
         @Override
         public void onCompleted() {
           log.info("onCompleted called on client incoming stream");
+          session.stop();
         }
       };
 
@@ -113,11 +131,13 @@ public class MirrorClient {
 
       session.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingChanges));
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      log.error("Exception starting the client", e);
+      session.stop();
     }
   }
 
   public void stop() throws InterruptedException, IOException {
+    stopped = true;
     session.stop();
   }
 }

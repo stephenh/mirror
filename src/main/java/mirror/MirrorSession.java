@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.WatchService;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -23,9 +26,11 @@ import io.grpc.stub.StreamObserver;
  */
 public class MirrorSession {
 
+  private final Logger log = LoggerFactory.getLogger(MirrorSession.class);
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
-  private final QueueWatcher queueWatcher = new QueueWatcher(queues);
+  private final MirrorSessionState state = new MirrorSessionState();
+  private final QueueWatcher queueWatcher = new QueueWatcher(state, queues);
   private final SaveToLocal saveToLocal;
   private final FileWatcher watcher;
   private final UpdateTree tree = UpdateTree.newRoot();
@@ -37,18 +42,34 @@ public class MirrorSession {
     this.fileAccess = new NativeFileAccess(root);
     try {
       WatchService watchService = FileSystems.getDefault().newWatchService();
-      watcher = new FileWatcher(watchService, root, queues.incomingQueue);
+      watcher = new FileWatcher(state, watchService, root, queues.incomingQueue);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    sync = new SyncLogic(queues, fileAccess, tree);
+    sync = new SyncLogic(state, queues, fileAccess, tree);
     queueWatcher.start();
-    saveToLocal = new SaveToLocal(queues, fileAccess);
+    saveToLocal = new SaveToLocal(state, queues, fileAccess);
     saveToLocal.start();
+    state.addStoppedCallback(() -> {
+      if (outgoingChanges != null) {
+        outgoingChanges.onCompleted();
+      }
+      watcher.stop();
+      sync.stop();
+      saveToLocal.stop();
+      queueWatcher.stop();
+      if (saveToRemote != null) {
+        saveToRemote.stop();
+      }
+    });
   }
 
   public void addRemoteUpdate(Update update) {
     queues.incomingQueue.add(update);
+  }
+
+  public void addStoppedCallback(Runnable r) {
+    state.addStoppedCallback(r);
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
@@ -68,18 +89,12 @@ public class MirrorSession {
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
     sync.start();
-    saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
+    saveToRemote = new SaveToRemote(state, queues, fileAccess, outgoingChanges);
     saveToRemote.start();
   }
 
   public void stop() {
-    if (outgoingChanges != null) {
-      outgoingChanges.onCompleted();
-    }
-    watcher.stop();
-    sync.stop();
-    saveToLocal.stop();
-    saveToRemote.stop();
-    queueWatcher.stop();
+    log.info("Stopping session");
+    state.stop();
   }
 }

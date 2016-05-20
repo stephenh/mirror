@@ -2,12 +2,16 @@ package mirror;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.TextFormat;
+
+import mirror.MirrorGrpc.MirrorStub;
 
 public class Utils {
 
@@ -21,6 +25,16 @@ public class Utils {
   @FunctionalInterface
   public interface InterruptedRunnable {
     void run() throws InterruptedException;
+  }
+
+  @FunctionalInterface
+  public interface InterruptedConsumer<T> {
+    void consume(T value) throws InterruptedException;
+  }
+
+  /** grpc-java doesn't support timeouts yet, so we have to set a per-call deadline. */
+  public static MirrorStub withTimeout(MirrorStub s) {
+    return s.withDeadlineAfter(30, TimeUnit.SECONDS);
   }
 
   public static void handleInterrupt(InterruptedRunnable r) {
@@ -39,6 +53,20 @@ public class Utils {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
     }
+  }
+
+  public static <T> Consumer<T> handleInterrupt(final InterruptedConsumer<T> c) {
+    return new Consumer<T>() {
+      @Override
+      public void accept(T t) {
+        try {
+          c.consume(t);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException(e);
+        }
+      }
+    };
   }
 
   public static String debugString(Update u) {

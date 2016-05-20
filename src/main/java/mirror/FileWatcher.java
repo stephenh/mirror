@@ -43,7 +43,8 @@ public class FileWatcher extends AbstractThreaded {
   private final BlockingQueue<Update> queue;
   private final WatchService watchService;
 
-  public FileWatcher(WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue) {
+  public FileWatcher(MirrorSessionState state, WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue) {
+    super(state);
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     this.queue = queue;

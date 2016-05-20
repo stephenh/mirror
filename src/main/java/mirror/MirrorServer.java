@@ -1,5 +1,6 @@
 package mirror;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -42,13 +43,18 @@ public class MirrorServer implements Mirror {
 
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
-    log.info("Starting new session");
-    try {
-      int sessionId = nextSessionId++;
-      String root = request.getRemotePath();
-      MirrorSession session = new MirrorSession(Paths.get(root));
-      sessions.put(sessionId, session);
+    int sessionId = nextSessionId++;
+    Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
 
+    log.info("Starting new session " + sessionId + " for + " + root);
+    MirrorSession session = new MirrorSession(root);
+
+    sessions.put(sessionId, session);
+    session.addStoppedCallback(() -> {
+      sessions.remove(sessionId);
+    });
+
+    try {
       // get our current state
       List<Update> serverState = session.calcInitialState();
       log.info("Server has " + serverState.size() + " paths");
@@ -61,7 +67,9 @@ public class MirrorServer implements Mirror {
       responseObserver.onNext(InitialSyncResponse.newBuilder().setSessionId(sessionId).addAllState(serverState).build());
       responseObserver.onCompleted();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      log.error("Error in initialSync", e);
+      session.stop();
+      responseObserver.onCompleted();
     }
   }
 
@@ -80,9 +88,10 @@ public class MirrorServer implements Mirror {
         if (session.get() == null) {
           // this is the first update, which is a dummy value with our session id
           sessionId.set(Integer.parseInt(value.getPath()));
+          MirrorSession ms = sessions.get(sessionId.get());
+          session.set(ms);
           // look for file system updates to send back to the client
-          session.set(sessions.get(sessionId.get()));
-          session.get().diffAndStartPolling(outgoingUpdates);
+          ms.diffAndStartPolling(outgoingUpdates);
         } else {
           session.get().addRemoteUpdate(value);
         }
@@ -103,10 +112,15 @@ public class MirrorServer implements Mirror {
       private void stopSession() {
         if (session.get() != null) {
           session.get().stop();
-          sessions.remove(sessionId.get());
         }
       }
     };
+  }
+
+  @Override
+  public void ping(PingRequest request, StreamObserver<PingResponse> responseObserver) {
+    responseObserver.onNext(PingResponse.newBuilder().build());
+    responseObserver.onCompleted();
   }
 
 }
