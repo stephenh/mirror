@@ -65,14 +65,14 @@ public class MirrorSession {
     remoteInitialUpdates.forEach(u -> tree.addRemote(u));
   }
 
-  public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) throws IOException {
+  public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
     sync.start();
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     saveToRemote.start();
   }
 
-  public void stop() throws InterruptedException, IOException {
+  public void stop() {
     if (outgoingChanges != null) {
       outgoingChanges.onCompleted();
     }

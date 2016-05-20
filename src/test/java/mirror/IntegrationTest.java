@@ -422,14 +422,14 @@ public class IntegrationTest {
     // server
     int port = nextPort++;
     // rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
-    rpc = InProcessServerBuilder.forName("mirror" + port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(MirrorGrpc.bindService(new MirrorServer())).build();
     rpc.start();
     log.info("started server");
     // client
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
-    client = new MirrorClient(root2.toPath());
+    client = new MirrorClient(root2.toPath(), root1.toPath());
     client.startSession(stub);
     log.info("started client");
   }

@@ -25,28 +25,33 @@ public class MirrorClient {
 
   public static void main(String[] args) throws Exception {
     LoggingConfig.init();
-    Path root = Paths.get(args[0]).toAbsolutePath();
-    String host = args[1];
-    Integer port = Integer.parseInt(args[2]);
+
+    String host = args[0];
+    Integer port = Integer.parseInt(args[1]);
+    Path remoteRoot = Paths.get(args[2]).toAbsolutePath();
+    Path localRoot = Paths.get(args[3]).toAbsolutePath();
+
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(root);
+    MirrorClient client = new MirrorClient(localRoot, remoteRoot);
     client.startSession(stub);
     // TODO something better
     CountDownLatch cl = new CountDownLatch(1);
     cl.await();
   }
 
-  private final Path root;
+  private final Path localRoot;
+  private final Path remoteRoot;
   private MirrorSession session;
 
-  public MirrorClient(Path root) {
-    this.root = root;
+  public MirrorClient(Path localRoot, Path remoteRoot) {
+    this.localRoot = localRoot;
+    this.remoteRoot = remoteRoot;
   }
 
   /** Connects to the server and starts a sync session. */
   public void startSession(MirrorStub stub) {
-    session = new MirrorSession(root);
+    session = new MirrorSession(localRoot);
 
     try {
       // 1. see what our current state is
@@ -54,23 +59,30 @@ public class MirrorClient {
       log.info("Client has " + localState.size() + " paths");
 
       // 2. send it to the server, so they can send back any stale/missing paths we have
+      SettableFuture<Integer> sessionId = SettableFuture.create();
       SettableFuture<List<Update>> remoteState = SettableFuture.create();
-      stub.initialSync(InitialSyncRequest.newBuilder().addAllState(localState).build(), new StreamObserver<InitialSyncResponse>() {
-        @Override
-        public void onNext(InitialSyncResponse value) {
-          remoteState.set(value.getStateList());
-        }
 
-        @Override
-        public void onError(Throwable t) {
-          log.error("Error from incoming server stream", t);
-        }
+      stub.initialSync(InitialSyncRequest
+        .newBuilder() //
+        .setRemotePath(remoteRoot.toString())
+        .addAllState(localState)
+        .build(), new StreamObserver<InitialSyncResponse>() {
+          @Override
+          public void onNext(InitialSyncResponse value) {
+            sessionId.set(value.getSessionId());
+            remoteState.set(value.getStateList());
+          }
 
-        @Override
-        public void onCompleted() {
-          log.info("onCompleted called on the client incoming stream");
-        }
-      });
+          @Override
+          public void onError(Throwable t) {
+            log.error("Error from incoming server stream", t);
+          }
+
+          @Override
+          public void onCompleted() {
+            log.info("onCompleted called on the client incoming stream");
+          }
+        });
 
       session.addInitialRemoteUpdates(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");
@@ -93,10 +105,11 @@ public class MirrorClient {
       };
 
       // StreamObserver<Update> outgoingChanges = stub.streamUpdates(incomingChanges);
-
       ClientCall<Update, Update> call = stub.getChannel().newCall(MirrorGrpc.METHOD_STREAM_UPDATES, stub.getCallOptions());
-
       CallStreamObserver<Update> outgoingChanges = new ClientCallToCallStreamAdapter<>(call, incomingChanges);
+
+      // send over the sessionId as a fake update
+      outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get().toString()).build());
 
       session.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingChanges));
     } catch (Exception e) {
