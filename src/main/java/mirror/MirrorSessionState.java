@@ -3,11 +3,15 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Holds the state (currently just stopped/not-stopped) and a list of callbacks.
  */
 public class MirrorSessionState {
 
+  private static final Logger log = LoggerFactory.getLogger(MirrorSessionState.class);
   private final List<Runnable> callbacks = new ArrayList<>();
   private boolean stopped = false;
 
@@ -24,7 +28,13 @@ public class MirrorSessionState {
   public synchronized void stop() {
     if (!stopped) {
       stopped = true;
-      callbacks.forEach(r -> r.run());
+      callbacks.forEach(r -> {
+        try {
+          r.run();
+        } catch (Exception e) {
+          log.error("Error calling callback", e);
+        }
+      });
     }
   }
 }

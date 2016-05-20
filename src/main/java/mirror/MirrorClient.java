@@ -82,27 +82,24 @@ public class MirrorClient {
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
-      withTimeout(stub).initialSync(InitialSyncRequest
-        .newBuilder() //
-        .setRemotePath(remoteRoot.toString())
-        .addAllState(localState)
-        .build(), new StreamObserver<InitialSyncResponse>() {
-          @Override
-          public void onNext(InitialSyncResponse value) {
-            sessionId.set(value.getSessionId());
-            remoteState.set(value.getStateList());
-          }
+      InitialSyncRequest req = InitialSyncRequest.newBuilder().setRemotePath(remoteRoot.toString()).addAllState(localState).build();
+      withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {
+        @Override
+        public void onNext(InitialSyncResponse value) {
+          sessionId.set(value.getSessionId());
+          remoteState.set(value.getStateList());
+        }
 
-          @Override
-          public void onError(Throwable t) {
-            log.error("Error from incoming server stream", t);
-            session.stop();
-          }
+        @Override
+        public void onError(Throwable t) {
+          log.error("Error from incoming server stream", t);
+          session.stop();
+        }
 
-          @Override
-          public void onCompleted() {
-          }
-        });
+        @Override
+        public void onCompleted() {
+        }
+      });
 
       session.addInitialRemoteUpdates(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");

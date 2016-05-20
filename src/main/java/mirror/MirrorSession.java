@@ -44,16 +44,17 @@ public class MirrorSession {
     queueWatcher.start();
     saveToLocal = new SaveToLocal(state, queues, fileAccess);
     saveToLocal.start();
+    // use separate callbacks so one failing doesn't stop the others
+    state.addStoppedCallback(() -> fileWatcher.stop());
+    state.addStoppedCallback(() -> syncLogic.stop());
+    state.addStoppedCallback(() -> saveToLocal.stop());
+    state.addStoppedCallback(() -> queueWatcher.stop());
     state.addStoppedCallback(() -> {
-      if (outgoingChanges != null) {
-        outgoingChanges.onCompleted();
-      }
-      fileWatcher.stop();
-      syncLogic.stop();
-      saveToLocal.stop();
-      queueWatcher.stop();
       if (saveToRemote != null) {
         saveToRemote.stop();
+      }
+      if (outgoingChanges != null) {
+        outgoingChanges.onCompleted();
       }
     });
   }
