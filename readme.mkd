@@ -1,49 +1,4 @@
 
-Setup
-=====
-
-Current (pre-release) instructions using master:
-
-* Build the project
-  * `gradle shadowJar`
-* Copy to remote home directory
-  * `scp build/libs/mirror-all.jar example.com:~/`
-* Copy to your local homed directory (not really necessary)
-  * `cp build/libs/mirror-all.jar ~/`
-* Start the server-side
-  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorServer 10000`
-* Start the client-side
-  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./dir/ ./dir/`
-
-This will sync the `$HOME/dir` directory on your two machines.
-
-Eventually it would be nice to run just one command, e.g. on the client-side, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
-
-Also, there are no config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
-
-Todo
-====
-
-* Configuration
-  * Right now include/exclude settings are hardcoded, should be configurable
-  * Use command line parameters? Config file? Both?
-* Handle watch event overflows by restarting session
-* Handle network disconnections by restarting session 
-  * Ideally would be as sexy as mosh--the client just waits patiently until server is available again
-* Handle various IOExceptions will inevitably happen, probably by restarting session
-* Really easy setup/install process, e.g.:
-  * Currently you have to run `java -cp ...` and `java -cp ...` on both sides
-  * Should the server-side be an always-running daemon? Same thing with the client-side?
-  * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
-* Include file hashes to avoid sending files with different modification times
-  * See Digest for an experiment; it's not that slow
-* Use file hashes to detect renames
-* Support svn:ignore
-  * Or else just suggest users use git-svn for all svn repos
-  * Possibly by converting in-memory to .gitignore
-* Support .git/info/exclude
-* Should syncing .git be a good idea?
-
 Primary Workflow
 ================
 
@@ -88,4 +43,49 @@ Comparison to Existing Options
 * unison is two-way, but not real-time
 * lsyncd is only one-way, and doesn't handle the initial sync
 * sshfs is too slow and doesn't support inotify
+
+Setup
+=====
+
+Current (pre-release) instructions using master:
+
+* Build the project
+  * `gradle shadowJar`
+* Copy to remote home directory
+  * `scp build/libs/mirror-all.jar example.com:~/`
+* Copy to your local homed directory (not really necessary)
+  * `cp build/libs/mirror-all.jar ~/`
+* Start the server-side
+  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorServer 10000`
+* Start the client-side
+  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./dir/ ./dir/`
+
+This will sync the `$HOME/dir` directory on your two machines.
+
+Eventually it would be nice to run just one command, e.g. on the client-side, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
+
+Also, there are no config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
+
+Todo
+====
+
+* Configuration
+  * Right now include/exclude settings are hardcoded, should be configurable
+  * Use command line parameters? Config file? Both?
+* Handle watch event overflows by restarting session
+* Handle network disconnections by restarting session 
+  * Ideally would be as sexy as mosh--the client just waits patiently until server is available again
+* Handle various IOExceptions will inevitably happen, probably by restarting session
+* Really easy setup/install process, e.g.:
+  * Currently you have to run `java -cp ...` and `java -cp ...` on both sides
+  * Should the server-side be an always-running daemon? Same thing with the client-side?
+  * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
+* Include file hashes to avoid sending files with different modification times
+  * See Digest for an experiment; it's not that slow
+* Use file hashes to detect renames
+* Support svn:ignore
+  * Or else just suggest users use git-svn for all svn repos
+  * Possibly by converting in-memory to .gitignore
+* Support .git/info/exclude
+* Should syncing .git be a good idea?
 
