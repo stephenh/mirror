@@ -1,7 +1,6 @@
 package mirror;
 
-import static mirror.Utils.newWatchService;
-
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -49,7 +48,7 @@ public class MirrorServer implements Mirror {
     Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
 
     log.info("Starting new session " + sessionId + " for + " + root);
-    MirrorSession session = new MirrorSession(root, newWatchService());
+    MirrorSession session = new MirrorSession(root, FileSystems.getDefault());
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

@@ -1,8 +1,8 @@
 package mirror;
 
 import java.io.IOException;
+import java.nio.file.FileSystem;
 import java.nio.file.Path;
-import java.nio.file.WatchService;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -37,9 +37,13 @@ public class MirrorSession {
   private SaveToRemote saveToRemote;
   private StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(Path root, WatchService watchService) {
+  public MirrorSession(Path root, FileSystem fileSystem) {
     this.fileAccess = new NativeFileAccess(root);
-    fileWatcher = new FileWatcher(state, watchService, root, queues.incomingQueue);
+    try {
+      fileWatcher = new FileWatcher(state, fileSystem.newWatchService(), root, queues.incomingQueue);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     syncLogic = new SyncLogic(state, queues, fileAccess, tree);
     queueWatcher.start();
     saveToLocal = new SaveToLocal(state, queues, fileAccess);

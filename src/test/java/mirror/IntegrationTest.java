@@ -1,10 +1,10 @@
 package mirror;
 
-import static mirror.Utils.newWatchService;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -430,7 +430,7 @@ public class IntegrationTest {
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
-    client = new MirrorClient(root2.toPath(), root1.toPath(), new ConnectionDetector.Impl(), newWatchService());
+    client = new MirrorClient(root2.toPath(), root1.toPath(), new ConnectionDetector.Impl(), FileSystems.getDefault());
     client.startSession(stub);
     log.info("started client");
   }

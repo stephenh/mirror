@@ -1,13 +1,14 @@
 package mirror;
 
-import static mirror.Utils.newWatchService;
 import static mirror.Utils.withTimeout;
 
-import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.WatchService;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ public class MirrorClient {
 
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl(), newWatchService());
+    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl(), FileSystems.getDefault());
     client.startSession(stub);
 
     // TODO something better
@@ -48,15 +49,15 @@ public class MirrorClient {
   private final Path localRoot;
   private final Path remoteRoot;
   private final ConnectionDetector detector;
-  private final WatchService watchService;
+  private final FileSystem fileSystem;
   private volatile MirrorSession session;
   private volatile boolean stopped;
 
-  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector, WatchService watchService) {
+  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector, FileSystem fileSystem) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
     this.detector = detector;
-    this.watchService = watchService;
+    this.fileSystem = fileSystem;
   }
 
   /** Connects to the server and starts a sync session. */
@@ -64,12 +65,28 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session");
 
-    session = new MirrorSession(localRoot.toAbsolutePath(), watchService);
+    session = new MirrorSession(localRoot.toAbsolutePath(), fileSystem);
+
+    // Automatically re-connect when we're disconnected
     session.addStoppedCallback(() -> {
       if (!stopped) {
         startSession(stub);
       }
     });
+
+    // grpc's deadlines/timeouts don't work well with streams (currently/AFAICT),
+    // so if the server/ goes away, we have no way of knowing. so for now we ping.
+    final Timer task = new Timer();
+    session.addStoppedCallback(() -> task.cancel());
+    task.schedule(new TimerTask() {
+      public void run() {
+        if (!detector.isAvailable(stub)) {
+          log.info("Connection lost, killing session");
+          session.stop();
+          task.cancel();
+        }
+      }
+    }, 30_000, 30_000);
 
     // 1. see what our current state is
     try {
@@ -137,7 +154,7 @@ public class MirrorClient {
     }
   }
 
-  public void stop() throws InterruptedException, IOException {
+  public void stop() {
     stopped = true;
     session.stop();
   }

@@ -1,9 +1,7 @@
 package mirror;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.WatchService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -18,14 +16,6 @@ import mirror.MirrorGrpc.MirrorStub;
 public class Utils {
 
   private static final Logger log = LoggerFactory.getLogger(Utils.class);
-
-  public static WatchService newWatchService() {
-    try {
-      return FileSystems.getDefault().newWatchService();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   @FunctionalInterface
   public interface InterruptedSupplier<T> {
