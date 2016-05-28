@@ -22,7 +22,11 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 
 /**
- * A tree of updates, e.g. both files and directories.
+ * A tree of file+directory metadata ({@link Update}s).
+ *
+ * Given comparing remote/local data is our main task, we store
+ * both remote+local metadata within the same tree instance,
+ * e.g. each node contains both it's respective remote+local Updates.
  *
  * All of the {@link Update}s within the UpdateTree should contain
  * metadata only, and as the tree is solely for tracking/diffing
@@ -83,6 +87,7 @@ public class UpdateTree {
     }
   }
 
+  /** Invokes {@link visitor} at each node in our tree, including the root. */
   public void visit(Consumer<Node> visitor) {
     visit(root, visitor);
   }

@@ -70,15 +70,12 @@ public class UpdateTreeDiff {
         results.sendToRemote.add(local);
       }
       node.setRemote(local);
-      // might eventually be cute to do:
-      // remote = remoteTree.add(local.getUpdate());
     } else if (node.isRemoteNewer()) {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !node.isSameType() && !local.getDelete()) {
         Update delete = Update.newBuilder(local).setDelete(true).build();
         results.saveLocally.add(delete);
         node.setLocal(delete);
-        local = null;
       }
       // during the initial sync, we don't have any remote data in the UpdateTree (only metadata is sent),
       // so we can't save the data locally, and instead soon-ish we should be sent data-filled Updates by
