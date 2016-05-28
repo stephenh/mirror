@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple2;
@@ -87,9 +88,29 @@ public class UpdateTree {
     }
   }
 
-  /** Invokes {@link visitor} at each node in our tree, including the root. */
+  /** Invokes {@link visitor} at each node in the tree, including the root. */
   public void visit(Consumer<Node> visitor) {
-    visit(root, visitor);
+    visit(root, n -> {
+      visitor.accept(n);
+      return true;
+    });
+  }
+
+  /**
+   * Invokes {@link visitor} at each dirty node in the tree, including the root.
+   *
+   * After this method completes, all nodes are reset to clean. 
+   */
+  public void visitDirty(Consumer<Node> visitor) {
+    visit(root, n -> {
+      if (n.isDirty) {
+        visitor.accept(n);
+        n.isDirty = false;
+      }
+      boolean cont = n.hasDirtyDecendent;
+      n.hasDirtyDecendent = false;
+      return cont;
+    });
   }
 
   @Override
@@ -147,7 +168,8 @@ public class UpdateTree {
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
     private final PathRules ignoreRules = new PathRules();
-    // State == dirty, synced, partial-ignore/full-ignore?
+    private boolean hasDirtyDecendent;
+    private boolean isDirty;
     private Update local;
     private Update remote;
     private Boolean shouldIgnore;
@@ -180,6 +202,7 @@ public class UpdateTree {
       }
       this.remote = remote;
       updateParentIgnoreRulesIfNeeded();
+      markDirty();
     }
 
     Update getLocal() {
@@ -202,6 +225,7 @@ public class UpdateTree {
         children.clear();
       }
       updateParentIgnoreRulesIfNeeded();
+      markDirty();
     }
 
     boolean isRemoteNewer() {
@@ -276,9 +300,17 @@ public class UpdateTree {
       }
     }
 
+    void markDirty() {
+      isDirty = true;
+      Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).forEach(n -> n.hasDirtyDecendent = true);
+    }
+
     void setIgnoreRules(String ignoreData) {
       ignoreRules.setRules(ignoreData);
-      visit(this, n -> n.shouldIgnore = null);
+      visit(this, n -> {
+        n.shouldIgnore = null;
+        return true;
+      });
     }
 
     @Override
@@ -287,14 +319,16 @@ public class UpdateTree {
     }
   }
 
-  /** Visits each node in the tree, in breadth-first order. */
-  private static void visit(Node start, Consumer<Node> visitor) {
+  /** Visits nodes in the tree, in breadth-first order, continuing if {@visitor} returns true. */
+  private static void visit(Node start, Predicate<Node> visitor) {
     Queue<Node> queue = new LinkedBlockingQueue<Node>();
     queue.add(start);
     while (!queue.isEmpty()) {
       Node node = queue.remove();
-      visitor.accept(node);
-      queue.addAll(node.children);
+      boolean cont = visitor.test(node);
+      if (cont) {
+        queue.addAll(node.children);
+      }
     }
   }
 

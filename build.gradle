@@ -34,6 +34,7 @@ dependencies {
   compile 'io.airlift:airline:0.7'
   compile 'joist:joist-util:1.13.1'
   testCompile 'junit:junit:4.12'
+  testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'
   testCompile 'org.mockito:mockito-core:2.0.44-beta'
 }
 

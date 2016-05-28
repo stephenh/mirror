@@ -3,7 +3,12 @@ package mirror;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.lambda.Seq;
 import org.junit.Test;
 
 import mirror.UpdateTree.Node;
@@ -125,7 +130,7 @@ public class UpdateTreeTest {
     assertThat(root.getChildren().get(0).getLocal().getDelete(), is(false));
     assertThat(root.getChildren().get(0).getLocal().getModTime(), is(3L));
   }
-  
+
   @Test
   public void deleteFileTwiceDoesNotRetickModTime() {
     root.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
@@ -136,7 +141,6 @@ public class UpdateTreeTest {
     assertThat(root.getChildren().get(0).getLocal().getModTime(), is(2L));
   }
 
-
   @Test(expected = IllegalArgumentException.class)
   public void failsIfPathStartsWithSlash() {
     root.addLocal(Update.newBuilder().setPath("/foo").build());
@@ -145,5 +149,34 @@ public class UpdateTreeTest {
   @Test(expected = IllegalArgumentException.class)
   public void failsIfPathEndsWithSlash() {
     root.addLocal(Update.newBuilder().setPath("foo/").build());
+  }
+
+  @Test
+  public void visitDirtyNodes() {
+    root.addLocal(Update.newBuilder().setPath("foo.txt").build());
+    root.addLocal(Update.newBuilder().setPath("bar").build());
+    root.addLocal(Update.newBuilder().setPath("bar/foo.txt").build());
+
+    // on the first visit, we see all the nodes
+    List<Node> nodes = new ArrayList<>();
+    root.visitDirty(n -> nodes.add(n));
+    assertThat(nodes.size(), is(4));
+
+    // if no nodes change, then we don't visit any
+    nodes.clear();
+    root.visitDirty(n -> nodes.add(n));
+    assertThat(nodes.size(), is(0));
+
+    // if one node changes, we visit only that one
+    root.addLocal(Update.newBuilder().setPath("foo.txt").build());
+    nodes.clear();
+    root.visitDirty(n -> nodes.add(n));
+    assertThat(Seq.seq(nodes).map(n -> n.getPath()), contains("foo.txt"));
+
+    // if a child node changes, we visit only that one
+    root.addLocal(Update.newBuilder().setPath("bar/foo.txt").build());
+    nodes.clear();
+    root.visitDirty(n -> nodes.add(n));
+    assertThat(Seq.seq(nodes).map(n -> n.getPath()), contains("bar/foo.txt"));
   }
 }

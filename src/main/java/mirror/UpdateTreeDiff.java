@@ -57,7 +57,7 @@ public class UpdateTreeDiff {
   public DiffResults diff() {
     DiffResults results = new DiffResults();
     // Utils.time(log, "diff", () -> tree.visit(node -> diff(results, node)));
-    tree.visit(node -> diff(results, node));
+    tree.visitDirty(node -> diff(results, node));
     return results;
   }
 
