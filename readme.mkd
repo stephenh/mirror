@@ -1,4 +1,25 @@
 
+Setup
+=====
+
+Current (pre-release) instructions using master:
+
+* Build the project
+  * `gradle shadowJar`
+* Copy to remote home directory
+  * `scp build/libs/mirror-all.jar example.com:~/`
+* Copy to your local homed directory (not really necessary)
+  * `cp build/libs/mirror-all.jar ~/`
+* Start the server-side
+  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorServer 10000`
+* Start the client-side
+  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./dir/ ./dir/`
+
+This will sync the `$HOME/dir` directory on your two machines.
+
+Eventually it would be nice to run just one command, e.g. on the client-side, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
+
+Also, there are no config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
 
 Todo
 ====
