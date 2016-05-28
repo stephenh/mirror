@@ -2,9 +2,9 @@
 Primary Workflow
 ================
 
-Mirror is built to support a desktop/laptop workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
+Mirror is built to support a two-machine (e.g. desktop+laptop) development workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
 
-This is fairly common (see "Comparison to Existing Options" section below), but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts from the build process, e.g.:
+This is fairly common (see "Comparison to Existing Options" section below), but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts (or build time-generated source code) from the build process, e.g.:
 
 * On your laptop, save `projectA/foo.java`
   * Mirror sends `foo.java` to the desktop
@@ -12,11 +12,11 @@ This is fairly common (see "Comparison to Existing Options" section below), but 
   * Mirror sends `projectA-snapshot.jar` back to the laptop
 * On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. when editing `projectB/bar.java`
 
-Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally (and on projects I'd worked on previously to the environment I need mirror for) the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the classpath for `projectB`.
+Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the classpath for `projectB`.
 
-However, for some larger/more complex projects and build tools, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), the IDE just can't reproduce the esoteric build process to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
+However, for some larger/more complex projects and build tools, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), the IDE just can't reproduce the build process closely enough to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
 
-And this scenario (local edits, remotely-built cross-project artifacts) is exactly what Mirror is built to address.
+This scenario (local edits + remotely-built cross-project artifacts) is what Mirror addresses.
 
 Goals
 =====
@@ -28,9 +28,10 @@ Non-Goals
 =========
 
 * Offline/disconnected support (e.g. general purpose distributed file system)
-  * Other than very basic "bring back into sync" support
+  * Other than basic "auto re-connect + restart syncing" support
 * Maintain Unix permissions/owner/group
 * Support for multiple clients
+  * Although this in theory should work, it's not an explicit goal
 * Support for huge files
   * The assumption is that most files are source code, and occassional binary artifacts
 * Super-efficient diff/transmission logic like rsync
@@ -39,10 +40,14 @@ Non-Goals
 Comparison to Existing Options
 ==============================
 
-* rsync is not two-way, nor two-way
+I looked at several sync options before starting mirror, but didn't find anything that quite fit:
+
+* rsync is not two-way, nor real-time
 * unison is two-way, but not real-time
-* lsyncd is only one-way, and doesn't handle the initial sync
+* lsyncd is real-time, but not two-way, and doesn't handle the initial sync
 * sshfs is too slow and doesn't support inotify
+* doppleganger (an internal tool) is real-time, but not two-way
+  * It assumes you run the build tool (e.g. gradle) on both laptop and desktop, and I want to only run it on the desktop
 
 Setup
 =====
@@ -87,5 +92,6 @@ Todo
   * Or else just suggest users use git-svn for all svn repos
   * Possibly by converting in-memory to .gitignore
 * Support .git/info/exclude
-* Should syncing .git be a good idea?
+* Should syncing .git be a good idea? (then `git log`/etc. would work on both sides)
+* Integrate with [watchman](https://facebook.github.io/watchman/) (potentially more reliable)
 
