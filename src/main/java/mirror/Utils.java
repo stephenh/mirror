@@ -33,7 +33,8 @@ public class Utils {
 
   /** grpc-java doesn't support timeouts yet, so we have to set a per-call deadline. */
   public static MirrorStub withTimeout(MirrorStub s) {
-    return s.withDeadlineAfter(30, TimeUnit.SECONDS);
+    // over VPN, ~100k files can take 30 seconds.
+    return s.withDeadlineAfter(3, TimeUnit.MINUTES);
   }
 
   public static void handleInterrupt(InterruptedRunnable r) {

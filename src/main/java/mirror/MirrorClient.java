@@ -118,8 +118,9 @@ public class MirrorClient {
         }
       });
 
-      session.addInitialRemoteUpdates(remoteState.get());
       log.info("Server has " + remoteState.get().size() + " paths");
+      session.addInitialRemoteUpdates(remoteState.get());
+      log.info("Tree populated");
 
       StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
         @Override

@@ -63,6 +63,7 @@ public class MirrorServer implements Mirror {
 
       // record the client's current state
       session.addInitialRemoteUpdates(request.getStateList());
+      log.info("Tree populated");
 
       // send back our state for the client to seed their own sync queue with our missing/stale paths
       responseObserver.onNext(InitialSyncResponse.newBuilder().setSessionId(sessionId).addAllState(serverState).build());
