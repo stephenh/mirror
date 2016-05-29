@@ -56,14 +56,12 @@ public class SaveToRemote extends AbstractThreaded {
     try {
       Update.Builder b = Update.newBuilder(update).setLocal(false);
       if (!update.getDirectory() && update.getSymlink().isEmpty() && !update.getDelete()) {
-        b.setData(Utils.readDataFully(fileAccess, Paths.get(update.getPath())));
+        b.setData(fileAccess.read(Paths.get(update.getPath())));
       }
       log.debug("Sending to remote " + update.getPath());
       outgoingChanges.onNext(b.build());
-    } catch (InterruptedException e) {
-      log.error("Interrupted " + debugString(update), e);
-      Thread.currentThread().interrupt();
     } catch (IOException e) {
+      // TODO Should we error here, so that the session is restarted?
       log.error("Could not read " + debugString(update), e);
     }
   }

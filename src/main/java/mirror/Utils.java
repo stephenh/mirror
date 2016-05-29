@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.TextFormat;
 
 import mirror.MirrorGrpc.MirrorStub;
@@ -81,24 +80,32 @@ public class Utils {
     log.info("Completed " + action + ": " + (stop - start) + "ms");
   }
 
-  /** @return the contents of {@code path}, after doing a best-effort attempt to ensure it's done being written. */
-  public static ByteString readDataFully(FileAccess fileAccess, Path path) throws IOException, InterruptedException {
+  /** Waits until {@code path} is not longer being actively written to (best-effort). */
+  public static void ensureSettled(FileAccess fileAccess, Path path) {
     // do some gyrations to ensure the file writer has completely written the file
     boolean shouldBeComplete = false;
-    while (!shouldBeComplete) {
-      long localModTime = fileAccess.getModifiedTime(path);
-      long size1 = fileAccess.getFileSize(path);
-      if (fileWasJustModified(localModTime)) {
-        Thread.sleep(500); // 100ms was too small
-        localModTime = fileAccess.getModifiedTime(path);
-        long size2 = fileAccess.getFileSize(path);
-        log.info("...waiting {} {}", size1, size2);
-        shouldBeComplete = size1 == size2;
-      } else {
-        shouldBeComplete = true; // if seeded data, assume we don't need to sleep
+    try {
+      while (!shouldBeComplete) {
+        long localModTime = fileAccess.getModifiedTime(path);
+        if (fileWasJustModified(localModTime)) {
+          long size1 = fileAccess.getFileSize(path);
+          Thread.sleep(500); // 100ms was too small
+          long size2 = fileAccess.getFileSize(path);
+          shouldBeComplete = size1 == size2;
+          if (!shouldBeComplete) {
+            log.info("{} not settled {} {}", path, size1, size2);
+          }
+        } else {
+          shouldBeComplete = true; // no need to check
+        }
       }
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(ie);
+    } catch (IOException io) {
+      // assume the file disappeared, and we'll catch it later
+      return;
     }
-    return fileAccess.read(path);
   }
 
   /** @return whether localModTime was within the last 2 seconds. */
