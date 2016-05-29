@@ -12,9 +12,9 @@ This is fairly common (see "Comparison to Existing Options" section below), but 
   * Mirror sends `projectA-snapshot.jar` back to the laptop
 * On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. when editing `projectB/bar.java`
 
-Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the classpath for `projectB`.
+Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the IDE classpath for `projectB`. If you can setup your projects this way, it is preferable.
 
-However, for some larger/more complex projects and build tools, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build, and not the IDE build), the IDE just can't reproduce the build process closely enough to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
+However, for larger/more complex projects, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build), the IDE just can't reproduce the build process closely enough to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
 
 This scenario (local edits + remotely-built cross-project artifacts) is what Mirror addresses.
 
@@ -29,6 +29,7 @@ Non-Goals
 
 * Offline/disconnected support (e.g. general purpose distributed file system)
   * Other than basic "auto re-connect + restart syncing" support
+  * If a file is edited both remotely and locally while disconnected, the last write wins
 * Maintain Unix permissions/owner/group
 * Support for multiple clients
   * Although this in theory should work, it's not an explicit goal
@@ -47,29 +48,29 @@ I looked at several sync options before starting mirror, but didn't find anythin
 * lsyncd is real-time, but not two-way, and doesn't handle the initial sync
 * sshfs is too slow and doesn't support inotify
 * doppleganger (an internal tool) is real-time, but not two-way
-  * It assumes you run the build tool (e.g. gradle) on both laptop and desktop, and I want to only run it on the desktop
+  * It also generally assumes you can run the build tool (e.g. gradle) on both laptop and desktop, and for my setup I want to only run it on the desktop
 
 Setup
 =====
 
 Current (pre-release) instructions using master:
 
-* Build the project
+* Build the project's uberjar
   * `gradle shadowJar`
 * Copy to remote home directory
-  * `scp build/libs/mirror-all.jar example.com:~/`
-* Copy to your local homed directory (not really necessary)
+  * `scp build/libs/mirror-all.jar your-desktop.com:~/`
+* Copy to your local home directory (not really necessary)
   * `cp build/libs/mirror-all.jar ~/`
-* Start the server-side
+* Start the server-side from the desktop's home directory
   * `java -Xmx1G -cp mirror-all.jar mirror.MirrorServer 10000`
-* Start the client-side
-  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./dir/ ./dir/`
+* Start the client-side from the laptop's home directory
+  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./code/ ./code/`
 
-This will sync the `$HOME/dir` directory on your two machines.
+This will sync the `$HOME/code` directory on your two machines.
 
-Eventually it would be nice to run just one command, e.g. on the client-side, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
+Eventually it would be nice to run just one command, e.g. on the client-side have a single `mirror ...` invocation, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
 
-Also, there are no config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
+Also, there are currently no user-available config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
 
 Todo
 ====
