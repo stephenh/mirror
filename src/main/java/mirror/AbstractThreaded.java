@@ -19,11 +19,17 @@ abstract class AbstractThreaded {
   protected final Logger log = LoggerFactory.getLogger(getClass());
   protected volatile boolean started = false;
   protected volatile boolean shutdown = false;
-  protected final CountDownLatch isShutdown = new CountDownLatch(1);
+  private final CountDownLatch isShutdown = new CountDownLatch(1);
+  private final Thread thread;
   private final MirrorSessionState sessionState;
 
   protected AbstractThreaded(MirrorSessionState sessionState) {
     this.sessionState = sessionState;
+    thread = new ThreadFactoryBuilder() //
+      .setDaemon(true)
+      .setNameFormat(getClass().getSimpleName() + "-%s")
+      .build()
+      .newThread(() -> run());
   }
 
   /**
@@ -34,22 +40,7 @@ abstract class AbstractThreaded {
       throw new IllegalStateException("Already started");
     }
     started = true;
-    Runnable runnable = () -> {
-      try {
-        handleInterrupt(() -> pollLoop());
-      } catch (Exception e) {
-        log.error("Error escaped pollLoop", e);
-        sessionState.stop();
-      } finally {
-        isShutdown.countDown();
-      }
-    };
-    new ThreadFactoryBuilder() //
-      .setDaemon(true)
-      .setNameFormat(getClass().getSimpleName() + "-%s")
-      .build()
-      .newThread(runnable)
-      .start();
+    thread.start();
   }
 
   /**
@@ -61,17 +52,29 @@ abstract class AbstractThreaded {
     if (!started) {
       return;
     }
-    try {
-      doStop();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    thread.interrupt();
     handleInterrupt(() -> isShutdown.await());
+  }
+
+  private void run() {
+    try {
+      try {
+        pollLoop();
+      } catch (InterruptedException ie) {
+        // shutting down
+      } catch (Exception e) {
+        log.error("Error escaped pollLoop", e);
+        sessionState.stop();
+      }
+      doStop();
+    } finally {
+      isShutdown.countDown();
+    }
   }
 
   protected abstract void pollLoop() throws InterruptedException;
 
-  protected void doStop() throws Exception {
+  protected void doStop() {
   }
 
 }

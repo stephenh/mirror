@@ -40,7 +40,6 @@ public class FileWatcher extends AbstractThreaded {
 
   // Use a synchronizedBiMap because technically performInitialScan and startPolling use different threads
   private final BiMap<WatchKey, Path> watchedDirectories = Maps.synchronizedBiMap(HashBiMap.create());
-  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final Path rootDirectory;
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> rawUpdates = new ArrayBlockingQueue<>(1_000_000);
@@ -207,7 +206,7 @@ public class FileWatcher extends AbstractThreaded {
    *
    * We perform this on it's own dedicated thread, so that the FileWatcher thread
    * can keep immediately grabbing updates from the watcher service, to help prevent
-   * overflows.
+   * 
    *
    * We used to check writes after diffing, but doing it here means that the UpdateTree
    * will have all of the right metadata. (The con is that we'll debounce writes that
@@ -227,9 +226,7 @@ public class FileWatcher extends AbstractThreaded {
     protected void pollLoop() throws InterruptedException {
       while (!shutdown) {
         Update u = rawUpdates.take();
-        if (u == shutdownUpdate) {
-          break;
-        } else if (!u.getDirectory() && !u.getDelete() && u.getSymlink().isEmpty()) {
+        if (!u.getDirectory() && !u.getDelete() && u.getSymlink().isEmpty()) {
           // this is a file
           Utils.ensureSettled(fileAccess, rootDirectory.resolve(u.getPath()));
         } else if (u.getDelete()) {
@@ -238,12 +235,6 @@ public class FileWatcher extends AbstractThreaded {
         }
         queue.add(u);
       }
-    }
-
-    @Override
-    protected void doStop() {
-      rawUpdates.clear();
-      rawUpdates.add(shutdownUpdate);
     }
   }
 

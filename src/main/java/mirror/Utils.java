@@ -81,7 +81,7 @@ public class Utils {
   }
 
   /** Waits until {@code path} is not longer being actively written to (best-effort). */
-  public static void ensureSettled(FileAccess fileAccess, Path path) {
+  public static void ensureSettled(FileAccess fileAccess, Path path) throws InterruptedException {
     // do some gyrations to ensure the file writer has completely written the file
     boolean shouldBeComplete = false;
     try {
@@ -99,9 +99,6 @@ public class Utils {
           shouldBeComplete = true; // no need to check
         }
       }
-    } catch (InterruptedException ie) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(ie);
     } catch (IOException io) {
       // assume the file disappeared, and we'll catch it later
       return;

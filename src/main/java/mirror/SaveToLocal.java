@@ -12,7 +12,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 public class SaveToLocal extends AbstractThreaded {
 
-  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final BlockingQueue<Update> results;
   private final FileAccess fileAccess;
 
@@ -26,21 +25,12 @@ public class SaveToLocal extends AbstractThreaded {
   protected void pollLoop() throws InterruptedException {
     while (!shutdown) {
       Update u = results.take();
-      if (u == shutdownUpdate) {
-        return;
-      }
       try {
         saveLocally(u);
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         log.error("Exception with results " + u, e);
       }
     }
-  }
-
-  @Override
-  protected void doStop() throws InterruptedException {
-    results.clear();
-    results.put(shutdownUpdate);
   }
 
   @VisibleForTesting

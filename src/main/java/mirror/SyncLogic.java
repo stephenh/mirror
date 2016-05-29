@@ -28,7 +28,6 @@ import mirror.UpdateTreeDiff.DiffResults;
  */
 public class SyncLogic extends AbstractThreaded {
 
-  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
@@ -46,24 +45,15 @@ public class SyncLogic extends AbstractThreaded {
     while (!shutdown) {
       try {
         List<Update> batch = getNextBatchOrBlock();
-        if (seq(batch).anyMatch(u -> u == shutdownUpdate)) {
-          break;
-        }
         logLocalUpdates(batch);
         for (Update u : batch) {
           handleUpdate(u);
         }
         diff();
-      } catch (Exception e) {
+      } catch (IOException | RuntimeException e) {
         log.error("Exception", e);
       }
     }
-  }
-
-  @Override
-  protected void doStop() {
-    queues.incomingQueue.clear();
-    queues.incomingQueue.add(shutdownUpdate);
   }
 
   // see if we have up to N more updates

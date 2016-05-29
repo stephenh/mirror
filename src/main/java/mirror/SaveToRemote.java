@@ -12,7 +12,6 @@ import io.grpc.stub.StreamObserver;
 
 public class SaveToRemote extends AbstractThreaded {
 
-  private static final Update shutdownUpdate = Update.newBuilder().build();
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> results;
   private final StreamObserver<Update> outgoingChanges;
@@ -28,21 +27,12 @@ public class SaveToRemote extends AbstractThreaded {
   protected void pollLoop() throws InterruptedException {
     while (!shutdown) {
       Update u = results.take();
-      if (u == shutdownUpdate) {
-        return;
-      }
       try {
         sendToRemote(u);
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         log.error("Exception with results " + u, e);
       }
     }
-  }
-
-  @Override
-  protected void doStop() throws InterruptedException {
-    results.clear();
-    results.add(shutdownUpdate);
   }
 
   @VisibleForTesting
