@@ -72,6 +72,12 @@ Eventually it would be nice to run just one command, e.g. on the client-side hav
 
 Also, there are currently no user-available config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
 
+Note that you might have to increase the native file system limits, e.g.
+
+* For Linux see [https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers](this wiki page)
+  * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
+* For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
+
 Todo
 ====
 
