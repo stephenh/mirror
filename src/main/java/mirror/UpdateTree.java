@@ -51,8 +51,28 @@ public class UpdateTree {
     this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
     this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());
     // IntegrationTest currently depends on these values
-    extraExcludes.setRules("tmp", "temp", "target", "build", "bin", ".*");
-    extraIncludes.setRules("src_managed", "*-SNAPSHOT.jar", ".classpath", ".project", ".gitignore");
+    extraExcludes.setRules(
+        "tmp",
+        "temp",
+        "target",
+        "build",
+        "bin",
+        "*___jb_bak___", // IntelliJ safe write files
+        "*___jb_old___",
+        ".*");
+    extraIncludes.setRules(
+        "src/mainGeneratedRest",
+        "src/mainGeneratedDataTemplate",
+        "testGeneratedRest",
+        "testGeneratedDataTemplate",
+        "src_managed",
+        "*-SNAPSHOT.jar",
+        "*.iml",
+        "*.ipr",
+        "*.iws",
+        ".classpath",
+        ".project",
+        ".gitignore");
   }
 
   /**
