@@ -38,41 +38,51 @@ import com.google.protobuf.ByteString;
  */
 public class UpdateTree {
 
-  final Node root;
-  final PathRules extraIncludes = new PathRules();
-  final PathRules extraExcludes = new PathRules();
+  private final Node root;
+  private final PathRules extraIncludes;
+  private final PathRules extraExcludes;
 
   public static UpdateTree newRoot() {
-    return new UpdateTree();
+    // IntegrationTest currently depends on these values
+    PathRules extraExcludes = new PathRules();
+    extraExcludes.setRules(
+      "tmp",
+      "temp",
+      "target",
+      "build",
+      "bin",
+      "*___jb_bak___", // IntelliJ safe write files
+      "*___jb_old___",
+      ".*");
+    PathRules extraIncludes = new PathRules();
+    extraIncludes.setRules(
+      "src/mainGeneratedRest",
+      "src/mainGeneratedDataTemplate",
+      "testGeneratedRest",
+      "testGeneratedDataTemplate",
+      "build/*/classes/mainGeneratedInternalUrns/",
+      "build/*/resources/mainGeneratedInternalUrns/",
+      "src_managed",
+      "*-SNAPSHOT.jar",
+      "*.iml",
+      "*.ipr",
+      "*.iws",
+      ".classpath",
+      ".project",
+      ".gitignore");
+    return new UpdateTree(extraExcludes, extraIncludes);
   }
 
-  private UpdateTree() {
+  public static UpdateTree newRoot(PathRules extraExcludes, PathRules extraIncludes) {
+    return new UpdateTree(extraExcludes, extraIncludes);
+  }
+
+  private UpdateTree(PathRules extraExcludes, PathRules extraIncludes) {
+    this.extraExcludes = extraExcludes;
+    this.extraIncludes = extraIncludes;
     this.root = new Node(null, "");
     this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
     this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());
-    // IntegrationTest currently depends on these values
-    extraExcludes.setRules(
-        "tmp",
-        "temp",
-        "target",
-        "build",
-        "bin",
-        "*___jb_bak___", // IntelliJ safe write files
-        "*___jb_old___",
-        ".*");
-    extraIncludes.setRules(
-        "src/mainGeneratedRest",
-        "src/mainGeneratedDataTemplate",
-        "testGeneratedRest",
-        "testGeneratedDataTemplate",
-        "src_managed",
-        "*-SNAPSHOT.jar",
-        "*.iml",
-        "*.ipr",
-        "*.iws",
-        ".classpath",
-        ".project",
-        ".gitignore");
   }
 
   /**
@@ -144,8 +154,9 @@ public class UpdateTree {
     return sb.toString();
   }
 
+  @VisibleForTesting
   /** @return a tuple of the path's parent directory and the existing node (if found) */
-  private Tuple2<Node, Optional<Node>> find(String path) {
+  Tuple2<Node, Optional<Node>> find(String path) {
     if ("".equals(path)) {
       return tuple(null, Optional.of(root));
     }
@@ -297,15 +308,20 @@ public class UpdateTree {
       if (shouldIgnore != null) {
         return shouldIgnore;
       }
-      boolean gitIgnored = Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).reverse().findFirst(n -> {
-        // e.g. directory might be dir1/dir2, and p is dir1/dir2/foo.txt, we want
-        // to call is match with just foo.txt, and not the dir1/dir2 prefix
-        String relative = path.substring(n.path.length()).replaceAll("^/", "");
-        return n.ignoreRules.hasMatchingRule(relative, isDirectory());
-      }).isPresent();
-      boolean extraIncluded = extraIncludes.hasMatchingRule(path, isDirectory());
-      boolean extraExcluded = extraExcludes.hasMatchingRule(path, isDirectory());
-      shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
+      // we use arrays so that our forEach closure can calc all three in one iteration
+      // (which avoids having to re-calc the relative path three times)
+      boolean gitIgnored[] = { false };
+      boolean extraIncluded[] = { false };
+      boolean extraExcluded[] = { false };
+      parents().forEach(node -> {
+        // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
+        String relative = path.substring(node.path.length());
+        gitIgnored[0] |= node.ignoreRules.shouldIgnore(relative, isDirectory());
+        // besides parent .gitignores, also use our extra includes/excludes on each level of the path
+        extraIncluded[0] |= extraIncludes.shouldIgnore(relative, isDirectory());
+        extraExcluded[0] |= extraExcludes.shouldIgnore(relative, isDirectory());
+      });
+      shouldIgnore = (gitIgnored[0] || extraExcluded[0]) && !extraIncluded[0];
       return shouldIgnore;
     }
 
@@ -322,7 +338,7 @@ public class UpdateTree {
 
     void markDirty() {
       isDirty = true;
-      Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull).forEach(n -> n.hasDirtyDecendent = true);
+      parents().forEach(n -> n.hasDirtyDecendent = true);
     }
 
     void setIgnoreRules(String ignoreData) {
@@ -336,6 +352,10 @@ public class UpdateTree {
     @Override
     public String toString() {
       return name;
+    }
+
+    private Seq<Node> parents() {
+      return Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull);
     }
   }
 

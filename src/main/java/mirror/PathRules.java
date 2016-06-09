@@ -12,6 +12,17 @@ public class PathRules {
 
   private final List<FastIgnoreRule> rules = new ArrayList<>();
 
+  public PathRules() {
+  }
+
+  public PathRules(String lines) {
+    setRules(lines);
+  }
+
+  public PathRules(String... lines) {
+    setRules(lines);
+  }
+
   /** @param lines the new rules, new line delimited, e.g. from a .gitignore file. */
   public void setRules(String lines) {
     setRules(lines.split("\n"));
@@ -30,20 +41,15 @@ public class PathRules {
   }
 
   /** @return true if we should ignore {@code path} */
-  public boolean hasMatchingRule(String path, boolean isDirectory) {
+  public boolean shouldIgnore(String path, boolean isDirectory) {
+    boolean result = false;
     for (FastIgnoreRule rule : rules) {
-      if (rule.isMatch(path, isDirectory) && rule.getResult()) {
-        // technically need to keep going to look for a "!...", e.g. add a test case for:
-        //   $ cat .gitignore
-        //   # exclude everything except directory foo/bar
-        //   /*
-        //   !/foo
-        //   /foo/*
-        //   !/foo/bar
-        return true;
+      if (rule.isMatch(path, isDirectory)) {
+        result = rule.getResult();
+        // don't break, keep going so we can look for a "!..." after this
       }
     }
-    return false;
+    return result;
   }
 
   @Override

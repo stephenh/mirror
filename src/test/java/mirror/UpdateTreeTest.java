@@ -15,7 +15,7 @@ import mirror.UpdateTree.Node;
 
 public class UpdateTreeTest {
 
-  private final UpdateTree root = UpdateTree.newRoot();
+  private UpdateTree root = UpdateTree.newRoot();
 
   @Test
   public void addFileInRoot() {
@@ -85,10 +85,8 @@ public class UpdateTreeTest {
 
   @Test
   public void addingTheRootDoesNotDuplicateIt() {
-    assertThat(root.root.getLocal().getModTime(), is(0L));
     root.addLocal(Update.newBuilder().setPath("").setModTime(1L).build());
     assertThat(root.getChildren().size(), is(0));
-    assertThat(root.root.getLocal().getModTime(), is(1L));
   }
 
   @Test
@@ -178,5 +176,65 @@ public class UpdateTreeTest {
     nodes.clear();
     root.visitDirty(n -> nodes.add(n));
     assertThat(Seq.seq(nodes).map(n -> n.getPath()), contains("bar/foo.txt"));
+  }
+
+  @Test
+  public void ignoreFilesInRootByExtension() {
+    root.addLocal(Update.newBuilder().setPath(".gitignore").setIgnoreString("*.txt").build());
+    root.addLocal(Update.newBuilder().setPath("foo.txt").build());
+    assertThat(find("foo.txt").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInChildByExtension() {
+    root.addLocal(Update.newBuilder().setPath(".gitignore").setIgnoreString("*.txt").build());
+    root.addLocal(Update.newBuilder().setPath("foo/bar.txt").build());
+    assertThat(find("foo/bar.txt").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInChildByDirectory() {
+    root.addLocal(Update.newBuilder().setPath(".gitignore").setIgnoreString("foo/").build());
+    root.addLocal(Update.newBuilder().setPath("foo/bar.txt").build());
+    assertThat(find("foo/bar.txt").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInRootByExtraExcludes() {
+    root = UpdateTree.newRoot(new PathRules("build"), new PathRules());
+    root.addLocal(Update.newBuilder().setPath("build").setDirectory(true).build());
+    assertThat(find("build").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInChildByExtraExcludes() {
+    root = UpdateTree.newRoot(new PathRules("build"), new PathRules());
+    root.addLocal(Update.newBuilder().setPath("child/build").setDirectory(true).build());
+    assertThat(find("child/build").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInRootByExtraExcludesWithPath() {
+    root = UpdateTree.newRoot(new PathRules("build/classes"), new PathRules());
+    root.addLocal(Update.newBuilder().setPath("build/classes/Foo.class").setDirectory(true).build());
+    assertThat(find("build/classes/Foo.class").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesInChildByExtraExcludesWithPath() {
+    root = UpdateTree.newRoot(new PathRules("build/classes"), new PathRules());
+    root.addLocal(Update.newBuilder().setPath("child/build/classes/Foo.class").setDirectory(true).build());
+    assertThat(find("child/build/classes/Foo.class").shouldIgnore(), is(true));
+  }
+
+  @Test
+  public void ignoreFilesWithinIgnoredDirectory() {
+    root.addLocal(Update.newBuilder().setPath(".gitignore").setIgnoreString("child/").build());
+    root.addLocal(Update.newBuilder().setPath("child/foo.txt").setDirectory(true).build());
+    assertThat(find("child/foo.txt").shouldIgnore(), is(true));
+  }
+
+  Node find(String path) {
+    return root.find(path).v2().get();
   }
 }

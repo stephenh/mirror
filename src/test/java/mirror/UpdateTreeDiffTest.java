@@ -326,7 +326,9 @@ public class UpdateTreeDiffTest {
   @Test
   public void includeLocalFileInAnIgnoredDirectoryThatIsExplicitlyIncluded() {
     // given a local file
-    tree.extraIncludes.setRules("*.txt");
+    PathRules e = new PathRules();
+    PathRules i = new PathRules("*.txt");
+    tree = UpdateTree.newRoot(e, i);
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
     tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());

@@ -345,6 +345,17 @@ public class IntegrationTest {
   }
 
   @Test
+  public void testIncludeWithPatternWithinExcludedDirectories() throws Exception {
+    // given a file that exists within an included directory
+    FileUtils.writeStringToFile(new File(root1, "build/some-project/classes/mainGeneratedInternalUrns/foo.txt"), "abc");
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then it is replicated to root2
+    assertThat(new File(root2, "build/some-project/classes/mainGeneratedInternalUrns/foo.txt").exists(), is(true));
+  }
+
+  @Test
   public void testDontRecurseIntoSymlink() throws Exception {
     // given that both roots have a symlink from src to target
     Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
