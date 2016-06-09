@@ -1,24 +1,18 @@
 package mirror;
 
-import static org.jooq.lambda.Seq.seq;
-import static org.jooq.lambda.tuple.Tuple.tuple;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple2;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 
@@ -103,18 +97,11 @@ public class UpdateTree {
     if (update.getPath().startsWith("/") || update.getPath().endsWith("/")) {
       throw new IllegalArgumentException("Update path should not start or end with slash: " + update.getPath());
     }
-    Tuple2<Node, Optional<Node>> t = find(update.getPath());
-    Optional<Node> existing = t.v2;
-    if (!existing.isPresent()) {
-      Node parent = t.v1;
-      Node child = new Node(parent, update.getPath());
-      parent.addChild(child);
-      existing = Optional.of(child);
-    }
+    Node node = find(update.getPath());
     if (local) {
-      existing.get().setLocal(update);
+      node.setLocal(update);
     } else {
-      existing.get().setRemote(update);
+      node.setRemote(update);
     }
   }
 
@@ -155,31 +142,18 @@ public class UpdateTree {
   }
 
   @VisibleForTesting
-  /** @return a tuple of the path's parent directory and the existing node (if found) */
-  Tuple2<Node, Optional<Node>> find(String path) {
+  Node find(String path) {
     if ("".equals(path)) {
-      return tuple(null, Optional.of(root));
+      return root;
     }
     // breaks up "foo/bar/zaz.txt", into [foo, bar, zaz.txt]
     List<Path> parts = Lists.newArrayList(Paths.get(path));
     // find parent directory
-    int i = 0;
     Node current = root;
-    for (; i < parts.size() - 1; i++) {
-      String name = parts.get(i).getFileName().toString();
-      // lambdas need final variables
-      final Node fc = current;
-      final int fi = i;
-      current = current.getChild(name).orElseGet(() -> {
-        String dir = Joiner.on("/").join(parts.subList(0, fi + 1));
-        Node child = new Node(fc, dir);
-        fc.addChild(child);
-        return child;
-      });
+    for (Path part : parts) {
+      current = current.getChild(part.getFileName().toString());
     }
-    // now handle the last part which is the file name
-    String name = parts.get(i).getFileName().toString();
-    return tuple(current, current.getChild(name));
+    return current;
   }
 
   @VisibleForTesting
@@ -217,10 +191,6 @@ public class UpdateTree {
 
     private NodeType getType(Update u) {
       return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
-    }
-
-    void addChild(Node child) {
-      children.add(child);
     }
 
     Update getRemote() {
@@ -275,8 +245,16 @@ public class UpdateTree {
       return path;
     }
 
-    Optional<Node> getChild(String name) {
-      return seq(children).findFirst(c -> c.getName().equals(name));
+    /** @return the node for {@code name}, and will create it if necessary */
+    Node getChild(String name) {
+      for (Node child : children) {
+        if (child.getName().equals(name)) {
+          return child;
+        }
+      }
+      Node child = new Node(this, (root == this) ? name : getPath() + "/" + name);
+      children.add(child);
+      return child;
     }
 
     List<Node> getChildren() {

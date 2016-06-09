@@ -235,6 +235,6 @@ public class UpdateTreeTest {
   }
 
   Node find(String path) {
-    return root.find(path).v2().get();
+    return root.find(path);
   }
 }
