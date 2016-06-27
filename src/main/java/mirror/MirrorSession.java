@@ -81,7 +81,14 @@ public class MirrorSession {
     fileWatcher.start(state.stopOnFailure());
 
     initialUpdates.forEach(u -> tree.addLocal(u));
-    return initialUpdates;
+    
+    List<Update> seedRemote = new ArrayList<>();
+    tree.visit(n -> {
+      if (n.getLocal() != null && !n.shouldIgnore()) {
+        seedRemote.add(n.getLocal());
+      }
+    });
+    return seedRemote;
   }
 
   public void addInitialRemoteUpdates(List<Update> remoteInitialUpdates) {
