@@ -1,11 +1,10 @@
 package mirror.misc;
 
-import static java.nio.file.Files.exists;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -20,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Stopwatch;
 
 import mirror.FileWatcher;
-import mirror.MirrorSessionState;
 import mirror.Update;
+import mirror.WatchServiceFileWatcher;
 
 /** Tests how quickly creating MD5s of a directory tree would take. */
 public class Digest {
@@ -31,8 +30,8 @@ public class Digest {
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
-    FileWatcher r = new FileWatcher(new MirrorSessionState(), watchService, root, queue);
-    List<Update> initial = r.performInitialScan();
+    FileWatcher r = new WatchServiceFileWatcher(watchService, root);
+    List<Update> initial = r.performInitialScan(queue);
     s.stop();
 
     System.out.println("scan took " + s.elapsed(TimeUnit.MILLISECONDS) + " millis");
@@ -42,7 +41,7 @@ public class Digest {
     StringBuilder b = new StringBuilder();
     for (Update update : initial) {
       Path p = root.resolve(update.getPath());
-      if (exists(p)) {
+      if (Files.exists(p) && Files.isRegularFile(p)) {
         b.append(getHash(p));
       }
     }

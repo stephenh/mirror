@@ -15,8 +15,7 @@ public class SaveToLocal extends AbstractThreaded {
   private final BlockingQueue<Update> results;
   private final FileAccess fileAccess;
 
-  public SaveToLocal(MirrorSessionState state, Queues queues, FileAccess fileAccess) {
-    super(state);
+  public SaveToLocal(Queues queues, FileAccess fileAccess) {
     this.results = queues.saveToLocal;
     this.fileAccess = fileAccess;
   }

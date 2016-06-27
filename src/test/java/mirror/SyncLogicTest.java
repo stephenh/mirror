@@ -26,7 +26,7 @@ public class SyncLogicTest {
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic(new MirrorSessionState(), queues, fileAccess, tree);
+  private final SyncLogic l = new SyncLogic(queues, fileAccess, tree);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {
@@ -320,9 +320,8 @@ public class SyncLogicTest {
 
   private void poll() throws Exception {
     l.poll();
-    MirrorSessionState state = new MirrorSessionState();
-    new SaveToLocal(state, queues, fileAccess).drain();
-    new SaveToRemote(state, queues, fileAccess, outgoing).drain();
+    new SaveToLocal(queues, fileAccess).drain();
+    new SaveToRemote(queues, fileAccess, outgoing).drain();
   }
 
 }

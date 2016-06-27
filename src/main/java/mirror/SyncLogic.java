@@ -32,8 +32,7 @@ public class SyncLogic extends AbstractThreaded {
   private final FileAccess fileAccess;
   private final UpdateTree tree;
 
-  public SyncLogic(MirrorSessionState state, Queues queues, FileAccess fileAccess, UpdateTree tree) {
-    super(state);
+  public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
     this.queues = queues;
     this.fileAccess = fileAccess;
     this.tree = tree;

@@ -16,8 +16,7 @@ public class SaveToRemote extends AbstractThreaded {
   private final BlockingQueue<Update> results;
   private final StreamObserver<Update> outgoingChanges;
 
-  public SaveToRemote(MirrorSessionState state, Queues queues, FileAccess fileAccess, StreamObserver<Update> outgoingChanges) {
-    super(state);
+  public SaveToRemote(Queues queues, FileAccess fileAccess, StreamObserver<Update> outgoingChanges) {
     this.fileAccess = fileAccess;
     this.results = queues.saveToRemote;
     this.outgoingChanges = outgoingChanges;

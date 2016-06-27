@@ -7,8 +7,7 @@ public class QueueWatcher extends AbstractThreaded {
   private int lastLocal;
   private int lastRemote;
 
-  public QueueWatcher(MirrorSessionState state, Queues queues) {
-    super(state);
+  public QueueWatcher(Queues queues) {
     this.queues = queues;
   }
 

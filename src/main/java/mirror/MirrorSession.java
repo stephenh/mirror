@@ -3,6 +3,8 @@ package mirror;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
+import java.nio.file.WatchService;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -29,7 +31,7 @@ public class MirrorSession {
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
   private final MirrorSessionState state = new MirrorSessionState();
-  private final QueueWatcher queueWatcher = new QueueWatcher(state, queues);
+  private final QueueWatcher queueWatcher = new QueueWatcher(queues);
   private final SaveToLocal saveToLocal;
   private final FileWatcher fileWatcher;
   private final UpdateTree tree = UpdateTree.newRoot();
@@ -38,16 +40,16 @@ public class MirrorSession {
   private StreamObserver<Update> outgoingChanges;
 
   public MirrorSession(Path root, FileSystem fileSystem) {
-    this.fileAccess = new NativeFileAccess(root);
-    try {
-      fileWatcher = new FileWatcher(state, fileSystem.newWatchService(), root, queues.incomingQueue);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    syncLogic = new SyncLogic(state, queues, fileAccess, tree);
-    queueWatcher.start();
-    saveToLocal = new SaveToLocal(state, queues, fileAccess);
-    saveToLocal.start();
+    this(root, new NativeFileAccess(root), new WatchServiceFileWatcher(newWatchService(fileSystem), root));
+  }
+
+  public MirrorSession(Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
+    this.fileAccess = fileAccess;
+    this.fileWatcher = fileWatcher;
+    syncLogic = new SyncLogic(queues, fileAccess, tree);
+    queueWatcher.start(state.stopOnFailure());
+    saveToLocal = new SaveToLocal(queues, fileAccess);
+    saveToLocal.start(state.stopOnFailure());
     // use separate callbacks so one failing doesn't stop the others
     state.addStoppedCallback(() -> fileWatcher.stop());
     state.addStoppedCallback(() -> syncLogic.stop());
@@ -72,12 +74,13 @@ public class MirrorSession {
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
-    List<Update> initialUpdates = fileWatcher.performInitialScan();
-    initialUpdates.forEach(u -> tree.addLocal(u));
+    List<Update> initialUpdates = fileWatcher.performInitialScan(queues.incomingQueue);
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
-    fileWatcher.start();
+    fileWatcher.start(state.stopOnFailure());
+
+    initialUpdates.forEach(u -> tree.addLocal(u));
     return initialUpdates;
   }
 
@@ -87,13 +90,21 @@ public class MirrorSession {
 
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
-    syncLogic.start();
-    saveToRemote = new SaveToRemote(state, queues, fileAccess, outgoingChanges);
-    saveToRemote.start();
+    syncLogic.start(state.stopOnFailure());
+    saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
+    saveToRemote.start(state.stopOnFailure());
   }
 
   public void stop() {
     log.info("Stopping session");
     state.stop();
+  }
+
+  private static WatchService newWatchService(FileSystem fileSystem) {
+    try {
+      return fileSystem.newWatchService();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

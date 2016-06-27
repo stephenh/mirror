@@ -19,12 +19,11 @@ abstract class AbstractThreaded {
   protected final Logger log = LoggerFactory.getLogger(getClass());
   protected volatile boolean started = false;
   protected volatile boolean shutdown = false;
+  protected volatile Runnable onFailure;
   private final CountDownLatch isShutdown = new CountDownLatch(1);
   private final Thread thread;
-  private final MirrorSessionState sessionState;
 
-  protected AbstractThreaded(MirrorSessionState sessionState) {
-    this.sessionState = sessionState;
+  protected AbstractThreaded() {
     thread = new ThreadFactoryBuilder() //
       .setDaemon(true)
       .setNameFormat(getClass().getSimpleName() + "-%s")
@@ -35,10 +34,11 @@ abstract class AbstractThreaded {
   /**
    * Starts a thread running the {@code pollLoop} logic that is implemented by the subclass.
    */
-  public final void start() {
+  public final synchronized void start(Runnable onFailure) {
     if (started) {
       throw new IllegalStateException("Already started");
     }
+    this.onFailure = onFailure;
     started = true;
     thread.start();
   }
@@ -47,7 +47,7 @@ abstract class AbstractThreaded {
    * Initiates and waits for shutdown of our thread; the subclass's loop
    * should watch for !shutdown/doStop and stop their loop appropriately.
    */
-  public final void stop() {
+  public final synchronized void stop() {
     shutdown = true;
     if (!started) {
       return;
@@ -61,10 +61,11 @@ abstract class AbstractThreaded {
       try {
         pollLoop();
       } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
         // shutting down
       } catch (Exception e) {
         log.error("Error escaped pollLoop", e);
-        sessionState.stop();
+        onFailure.run();
       }
       doStop();
     } finally {

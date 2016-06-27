@@ -37,4 +37,8 @@ public class MirrorSessionState {
       });
     }
   }
+
+  public Runnable stopOnFailure() {
+    return () -> stop();
+  }
 }

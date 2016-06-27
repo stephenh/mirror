@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import joist.util.Execute;
 
-public class FileWatcherTest {
+public class WatchServiceFileWatcherTest {
 
   private static final File dir = new File("./build/FileWatcherTest");
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(100);
@@ -31,9 +31,9 @@ public class FileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new FileWatcher(new MirrorSessionState(), FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
-    watcher.performInitialScan();
-    watcher.start();
+    watcher = new WatchServiceFileWatcher(FileSystems.getDefault().newWatchService(), dir.toPath());
+    watcher.performInitialScan(queue);
+    watcher.start(null);
   }
 
   @After
