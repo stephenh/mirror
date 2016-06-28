@@ -12,7 +12,7 @@ This is fairly common (see "Comparison to Existing Options" section below), but 
   * Mirror sends `projectA-snapshot.jar` back to the laptop
 * On your laptop, the IDE can now use `projectA-snapshot.jar` for code completion/etc. when editing `projectB/bar.java`
 
-Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the IDE classpath for `projectB`. If you can setup your projects this way, it is preferable.
+Granted, the IDE will also do local compilation of `projectA/foo.java`, so ideally the IDE could use in-workspace references, where the IDE-compiled `projectA/foo.java` is already/immediately on the IDE classpath for `projectB`. If you can setup your projects this way (e.g. with [m2e](http://www.eclipse.org/m2e/) or [IvyDE](https://ant.apache.org/ivy/ivyde/)), that is generally preferable.
 
 However, for larger/more complex projects, e.g. those with various pre-/post-compilation code generation steps (that are often only performed in the CLI build), the IDE just can't reproduce the build process closely enough to fully compile `projectA` on it's own, and so using CLI-provided `projectX-snapshot.jar` artifacts is the only way to do local cross-project imports.
 
@@ -33,9 +33,9 @@ Non-Goals
 * Maintain Unix permissions/owner/group
   * Whatever Unix user runs the `mirror` commands will be the owner/group/etc. of the files
 * Support for multiple clients
-  * The server code technically supports this, and it should work in theory (each client would just see each other's write as any other file system write), handling this use case is not an explicit goal
+  * The server code technically supports this (e.g. you could have two laptops connect to your desktop), and it should work in theory (each client would just see each other's write as any other file system write), but handling this use case is not an explicit goal
 * Support for huge files
-  * The assumption is that most files are source code, and occassional binary artifacts
+  * The assumption is that most files are source code, and occassional binary artifacts that are generally in the below-100mb range
 * Super-efficient diff/transmission logic like rsync
   * Instead we assume a generally fast network connection (as in "faster than a modem", i.e. mirror works fine over a VPN)
 
