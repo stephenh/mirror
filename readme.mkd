@@ -27,16 +27,17 @@ Goals
 Non-Goals
 =========
 
-* Offline/disconnected support (e.g. general purpose distributed file system)
-  * Other than basic "auto re-connect + restart syncing" support
-  * If a file is edited both remotely and locally while disconnected, the last write wins
+* Unison-style/"smart" disconnected support
+  * `mirror` will automatically re-connect (e.g. if you close your laptop and then go home) and restart syncing (inspired by mosh), but if files have changed on both sides while disconnected, then the last write wins
+  * This hueristic is generally fine, it just means `mirror` is not meant for a use case of "make new changes on the desktop for a few days, make new changes on the laptop for a few days, and then run `mirror` once per week to intelligently merge your work".
 * Maintain Unix permissions/owner/group
+  * Whatever Unix user runs the `mirror` commands will be the owner/group/etc. of the files
 * Support for multiple clients
-  * Although this in theory should work, it's not an explicit goal
+  * The server code technically supports this, and it should work in theory (each client would just see each other's write as any other file system write), handling this use case is not an explicit goal
 * Support for huge files
   * The assumption is that most files are source code, and occassional binary artifacts
 * Super-efficient diff/transmission logic like rsync
-  * Instead we assume a generally fast network connection
+  * Instead we assume a generally fast network connection (as in "faster than a modem", i.e. mirror works fine over a VPN)
 
 Comparison to Existing Options
 ==============================
@@ -85,8 +86,9 @@ Todo
   * Right now include/exclude settings are hardcoded, should be configurable
   * Use command line parameters? Config file? Both?
 * Handle watch event overflows by restarting session
+  * **Done** but might need some tweaks
 * Handle network disconnections by restarting session 
-  * Ideally would be as sexy as mosh--the client just waits patiently until server is available again
+  * **Done** but might need some tweaks
 * Handle various IOExceptions will inevitably happen, probably by restarting session
 * Really easy setup/install process, e.g.:
   * Currently you have to run `java -cp ...` and `java -cp ...` on both sides
@@ -101,4 +103,5 @@ Todo
 * Support .git/info/exclude
 * Should syncing .git be a good idea? (then `git log`/etc. would work on both sides)
 * Integrate with [watchman](https://facebook.github.io/watchman/) (potentially more reliable)
+
 
