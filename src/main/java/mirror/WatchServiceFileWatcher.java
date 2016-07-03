@@ -228,7 +228,7 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
           // would be nice to sleep on a delete, but if we have N deletes,
           // we don't want to naively sleep for N * 500ms.
         }
-        queue.add(u);
+        queue.put(u);
       }
     }
   }

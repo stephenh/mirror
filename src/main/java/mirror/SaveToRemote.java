@@ -47,7 +47,8 @@ public class SaveToRemote extends AbstractThreaded {
       if (!update.getDirectory() && update.getSymlink().isEmpty() && !update.getDelete()) {
         b.setData(fileAccess.read(Paths.get(update.getPath())));
       }
-      log.debug("Sending to remote " + update.getPath());
+      String maybeDelete = update.getDelete() ? " (delete)" : "";
+      log.debug("Sending to remote " + maybeDelete + update.getPath());
       outgoingChanges.onNext(b.build());
     } catch (IOException e) {
       // TODO Should we error here, so that the session is restarted?

@@ -230,11 +230,15 @@ public class UpdateTree {
     }
 
     boolean isRemoteNewer() {
-      return remote != null && (local == null || local.getModTime() < remote.getModTime());
+      return remote != null
+        && (local == null || local.getModTime() < remote.getModTime())
+        && !(remote.getDelete() && (local == null || local.getDelete()));
     }
 
     boolean isLocalNewer() {
-      return local != null && (remote == null || local.getModTime() > remote.getModTime());
+      return local != null
+        && (remote == null || local.getModTime() > remote.getModTime())
+        && !(local.getDelete() && (remote == null || remote.getDelete()));
     }
 
     String getName() {

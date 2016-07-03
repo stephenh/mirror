@@ -439,6 +439,72 @@ public class UpdateTreeDiffTest {
     assertNoResults();
   }
 
+  @Test
+  public void deleteMultipleLevelsLocally() {
+    // given a tree of foo/bar/zaz.txt that exists on both local and remote
+    tree.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+
+    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+
+    // and it is deleted locally (i verified the inotify events are fired child-first
+    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(3L).setDelete(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar").setModTime(3L).setDelete(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+    diff();
+
+    // then we only need to send the root delete to the remote
+    assertSendToRemote("foo");
+    assertThat(results.sendToRemote.get(0).getDelete(), is(true));
+    assertThat(results.sendToRemote.get(0).getLocal(), is(false));
+    assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be true?
+
+    // and we don't resend it again on the next diff
+    diff();
+    assertNoResults();
+    assertThat(tree.find("foo").getChildren().size(), is(0));
+  }
+
+  @Test
+  public void deleteMultipleLevelsRemotely() {
+    // given a tree of foo/bar/zaz.txt that exists on both local and remote
+    tree.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+
+    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+
+    // and it is deleted remotely (per last test, only a delete foo will come across)
+    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+    diff();
+
+    // then we only need to delete the local directory
+
+    assertThat(results.saveLocally.get(0).getDelete(), is(true));
+
+    // and we don't resend it again on the next diff
+    diff();
+    assertNoResults();
+    assertThat(tree.find("foo").getChildren().size(), is(0));
+
+    // and when the deletes are echoed by the file system we don't resend the delete
+    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setDelete(true).build());
+    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDelete(true).build());
+    // pretend we haven't seen the foo echo delete
+    diff();
+    assertNoResults();
+
+    // now the foo echo comes by
+    tree.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
+    diff();
+    assertNoResults();
+  }
+
   private void diff() {
     results = new UpdateTreeDiff(tree).diff();
   }
