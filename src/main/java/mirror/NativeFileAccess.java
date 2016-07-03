@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
 
+import jnr.posix.FileStat;
 import jnr.posix.POSIX;
 import jnr.posix.POSIXFactory;
 
@@ -33,6 +35,15 @@ public class NativeFileAccess implements FileAccess {
     if (r != 0) {
       throw new IOException("lutimes failed with code " + r);
     }
+  }
+
+  public static void setReadOnly(Path absolutePath) {
+    posix.chmod(absolutePath.toFile().toString(), Integer.parseInt("0444", 8));
+  }
+
+  public static void setWritable(Path absolutePath) {
+    FileStat s = posix.stat(absolutePath.toFile().toString());
+    posix.chmod(absolutePath.toFile().toString(), s.mode() | Integer.parseInt("0700", 8));
   }
 
   public static void main(String[] args) throws Exception {
@@ -57,11 +68,13 @@ public class NativeFileAccess implements FileAccess {
   public void write(Path relative, ByteBuffer data) throws IOException {
     Path path = rootDirectory.resolve(relative);
     mkdir(path.getParent().toAbsolutePath());
-    FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     try {
-      c.write(data);
-    } finally {
-      c.close();
+      doWrite(data, path);
+    } catch (AccessDeniedException ade) {
+      // sometimes code generators mark files as read-only; for now just assume
+      // our "newer always wins" logic is correct, and try to write it anyway
+      setWritable(path);
+      doWrite(data, path);
     }
   }
 
@@ -153,6 +166,15 @@ public class NativeFileAccess implements FileAccess {
   @Override
   public boolean isDirectory(Path relativePath) throws IOException {
     return resolve(relativePath).toFile().isDirectory();
+  }
+
+  private static void doWrite(ByteBuffer data, Path path) throws IOException {
+    FileChannel c = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    try {
+      c.write(data);
+    } finally {
+      c.close();
+    }
   }
 
   /** @param path the absolute path of the directory to create */

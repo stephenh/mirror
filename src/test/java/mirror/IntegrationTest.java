@@ -430,6 +430,23 @@ public class IntegrationTest {
     assertThat(new File(root2, "foo/dir1/foo.txt").exists(), is(false));
   }
 
+  @Test
+  public void testUpdateFileThatWasMarkedReadOnlyByCodeGenerator() throws Exception {
+    // given two files exist
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc1");
+    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc2");
+    // and root1's file is newer
+    new File(root1, "foo.txt").setLastModified(2000);
+    new File(root2, "foo.txt").setLastModified(1000);
+    // but root2's file is read only (e.g. due to overzealous code generators marking it read-only)
+    NativeFileAccess.setReadOnly(new File(root2, "foo.txt").toPath());
+    // when mirror is started
+    startMirror();
+    sleep();
+    // then we can successfully update root2
+    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc1"));
+  }
+
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
