@@ -81,7 +81,8 @@ public class MirrorSession {
     fileWatcher.start(state.stopOnFailure());
 
     initialUpdates.forEach(u -> tree.addLocal(u));
-    
+
+    // only sync non-ignored files
     List<Update> seedRemote = new ArrayList<>();
     tree.visit(n -> {
       if (n.getLocal() != null && !n.shouldIgnore()) {
@@ -92,7 +93,14 @@ public class MirrorSession {
   }
 
   public void addInitialRemoteUpdates(List<Update> remoteInitialUpdates) {
-    remoteInitialUpdates.forEach(u -> tree.addRemote(u));
+    remoteInitialUpdates.forEach(u -> {
+      // if a file, mark it has an initial sync, so we know not to save it
+      // it until we get the real update with the data filled in
+      if (UpdateTree.isFile(u)) {
+        u = Update.newBuilder(u).setData(UpdateTree.initialSyncMarker).build();
+      }
+      tree.addRemote(u);
+    });
   }
 
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {

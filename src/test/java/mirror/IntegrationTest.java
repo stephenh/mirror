@@ -447,6 +447,14 @@ public class IntegrationTest {
     assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc1"));
   }
 
+  @Test
+  public void testSimpleFileThatIsEmpty() throws Exception {
+    startMirror();
+    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "");
+    sleep();
+    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is(""));
+  }
+
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;

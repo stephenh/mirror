@@ -13,6 +13,7 @@ import java.util.function.Predicate;
 import org.jooq.lambda.Seq;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 
@@ -32,6 +33,7 @@ import com.google.protobuf.ByteString;
  */
 public class UpdateTree {
 
+  public static final ByteString initialSyncMarker = ByteString.copyFrom("initialSyncMarker", Charsets.UTF_8);
   private final Node root;
   private final PathRules extraIncludes;
   private final PathRules extraExcludes;
@@ -65,6 +67,22 @@ public class UpdateTree {
       ".project",
       ".gitignore");
     return new UpdateTree(extraExcludes, extraIncludes);
+  }
+
+  public static NodeType getType(Update u) {
+    return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
+  }
+
+  public static boolean isDirectory(Update u) {
+    return u.getDirectory();
+  }
+
+  public static boolean isFile(Update u) {
+    return !isDirectory(u) && !isSymlink(u);
+  }
+
+  public static boolean isSymlink(Update u) {
+    return !u.getSymlink().isEmpty();
   }
 
   public static UpdateTree newRoot(PathRules extraExcludes, PathRules extraIncludes) {
@@ -189,10 +207,6 @@ public class UpdateTree {
       return getType(local) == getType(remote);
     }
 
-    private NodeType getType(Update u) {
-      return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
-    }
-
     Update getRemote() {
       return remote;
     }
@@ -222,7 +236,7 @@ public class UpdateTree {
       }
       this.local = local;
       // If we're no longer a directory, or we got deleted, clear our children
-      if (!isDirectory(local) || local.getDelete()) {
+      if (!UpdateTree.isDirectory(local) || local.getDelete()) {
         children.clear();
       }
       updateParentIgnoreRulesIfNeeded();
@@ -269,20 +283,8 @@ public class UpdateTree {
       remote = Update.newBuilder(remote).setData(ByteString.EMPTY).build();
     }
 
-    boolean isFile(Update u) {
-      return !isDirectory(u) && !isSymlink(u);
-    }
-
     boolean isDirectory() {
-      return local != null ? isDirectory(local) : remote != null ? isDirectory(remote) : false;
-    }
-
-    boolean isDirectory(Update u) {
-      return u.getDirectory();
-    }
-
-    boolean isSymlink(Update u) {
-      return !u.getSymlink().isEmpty();
+      return local != null ? UpdateTree.isDirectory(local) : remote != null ? UpdateTree.isDirectory(remote) : false;
     }
 
     /** @param p should be a relative path, e.g. a/b/c.txt. */

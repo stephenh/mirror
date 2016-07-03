@@ -3,8 +3,6 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.protobuf.Descriptors.FieldDescriptor;
-
 import mirror.UpdateTree.Node;
 
 /**
@@ -34,9 +32,6 @@ import mirror.UpdateTree.Node;
  * - do nothing because the remote hasn't sent their copy yet
  */
 public class UpdateTreeDiff {
-
-  // private static final Logger log = LoggerFactory.getLogger(UpdateTreeDiff.class);
-  private static final FieldDescriptor updateDataField = Update.getDescriptor().findFieldByNumber(Update.DATA_FIELD_NUMBER);
 
   public static class DiffResults {
     public final List<Update> sendToRemote = new ArrayList<>();
@@ -80,7 +75,10 @@ public class UpdateTreeDiff {
       // during the initial sync, we don't have any remote data in the UpdateTree (only metadata is sent),
       // so we can't save the data locally, and instead soon-ish we should be sent data-filled Updates by
       // the remote when it does it's own initial sync
-      boolean skipBecauseNoData = node.isFile(remote) && !remote.getDelete() && !remote.hasField(updateDataField);
+      boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
+      if (skipBecauseNoData) {
+        System.out.println("SKIPPING " + remote);
+      }
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
           results.saveLocally.add(remote);
