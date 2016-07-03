@@ -3,13 +3,15 @@ apply plugin: 'eclipse'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.github.johnrengelman.shadow'
  
+def grpcVersion = '0.14.1'
+
 buildscript {
   repositories {
     mavenCentral()
     jcenter()
   }
   dependencies {
-    classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
+    classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.7'
     classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
   }
 }
@@ -21,10 +23,10 @@ repositories {
 }
 
 dependencies {
-  compile 'io.grpc:grpc-netty:0.14.0'
-  compile 'io.grpc:grpc-core:0.14.0'
-  compile 'io.grpc:grpc-protobuf:0.14.0'
-  compile 'io.grpc:grpc-stub:0.14.0'
+  compile "io.grpc:grpc-netty:${grpcVersion}"
+  compile "io.grpc:grpc-core:${grpcVersion}"
+  compile "io.grpc:grpc-protobuf:${grpcVersion}"
+  compile "io.grpc:grpc-stub:${grpcVersion}"
   compile 'org.slf4j:slf4j-jdk14:1.7.18'
   compile 'com.github.jnr:jnr-posix:3.0.30-lutimes-SNAPSHOT'
   compile 'org.eclipse.jgit:org.eclipse.jgit:4.2.0.201601211800-r'
@@ -47,7 +49,7 @@ protobuf {
   }
   plugins {
     grpc {
-      artifact = 'io.grpc:protoc-gen-grpc-java:0.13.2'
+      artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
     }
   }
   generateProtoTasks {
