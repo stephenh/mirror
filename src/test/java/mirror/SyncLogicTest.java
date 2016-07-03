@@ -106,9 +106,10 @@ public class SyncLogicTest {
   @Test
   public void saveRemoteDeleteLocally() throws Exception {
     // given we have an existing local file
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted remotely
-    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setModTime(2L).build());
     // when we notice
     poll();
     // then we delete it locally
@@ -144,9 +145,10 @@ public class SyncLogicTest {
   @Test
   public void doNotEchoRemoteDelete() throws Exception {
     // given we have an existing local file
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it is deleted remotely
-    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setModTime(2L).build());
     // when we notice and save that delete locally
     poll();
     assertThat(fileAccess.exists(fooDotTxt), is(false));
