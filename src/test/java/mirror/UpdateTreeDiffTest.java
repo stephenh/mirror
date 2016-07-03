@@ -454,13 +454,13 @@ public class UpdateTreeDiffTest {
     tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(3L).setDelete(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo/bar").setModTime(3L).setDelete(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
-    diff();
 
     // then we only need to send the root delete to the remote
+    diff();
     assertSendToRemote("foo");
     assertThat(results.sendToRemote.get(0).getDelete(), is(true));
     assertThat(results.sendToRemote.get(0).getLocal(), is(false));
-    assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be true?
+    assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be false?
 
     // and we don't resend it again on the next diff
     diff();
@@ -481,10 +481,10 @@ public class UpdateTreeDiffTest {
 
     // and it is deleted remotely (per last test, only a delete foo will come across)
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
-    diff();
 
     // then we only need to delete the local directory
-
+    diff();
+    assertSaveLocally("foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
 
     // and we don't resend it again on the next diff
