@@ -44,7 +44,7 @@ public class UpdateTreeDiffTest {
   @Test
   public void skipLocalMissingFileThatIsOnRemote() {
     // given a remote file that does not exist locally (and we don't have data for it yet)
-    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).setData(UpdateTree.initialSyncMarker).build());
     diff();
     // then we don't do anything
     assertNoResults();
@@ -58,7 +58,7 @@ public class UpdateTreeDiffTest {
   public void skipLocalStaleFileThatIsOnRemote() {
     // given a remote file that is stale locally (and we don't have data for it yet)
     tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
-    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(UpdateTree.initialSyncMarker).build());
     diff();
     // then we don't do anything
     assertNoResults();
@@ -152,9 +152,10 @@ public class UpdateTreeDiffTest {
     // that is now a file on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
-    // then we delete the directory
-    assertSaveLocally("foo");
+    // then we delete the directory to create the file
+    assertSaveLocally("foo", "foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
+    assertThat(results.saveLocally.get(1).getDelete(), is(false));
   }
 
   @Test
@@ -227,9 +228,10 @@ public class UpdateTreeDiffTest {
     // that is now a file on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
-    // then we delete the symlink
-    assertSaveLocally("foo");
+    // then we delete the symlink to create the file
+    assertSaveLocally("foo", "foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
+    assertThat(results.saveLocally.get(1).getDelete(), is(false));
     // and when we diff again
     diff();
     // then we don't re-delete it
@@ -296,7 +298,8 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
     diff();
     // then we don't sync the local file
-    assertNoResults();
+    assertSaveLocally(".gitignore");
+    assertNoSendToRemote();
   }
 
   @Test
@@ -510,8 +513,8 @@ public class UpdateTreeDiffTest {
   }
 
   private void assertNoResults() {
-    assertThat(results.saveLocally.size(), is(0));
-    assertThat(results.sendToRemote.size(), is(0));
+    assertSaveLocally();
+    assertSendToRemote();
   }
 
   private void assertNoSaveLocally() {
