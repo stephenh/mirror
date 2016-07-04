@@ -4,7 +4,7 @@ Primary Workflow
 
 Mirror is built to support a two-machine (e.g. desktop+laptop) development workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
 
-This is fairly common (see "Comparison to Existing Options" section below), but Mirror goes further to assume you also want to use an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts (or build time-generated source code) from the build process, e.g.:
+This is fairly common (see "Comparison to Existing Options" section below), but what makes Mirror unique is that it is two-way: it simultaneously syncs both laptop-to-desktop as well as desktop-to-laptop, in real time. For my personal use case, this is to facilitate using an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts (or build time-generated source code) from the desktop-hosted build process, e.g.:
 
 * On your laptop, save `projectA/foo.java`
   * Mirror sends `foo.java` to the desktop
