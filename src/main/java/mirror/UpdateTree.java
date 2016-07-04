@@ -244,17 +244,18 @@ public class UpdateTree {
     }
 
     boolean isRemoteNewer() {
-      return remote != null
-        && (local == null || local.getModTime() < remote.getModTime())
-        && !(remote.getDelete() && (local == null || local.getDelete())) // ignore no-op deletes
-        && !(local != null && UpdateTree.isDirectory(local) && UpdateTree.isDirectory(remote)); // modtimes on dirs don't matter
+      return isNewer(remote, local);
     }
 
     boolean isLocalNewer() {
-      return local != null
-        && (remote == null || local.getModTime() > remote.getModTime())
-        && !(local.getDelete() && (remote == null || remote.getDelete())) // ignore no-op deletes
-        && !(remote != null && UpdateTree.isDirectory(local) && UpdateTree.isDirectory(remote)); // modtimes on dirs don't matter
+      return isNewer(local, remote);
+    }
+
+    boolean isNewer(Update a, Update b) {
+      return a != null
+        && (b == null || a.getModTime() > b.getModTime())
+        && !(a.getDelete() && (b == null || b.getDelete())) // ignore no-op deletes
+        && !(UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
     }
 
     String getName() {
