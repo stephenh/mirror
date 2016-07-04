@@ -76,9 +76,6 @@ public class UpdateTreeDiff {
       // so we can't save the data locally, and instead soon-ish we should be sent data-filled Updates by
       // the remote when it does it's own initial sync
       boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
-      if (skipBecauseNoData) {
-        System.out.println("SKIPPING " + remote);
-      }
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
           results.saveLocally.add(remote);

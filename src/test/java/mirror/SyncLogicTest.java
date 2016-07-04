@@ -130,14 +130,35 @@ public class SyncLogicTest {
   @Test
   public void doNotEchoRemoteChange() throws Exception {
     // given we have an existing local file
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").build());
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes remotely
-    Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(ByteString.copyFrom(data2)).build());
     // when we notice and save that write locally
     poll();
-    changes.add(Update.newBuilder(u).setLocal(true).build());
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
     // then we don't echo it back out to the remote
+    poll();
+    assertThat(outgoing.values.isEmpty(), is(true));
+  }
+
+  @Test
+  public void doNotEchoRemoteNewDirectoryWithNewChildren() throws Exception {
+    // given the remote sends a new directory and a new file
+    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1L).build());
+    changes.add(Update.newBuilder().setPath("foo/bar.txt").setModTime(1L).setData(ByteString.copyFrom(data)).build());
+    // when we notice and save the directory and file locally
+    poll();
+    poll();
+    assertThat(fileAccess.exists(Paths.get("foo")), is(true));
+    assertThat(fileAccess.exists(Paths.get("foo/bar.txt")), is(true));
+    // however when we write a new file, the file system will inherently tick the mod time on its parent directory
+    fileAccess.setModifiedTime(Paths.get("foo"), 2L);
+    // and we notice the local changes
+    changes.add(Update.newBuilder().setPath("foo").setDirectory(true).setLocal(true).build());
+    changes.add(Update.newBuilder().setPath("foo/bar.txt").setLocal(true).build());
+    // then we don't echo the foo directory back to the remote
+    poll();
     poll();
     assertThat(outgoing.values.isEmpty(), is(true));
   }
