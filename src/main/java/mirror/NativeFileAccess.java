@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -87,7 +88,7 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public long getModifiedTime(Path relative) throws IOException {
-    return java.nio.file.Files.getLastModifiedTime(resolve(relative), LinkOption.NOFOLLOW_LINKS).toMillis();
+    return Files.getLastModifiedTime(resolve(relative), LinkOption.NOFOLLOW_LINKS).toMillis();
   }
 
   @Override
@@ -112,12 +113,12 @@ public class NativeFileAccess implements FileAccess {
     if (path.toFile().exists()) {
       path.toFile().delete();
     }
-    java.nio.file.Files.createSymbolicLink(path, target);
+    Files.createSymbolicLink(path, target);
   }
 
   @Override
   public boolean isSymlink(Path relativePath) throws IOException {
-    return java.nio.file.Files.isSymbolicLink(resolve(relativePath));
+    return Files.isSymbolicLink(resolve(relativePath));
   }
 
   @Override
@@ -126,7 +127,7 @@ public class NativeFileAccess implements FileAccess {
     // path (relativePath), so we don't want to return it relative to the rootDirectory
     Path path = resolve(relativePath);
     Path parent = path.getParent();
-    Path symlink = java.nio.file.Files.readSymbolicLink(path);
+    Path symlink = Files.readSymbolicLink(path);
     if (symlink.isAbsolute()) {
       Path p = parent.toAbsolutePath().relativize(symlink);
       log.debug("Read absolute symlink {} as {}, returning {}", relativePath, symlink, p);
@@ -185,7 +186,7 @@ public class NativeFileAccess implements FileAccess {
       boolean foundOldSymlink = false;
       Path current = path;
       while (current != null) {
-        if (java.nio.file.Files.isSymbolicLink(current)) {
+        if (Files.isSymbolicLink(current)) {
           current.toFile().delete();
           path.toFile().mkdirs();
           foundOldSymlink = true;
