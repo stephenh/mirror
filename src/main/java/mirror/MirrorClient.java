@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +18,10 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.SettableFuture;
 
 import io.grpc.Channel;
-import io.grpc.ClientCall;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
-import io.grpc.stub.CallStreamObserver;
+import io.grpc.stub.ClientCallStreamObserver;
+import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
 
@@ -122,7 +123,8 @@ public class MirrorClient {
       session.addInitialRemoteUpdates(remoteState.get());
       log.info("Tree populated");
 
-      StreamObserver<Update> incomingChanges = new StreamObserver<Update>() {
+      AtomicReference<StreamObserver<Update>> outgoingChangesRef = new AtomicReference<>();
+      ClientResponseObserver<Update, Update> incomingChanges = new ClientResponseObserver<Update, Update>() {
         @Override
         public void onNext(Update update) {
           session.addRemoteUpdate(update);
@@ -139,16 +141,23 @@ public class MirrorClient {
           log.info("onCompleted called on client incoming stream");
           session.stop();
         }
+
+        @Override
+        public void beforeStart(ClientCallStreamObserver<Update> outgoingChanges) {
+          // we instantiate the BlockingStreamObserver here before startCall is called
+          // so that setOnReadyHandler is not frozen yet
+          outgoingChangesRef.set(new BlockingStreamObserver<Update>(outgoingChanges));
+        }
       };
 
-      // StreamObserver<Update> outgoingChanges = stub.streamUpdates(incomingChanges);
-      ClientCall<Update, Update> call = stub.getChannel().newCall(MirrorGrpc.METHOD_STREAM_UPDATES, stub.getCallOptions());
-      CallStreamObserver<Update> outgoingChanges = new ClientCallToCallStreamAdapter<>(call, incomingChanges);
+      // we ignore the return value because we capture it in the observer
+      stub.streamUpdates(incomingChanges);
+      StreamObserver<Update> outgoingChanges = outgoingChangesRef.get();
 
       // send over the sessionId as a fake update
       outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get().toString()).build());
 
-      session.diffAndStartPolling(new BlockingStreamObserver<Update>(outgoingChanges));
+      session.diffAndStartPolling(outgoingChanges);
     } catch (Exception e) {
       log.error("Exception starting the client", e);
       session.stop();

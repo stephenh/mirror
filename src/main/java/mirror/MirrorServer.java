@@ -15,7 +15,7 @@ import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import mirror.MirrorGrpc.Mirror;
+import mirror.MirrorGrpc.MirrorImplBase;
 
 /**
  * Listens for incoming clients and sets up {@link MirrorSession}s.
@@ -24,7 +24,7 @@ import mirror.MirrorGrpc.Mirror;
  * path, and things should just work (the sessions won't communicate directly, but instead
  * will see each other's file writes just like any other writer).
  */
-public class MirrorServer implements Mirror {
+public class MirrorServer extends MirrorImplBase {
 
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
   private final Map<Integer, MirrorSession> sessions = new HashMap<>();
@@ -36,7 +36,7 @@ public class MirrorServer implements Mirror {
     ServerImpl rpc = NettyServerBuilder //
       .forPort(port)
       .maxMessageSize(1073741824)
-      .addService(MirrorGrpc.bindService(new MirrorServer()))
+      .addService(new MirrorServer())
       .build();
     rpc.start();
     rpc.awaitTermination();

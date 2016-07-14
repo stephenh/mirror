@@ -459,7 +459,7 @@ public class IntegrationTest {
     // server
     int port = nextPort++;
     // rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
-    rpc = InProcessServerBuilder.forName("mirror" + port).addService(MirrorGrpc.bindService(new MirrorServer())).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer()).build();
     rpc.start();
     log.info("started server");
     // client

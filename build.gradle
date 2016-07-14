@@ -3,7 +3,9 @@ apply plugin: 'eclipse'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.github.johnrengelman.shadow'
  
-def grpcVersion = '0.14.1'
+def grpcVersion = '0.15.0'
+// This version must match the protobuf-java version that grpc transitively pulls in
+def protobufVersion = '3.0.0-beta-3'
 
 buildscript {
   repositories {
@@ -42,8 +44,7 @@ dependencies {
 
 protobuf {
   protoc {
-    // This version must match the protobuf-java version that grpc transitively pulls in
-    artifact = "com.google.protobuf:protoc:3.0.0-beta-2"
+    artifact = "com.google.protobuf:protoc:${protobufVersion}"
   }
   plugins {
     grpc {
