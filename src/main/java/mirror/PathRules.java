@@ -52,6 +52,10 @@ public class PathRules {
     return result;
   }
 
+  public boolean hasAnyRules() {
+    return !rules.isEmpty();
+  }
+
   @Override
   public String toString() {
     return rules.toString();

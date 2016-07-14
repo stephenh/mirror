@@ -222,7 +222,9 @@ public class UpdateTreeTest {
 
   @Test
   public void ignoreFilesInChildByExtraExcludesWithPath() {
-    root = UpdateTree.newRoot(new PathRules("build/classes"), new PathRules());
+    // build/classes will not work since extra rules are always based on the root path,
+    // but git supports **/build/classes as the syntax for "at any child node"
+    root = UpdateTree.newRoot(new PathRules("**/build/classes"), new PathRules());
     root.addLocal(Update.newBuilder().setPath("child/build/classes/Foo.class").setDirectory(true).build());
     assertThat(find("child/build/classes/Foo.class").shouldIgnore(), is(true));
   }

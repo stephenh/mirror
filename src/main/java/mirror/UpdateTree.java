@@ -52,12 +52,12 @@ public class UpdateTree {
       ".*");
     PathRules extraIncludes = new PathRules();
     extraIncludes.setRules(
-      "src/mainGeneratedRest",
-      "src/mainGeneratedDataTemplate",
+      "**/src/mainGeneratedRest",
+      "**/src/mainGeneratedDataTemplate",
       "testGeneratedRest",
       "testGeneratedDataTemplate",
-      "build/*/classes/mainGeneratedInternalUrns/",
-      "build/*/resources/mainGeneratedInternalUrns/",
+      "**/build/*/classes/mainGeneratedInternalUrns/",
+      "**/build/*/resources/mainGeneratedInternalUrns/",
       "src_managed",
       "*-SNAPSHOT.jar",
       "*.iml",
@@ -295,20 +295,15 @@ public class UpdateTree {
       if (shouldIgnore != null) {
         return shouldIgnore;
       }
-      // we use arrays so that our forEach closure can calc all three in one iteration
-      // (which avoids having to re-calc the relative path three times)
-      boolean gitIgnored[] = { false };
-      boolean extraIncluded[] = { false };
-      boolean extraExcluded[] = { false };
-      parents().forEach(node -> {
+      boolean gitIgnored = parents().filter(n -> n.ignoreRules.hasAnyRules()).anyMatch(node -> {
         // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
         String relative = path.substring(node.path.length());
-        gitIgnored[0] |= node.ignoreRules.shouldIgnore(relative, isDirectory());
-        // besides parent .gitignores, also use our extra includes/excludes on each level of the path
-        extraIncluded[0] |= extraIncludes.shouldIgnore(relative, isDirectory());
-        extraExcluded[0] |= extraExcludes.shouldIgnore(relative, isDirectory());
+        return node.ignoreRules.shouldIgnore(relative, isDirectory());
       });
-      shouldIgnore = (gitIgnored[0] || extraExcluded[0]) && !extraIncluded[0];
+      // besides parent .gitignores, also use our extra includes/excludes
+      boolean extraIncluded = extraIncludes.shouldIgnore(path, isDirectory());
+      boolean extraExcluded = extraExcludes.shouldIgnore(path, isDirectory());
+      shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
       return shouldIgnore;
     }
 
