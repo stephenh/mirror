@@ -21,16 +21,19 @@ import com.google.common.base.Stopwatch;
 import mirror.FileWatcher;
 import mirror.Update;
 import mirror.WatchServiceFileWatcher;
+import mirror.tasks.TaskFactory;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 /** Tests how quickly creating MD5s of a directory tree would take. */
 public class Digest {
 
   public static void main(String[] args) throws Exception {
     Path root = Paths.get("/home/stephen/linkedin");
+    TaskFactory taskFactory = new ThreadBasedTaskFactory();
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
-    FileWatcher r = new WatchServiceFileWatcher(watchService, root);
+    FileWatcher r = new WatchServiceFileWatcher(taskFactory, watchService, root);
     List<Update> initial = r.performInitialScan(queue);
     s.stop();
 

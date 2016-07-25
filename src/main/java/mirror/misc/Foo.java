@@ -11,13 +11,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import mirror.FileWatcher;
 import mirror.Update;
 import mirror.WatchServiceFileWatcher;
+import mirror.tasks.TaskFactory;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 public class Foo {
 
   @SuppressWarnings("serial")
   public static void main(String[] args) throws Exception {
     Path root = Paths.get("/home/stephen/dir1");
-    FileWatcher f = new WatchServiceFileWatcher(FileSystems.getDefault().newWatchService(), root);
+    TaskFactory taskFactory = new ThreadBasedTaskFactory();
+    FileWatcher f = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), root);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<Update>(1000) {
       @Override
       public void put(Update u) throws InterruptedException {
@@ -26,7 +29,6 @@ public class Foo {
       }
     };
     f.performInitialScan(queue);
-    f.start(() -> System.out.println("done"));
     System.in.read();
   }
 }

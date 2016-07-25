@@ -6,12 +6,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
-public class SaveToLocal extends AbstractThreaded {
+import mirror.tasks.TaskLogic;
 
+public class SaveToLocal implements TaskLogic {
+
+  private static final Logger log = LoggerFactory.getLogger(SaveToLocal.class);
   private final BlockingQueue<Update> results;
   private final FileAccess fileAccess;
 
@@ -21,15 +28,14 @@ public class SaveToLocal extends AbstractThreaded {
   }
 
   @Override
-  protected void pollLoop() throws InterruptedException {
-    while (!shouldStop()) {
-      Update u = results.take();
-      try {
-        saveLocally(u);
-      } catch (RuntimeException e) {
-        log.error("Exception with results " + u, e);
-      }
+  public Duration runOneLoop() throws InterruptedException {
+    Update u = results.take();
+    try {
+      saveLocally(u);
+    } catch (RuntimeException e) {
+      log.error("Exception with results " + u, e);
     }
+    return null;
   }
 
   @VisibleForTesting

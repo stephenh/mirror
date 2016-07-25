@@ -17,10 +17,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import joist.util.Execute;
+import mirror.tasks.TaskFactory;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 public class WatchServiceFileWatcherTest {
 
   private static final File dir = new File("./build/FileWatcherTest");
+  private final TaskFactory taskFactory = new ThreadBasedTaskFactory();
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(100);
   private FileWatcher watcher;
 
@@ -31,14 +34,14 @@ public class WatchServiceFileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchServiceFileWatcher(FileSystems.getDefault().newWatchService(), dir.toPath());
+    watcher = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), dir.toPath());
     watcher.performInitialScan(queue);
-    watcher.start(null);
+    taskFactory.runTask(watcher);
   }
 
   @After
   public void stopWatcher() throws Exception {
-    watcher.stop();
+    taskFactory.stopTask(watcher);
   }
 
   @Test

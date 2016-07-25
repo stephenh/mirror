@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
-public interface FileWatcher {
+import mirror.tasks.TaskLogic;
+
+public interface FileWatcher extends TaskLogic {
 
   /**
    * Initializes watches on the rootDirectory, and returns a list of all of
@@ -13,9 +15,5 @@ public interface FileWatcher {
    * This scan is performed on-thread and so this method blocks until complete.
    */
   List<Update> performInitialScan(BlockingQueue<Update> queue) throws IOException, InterruptedException;
-
-  void start(Runnable onFailure);
-
-  void stop();
 
 }

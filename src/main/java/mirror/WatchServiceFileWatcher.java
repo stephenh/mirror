@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -24,10 +25,15 @@ import java.util.concurrent.BlockingQueue;
 
 import org.apache.commons.io.FileUtils;
 import org.jooq.lambda.Unchecked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
+
+import mirror.tasks.TaskFactory;
+import mirror.tasks.TaskLogic;
 
 /**
  * Recursively watches a directory for changes and sends them to a BlockingQueue for processing.
@@ -36,10 +42,12 @@ import com.google.common.collect.Maps;
  * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
  * the path of the event should be {@code project-a/foo.txt}.
  */
-public class WatchServiceFileWatcher extends AbstractThreaded implements FileWatcher {
+public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
+  private static final Logger log = LoggerFactory.getLogger(WatchServiceFileWatcher.class);
   // Use a synchronizedBiMap because technically performInitialScan and startPolling use different threads
   private final BiMap<WatchKey, Path> watchedDirectories = Maps.synchronizedBiMap(HashBiMap.create());
+  private final TaskFactory taskFactory;
   private final Path rootDirectory;
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> rawUpdates = new ArrayBlockingQueue<>(1_000_000);
@@ -47,7 +55,8 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
   private final Debouncer debouncer;
   private volatile BlockingQueue<Update> queue;
 
-  public WatchServiceFileWatcher(WatchService watchService, Path rootDirectory) {
+  public WatchServiceFileWatcher(TaskFactory taskFactory, WatchService watchService, Path rootDirectory) {
+    this.taskFactory = taskFactory;
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
     fileAccess = new NativeFileAccess(rootDirectory);
@@ -70,52 +79,48 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
   }
 
   @Override
-  protected void doStop() {
-    debouncer.stop();
+  public void onStop() {
+    taskFactory.stopTask(debouncer);
     try {
       watchService.close();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      log.warn("Exception when shutting down the watch service", e);
     }
   }
 
   @Override
-  protected void pollLoop() {
-    debouncer.start(onFailure);
-    while (!shouldStop()) {
-      try {
-        WatchKey watchKey = watchService.take();
-        // We can't use this:
-        // Path parentDir = (Path) watchKey.watchable();
-        // Because it might be stale when the directory renames, see:
-        // https://bugs.openjdk.java.net/browse/JDK-7057783
-        Path parentDir = watchedDirectories.get(watchKey);
-        for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
-          WatchEvent.Kind<?> eventKind = watchEvent.kind();
-          if (eventKind == OVERFLOW) {
-            throw new RuntimeException("Watcher overflow");
-          }
-          if (parentDir == null) {
-            log.error("Missing parentDir for " + watchKey + "/" + watchEvent.context());
-            continue;
-          }
-          Path child = parentDir.resolve((Path) watchEvent.context());
-          if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
-            onChangedPath(rawUpdates, child);
-          } else if (eventKind == ENTRY_DELETE) {
-            onRemovedPath(rawUpdates, child);
-          }
+  public Duration runOneLoop() throws InterruptedException {
+    taskFactory.runTask(debouncer);
+    try {
+      WatchKey watchKey = watchService.take();
+      // We can't use this:
+      // Path parentDir = (Path) watchKey.watchable();
+      // Because it might be stale when the directory renames, see:
+      // https://bugs.openjdk.java.net/browse/JDK-7057783
+      Path parentDir = watchedDirectories.get(watchKey);
+      for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
+        WatchEvent.Kind<?> eventKind = watchEvent.kind();
+        if (eventKind == OVERFLOW) {
+          throw new RuntimeException("Watcher overflow");
         }
-        watchKey.reset();
-      } catch (IOException io) {
-        throw new RuntimeException(io);
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt();
-        break;
-      } catch (ClosedWatchServiceException e) {
-        break; // shutting down
+        if (parentDir == null) {
+          log.error("Missing parentDir for " + watchKey + "/" + watchEvent.context());
+          continue;
+        }
+        Path child = parentDir.resolve((Path) watchEvent.context());
+        if (eventKind == ENTRY_CREATE || eventKind == ENTRY_MODIFY) {
+          onChangedPath(rawUpdates, child);
+        } else if (eventKind == ENTRY_DELETE) {
+          onRemovedPath(rawUpdates, child);
+        }
       }
+      watchKey.reset();
+    } catch (IOException io) {
+      throw new RuntimeException(io);
+    } catch (ClosedWatchServiceException e) {
+      // shutting down
     }
+    return null;
   }
 
   private void onChangedPath(BlockingQueue<Update> queue, Path path) throws IOException, InterruptedException {
@@ -216,20 +221,19 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
    * Having the "wait for writes to settle down" done up-front also matches what
    * watchman does.
    */
-  private class Debouncer extends AbstractThreaded {
+  private class Debouncer implements TaskLogic {
     @Override
-    protected void pollLoop() throws InterruptedException {
-      while (!shouldStop()) {
-        Update u = rawUpdates.take();
-        if (!u.getDirectory() && !u.getDelete() && u.getSymlink().isEmpty()) {
-          // this is a file
-          Utils.ensureSettled(fileAccess, rootDirectory.resolve(u.getPath()));
-        } else if (u.getDelete()) {
-          // would be nice to sleep on a delete, but if we have N deletes,
-          // we don't want to naively sleep for N * 500ms.
-        }
-        queue.put(u);
+    public Duration runOneLoop() throws InterruptedException {
+      Update u = rawUpdates.take();
+      if (!u.getDirectory() && !u.getDelete() && u.getSymlink().isEmpty()) {
+        // this is a file
+        Utils.ensureSettled(fileAccess, rootDirectory.resolve(u.getPath()));
+      } else if (u.getDelete()) {
+        // would be nice to sleep on a delete, but if we have N deletes,
+        // we don't want to naively sleep for N * 500ms.
       }
+      queue.put(u);
+      return null;
     }
   }
 

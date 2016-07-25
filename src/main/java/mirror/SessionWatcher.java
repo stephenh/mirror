@@ -8,11 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.grpc.stub.StreamObserver;
+import mirror.tasks.TaskLogic;
 
 /**
  * Sends dummy updates back/forth over our streaming connections as make-shift pings.
  */
-public class SessionWatcher extends AbstractThreaded {
+public class SessionWatcher implements TaskLogic {
 
   public static final String pingPath = "SessionWatcherPingPath";
   private static final Logger log = LoggerFactory.getLogger(SessionWatcher.class);
@@ -34,21 +35,20 @@ public class SessionWatcher extends AbstractThreaded {
   }
 
   @Override
-  protected void pollLoop() throws InterruptedException {
-    while (!shouldStop()) {
-      // ensure at least 2 minutes have gone by
-      Instant now = clock.instant();
-      boolean hasSentAtLeastTwoMinutesAgo = lastSent != null && lastSent.isBefore(now.minus(timeout));
-      boolean hasNotReceivedRecently = hasSentAtLeastTwoMinutesAgo
-        && (lastReceived == null || Duration.between(lastSent, lastReceived).minus(timeout).isNegative());
-      if (hasSentAtLeastTwoMinutesAgo && hasNotReceivedRecently) {
-        log.error("Stopping session due to duration timeout");
-        state.stop();
-      } else {
-        outgoingUpdates.onNext(Update.newBuilder().setPath(pingPath).build());
-        lastSent = now;
-        Thread.sleep(30L); // Sleep for a bit
-      }
+  public Duration runOneLoop() {
+    // ensure at least 2 minutes have gone by
+    Instant now = clock.instant();
+    boolean hasSentAtLeastTwoMinutesAgo = lastSent != null && lastSent.isBefore(now.minus(timeout));
+    boolean hasNotReceivedRecently = hasSentAtLeastTwoMinutesAgo
+      && (lastReceived == null || Duration.between(lastSent, lastReceived).minus(timeout).isNegative());
+    if (hasSentAtLeastTwoMinutesAgo && hasNotReceivedRecently) {
+      log.error("Stopping session due to duration timeout");
+      state.stop();
+      return null;
+    } else {
+      outgoingUpdates.onNext(Update.newBuilder().setPath(pingPath).build());
+      lastSent = now;
+      return Duration.ofSeconds(30L); // Sleep for a bit
     }
   }
 }

@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import io.grpc.stub.StreamObserver;
+import mirror.tasks.StubTaskFactory;
 
 public class MirrorSessionTest {
 
@@ -24,7 +25,8 @@ public class MirrorSessionTest {
   private final List<Update> fileUpdates = new ArrayList<>();
   private final FileWatcher fileWatcher = Mockito.mock(FileWatcher.class);
   private final StubClock clock = new StubClock();
-  private final MirrorSession session = new MirrorSession(clock, root, fileAccess, fileWatcher);
+  private final StubTaskFactory taskFactory = new StubTaskFactory();
+  private final MirrorSession session = new MirrorSession(taskFactory, clock, root, fileAccess, fileWatcher);
 
   @Before
   public void before() throws Exception {

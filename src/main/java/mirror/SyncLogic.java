@@ -8,15 +8,19 @@ import static org.jooq.lambda.tuple.Tuple.tuple;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.jooq.lambda.tuple.Tuple2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import mirror.UpdateTreeDiff.DiffResults;
+import mirror.tasks.TaskLogic;
 
 /**
  * Implements the steady-state (post-initial sync) two-way sync logic.
@@ -25,8 +29,9 @@ import mirror.UpdateTreeDiff.DiffResults;
  * either persist it locally or send it out remotely, while also considering
  * whether we've since had a newer/conflicting change.
  */
-public class SyncLogic extends AbstractThreaded {
+public class SyncLogic implements TaskLogic {
 
+  private static final Logger log = LoggerFactory.getLogger(SyncLogic.class);
   private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
@@ -38,20 +43,23 @@ public class SyncLogic extends AbstractThreaded {
   }
 
   @Override
-  protected void pollLoop() throws InterruptedException {
+  public void onStart() throws InterruptedException {
     diff(); // do an initial diff
-    while (!shouldStop()) {
-      try {
-        List<Update> batch = getNextBatchOrBlock();
-        logLocalUpdates(batch);
-        for (Update u : batch) {
-          handleUpdate(u);
-        }
-        diff();
-      } catch (IOException | RuntimeException e) {
-        log.error("Exception", e);
+  }
+
+  @Override
+  public Duration runOneLoop() throws InterruptedException {
+    try {
+      List<Update> batch = getNextBatchOrBlock();
+      logLocalUpdates(batch);
+      for (Update u : batch) {
+        handleUpdate(u);
       }
+      diff();
+    } catch (IOException | RuntimeException e) {
+      log.error("Exception", e);
     }
+    return null;
   }
 
   // see if we have up to N more updates
