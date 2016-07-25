@@ -7,8 +7,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -74,20 +72,6 @@ public class MirrorClient {
         startSession(stub);
       }
     });
-
-    // grpc's deadlines/timeouts don't work well with streams (currently/AFAICT),
-    // so if the server/ goes away, we have no way of knowing. so for now we ping.
-    final Timer task = new Timer();
-    session.addStoppedCallback(() -> task.cancel());
-    task.schedule(new TimerTask() {
-      public void run() {
-        if (!detector.isAvailable(stub)) {
-          log.info("Connection lost, killing session");
-          session.stop();
-          task.cancel();
-        }
-      }
-    }, 30_000, 30_000);
 
     // 1. see what our current state is
     try {

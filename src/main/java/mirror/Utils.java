@@ -3,7 +3,6 @@ package mirror;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,36 +36,12 @@ public class Utils {
     return s.withDeadlineAfter(3, TimeUnit.MINUTES);
   }
 
-  public static void handleInterrupt(InterruptedRunnable r) {
+  public static void resetIfInterrupted(InterruptedRunnable r) {
     try {
       r.run();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException(e);
     }
-  }
-
-  public static <T> T handleInterrupt(InterruptedSupplier<T> f) {
-    try {
-      return f.get();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(e);
-    }
-  }
-
-  public static <T> Consumer<T> handleInterrupt(final InterruptedConsumer<T> c) {
-    return new Consumer<T>() {
-      @Override
-      public void accept(T t) {
-        try {
-          c.consume(t);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException(e);
-        }
-      }
-    };
   }
 
   public static String debugString(Update u) {

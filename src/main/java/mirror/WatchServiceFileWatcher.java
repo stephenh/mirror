@@ -82,7 +82,7 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
   @Override
   protected void pollLoop() {
     debouncer.start(onFailure);
-    while (!shutdown) {
+    while (!shouldStop()) {
       try {
         WatchKey watchKey = watchService.take();
         // We can't use this:
@@ -219,7 +219,7 @@ public class WatchServiceFileWatcher extends AbstractThreaded implements FileWat
   private class Debouncer extends AbstractThreaded {
     @Override
     protected void pollLoop() throws InterruptedException {
-      while (!shutdown) {
+      while (!shouldStop()) {
         Update u = rawUpdates.take();
         if (!u.getDirectory() && !u.getDelete() && u.getSymlink().isEmpty()) {
           // this is a file

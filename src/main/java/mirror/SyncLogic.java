@@ -1,6 +1,5 @@
 package mirror;
 
-import static mirror.Utils.handleInterrupt;
 import static org.apache.commons.lang3.StringUtils.defaultIfEmpty;
 import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.jooq.lambda.Seq.seq;
@@ -41,7 +40,7 @@ public class SyncLogic extends AbstractThreaded {
   @Override
   protected void pollLoop() throws InterruptedException {
     diff(); // do an initial diff
-    while (!shutdown) {
+    while (!shouldStop()) {
       try {
         List<Update> batch = getNextBatchOrBlock();
         logLocalUpdates(batch);
@@ -92,8 +91,12 @@ public class SyncLogic extends AbstractThreaded {
 
   private void diff() throws InterruptedException {
     DiffResults r = new UpdateTreeDiff(tree).diff();
-    r.saveLocally.forEach(handleInterrupt(u -> queues.saveToLocal.put(u)));
-    r.sendToRemote.forEach(handleInterrupt(u -> queues.saveToRemote.put(u)));
+    for (Update u : r.saveLocally) {
+      queues.saveToLocal.put(u);
+    }
+    for (Update u : r.sendToRemote) {
+      queues.saveToRemote.put(u);
+    }
   }
 
   /**

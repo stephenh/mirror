@@ -1,8 +1,5 @@
 package mirror;
 
-import static mirror.Utils.handleInterrupt;
-import static mirror.Utils.withTimeout;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,7 +41,7 @@ public interface ConnectionDetector {
     public boolean isAvailable(MirrorStub stub) {
       AtomicBoolean available = new AtomicBoolean(false);
       CountDownLatch done = new CountDownLatch(1);
-      withTimeout(stub).ping(PingRequest.newBuilder().build(), new StreamObserver<PingResponse>() {
+      Utils.withTimeout(stub).ping(PingRequest.newBuilder().build(), new StreamObserver<PingResponse>() {
         @Override
         public void onNext(PingResponse value) {
           available.set(true);
@@ -61,14 +58,14 @@ public interface ConnectionDetector {
           done.countDown();
         }
       });
-      handleInterrupt(() -> done.await());
+      Utils.resetIfInterrupted(() -> done.await());
       return available.get();
     }
 
     @Override
     public void blockUntilConnected(MirrorStub stub) {
       while (!isAvailable(stub)) {
-        handleInterrupt(() -> Thread.sleep(1_000));
+        Utils.resetIfInterrupted(() -> Thread.sleep(1_000));
       }
     }
   }

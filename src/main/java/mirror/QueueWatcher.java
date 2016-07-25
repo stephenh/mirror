@@ -13,7 +13,7 @@ public class QueueWatcher extends AbstractThreaded {
 
   @Override
   protected void pollLoop() throws InterruptedException {
-    while (!shutdown) {
+    while (!shouldStop()) {
       int updates = queues.incomingQueue.size();
       int local = queues.saveToLocal.size();
       int remote = queues.saveToRemote.size();

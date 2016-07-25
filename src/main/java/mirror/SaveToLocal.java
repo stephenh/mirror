@@ -22,7 +22,7 @@ public class SaveToLocal extends AbstractThreaded {
 
   @Override
   protected void pollLoop() throws InterruptedException {
-    while (!shutdown) {
+    while (!shouldStop()) {
       Update u = results.take();
       try {
         saveLocally(u);

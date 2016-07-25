@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.WatchService;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,7 @@ import io.grpc.stub.StreamObserver;
 public class MirrorSession {
 
   private final Logger log = LoggerFactory.getLogger(MirrorSession.class);
+  private final Clock clock;
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
   private final MirrorSessionState state = new MirrorSessionState();
@@ -37,13 +39,15 @@ public class MirrorSession {
   private final UpdateTree tree = UpdateTree.newRoot();
   private final SyncLogic syncLogic;
   private SaveToRemote saveToRemote;
+  private SessionWatcher sessionWatcher;
   private StreamObserver<Update> outgoingChanges;
 
   public MirrorSession(Path root, FileSystem fileSystem) {
-    this(root, new NativeFileAccess(root), new WatchServiceFileWatcher(newWatchService(fileSystem), root));
+    this(Clock.systemUTC(), root, new NativeFileAccess(root), new WatchServiceFileWatcher(newWatchService(fileSystem), root));
   }
 
-  public MirrorSession(Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
+  public MirrorSession(Clock clock, Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
+    this.clock = clock;
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcher;
     syncLogic = new SyncLogic(queues, fileAccess, tree);
@@ -66,7 +70,11 @@ public class MirrorSession {
   }
 
   public void addRemoteUpdate(Update update) {
-    queues.incomingQueue.add(update);
+    if (update.getPath().equals(SessionWatcher.pingPath)) {
+      sessionWatcher.pingReceived(update);
+    } else {
+      queues.incomingQueue.add(update);
+    }
   }
 
   public void addStoppedCallback(Runnable r) {
@@ -106,8 +114,12 @@ public class MirrorSession {
   public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
     syncLogic.start(state.stopOnFailure());
+
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     saveToRemote.start(state.stopOnFailure());
+
+    sessionWatcher = new SessionWatcher(clock, state, outgoingChanges);
+    sessionWatcher.start(state.stopOnFailure());
   }
 
   public void stop() {
