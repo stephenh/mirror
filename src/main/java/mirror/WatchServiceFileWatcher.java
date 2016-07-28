@@ -79,6 +79,11 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
   }
 
   @Override
+  public void onStart() {
+    taskFactory.runTask(debouncer);
+  }
+
+  @Override
   public void onStop() {
     taskFactory.stopTask(debouncer);
     try {
@@ -90,7 +95,6 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
   @Override
   public Duration runOneLoop() throws InterruptedException {
-    taskFactory.runTask(debouncer);
     try {
       WatchKey watchKey = watchService.take();
       // We can't use this:
