@@ -19,4 +19,7 @@ public interface TaskLogic {
   default void onStop() throws InterruptedException {
   }
 
+  default String getName() {
+    return getClass().getSimpleName();
+  }
 }

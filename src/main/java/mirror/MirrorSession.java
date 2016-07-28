@@ -183,6 +183,11 @@ public class MirrorSession {
         delegate.onFailure();
         state.stop();
       }
+
+      @Override
+      public String getName() {
+        return delegate.getName();
+      }
     };
   }
 }

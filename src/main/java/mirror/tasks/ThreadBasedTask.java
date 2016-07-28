@@ -32,11 +32,7 @@ class ThreadBasedTask {
 
   protected ThreadBasedTask(TaskLogic task) {
     this.task = task;
-    thread = new ThreadFactoryBuilder()
-      .setDaemon(true)
-      .setNameFormat(task.getClass().getSimpleName() + "-" + nextThreadId() + "-%s")
-      .build()
-      .newThread(() -> run());
+    thread = new ThreadFactoryBuilder().setDaemon(true).setNameFormat(nextThreadId() + "-" + task.getName() + "-%s").build().newThread(() -> run());
     thread.start();
   }
 
