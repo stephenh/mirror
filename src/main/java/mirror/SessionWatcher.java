@@ -44,11 +44,10 @@ public class SessionWatcher implements TaskLogic {
     if (hasSentAtLeastTwoMinutesAgo && hasNotReceivedRecently) {
       log.error("Stopping session due to duration timeout");
       state.stop();
-      return null;
     } else {
       outgoingUpdates.onNext(Update.newBuilder().setPath(pingPath).build());
       lastSent = now;
-      return Duration.ofSeconds(30L); // Sleep for a bit
     }
+    return Duration.ofSeconds(30L); // Sleep for a bit
   }
 }
