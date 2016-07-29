@@ -90,9 +90,8 @@ public class MirrorSession {
   }
 
   public void addRemoteUpdate(Update update) {
-    if (update.getPath().equals(SessionWatcher.pingPath)) {
-      sessionWatcher.pingReceived(update);
-    } else {
+    sessionWatcher.updateReceived(update);
+    if (!update.getPath().equals(SessionWatcher.heartbeatPath)) {
       queues.incomingQueue.add(update);
     }
   }
@@ -140,7 +139,7 @@ public class MirrorSession {
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     start(saveToRemote);
 
-    sessionWatcher = new SessionWatcher(clock, state, outgoingChanges);
+    sessionWatcher = new SessionWatcher(clock, taskFactory, state, outgoingChanges);
     start(sessionWatcher);
   }
 
