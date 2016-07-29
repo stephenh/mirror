@@ -2,7 +2,11 @@ package mirror.tasks;
 
 public interface TaskFactory {
 
-  TaskHandle runTask(TaskLogic logic);
+  default TaskHandle runTask(TaskLogic logic) {
+    return runTask(logic, null);
+  }
+
+  TaskHandle runTask(TaskLogic logic, Runnable onFailure);
 
   void stopTask(TaskLogic logic);
 

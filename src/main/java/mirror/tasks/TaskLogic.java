@@ -2,6 +2,8 @@ package mirror.tasks;
 
 import java.time.Duration;
 
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * A task to be executed on a dedicated thread.
  */
@@ -20,6 +22,11 @@ public interface TaskLogic {
   }
 
   default String getName() {
-    return getClass().getSimpleName();
+    String name = getClass().getSimpleName();
+    // lambdas don't have simple names
+    if (name.equals("")) {
+      name = StringUtils.substringAfterLast(getClass().getName(), ".");
+    }
+    return name;
   }
 }

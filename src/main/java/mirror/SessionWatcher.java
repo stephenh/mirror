@@ -54,8 +54,12 @@ public class SessionWatcher implements TaskLogic {
   public Duration runOneLoop() {
     // ensure at least 2 minutes have gone by
     Instant now = clock.instant();
-    if (lastReceived != null && Duration.between(lastReceived, now).minus(timeout).isNegative()) {
-      log.error("Stopping session due to duration timeout");
+    if (lastReceived != null && timeout.minus(Duration.between(lastReceived, now)).isNegative()) {
+      log.error(//
+        "Stopping session due to duration timeout (lastReceived={}, now={}, diff={})",
+        lastReceived,
+        now,
+        Duration.between(lastReceived, now));
       state.stop();
     }
     return timeout;

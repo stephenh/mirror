@@ -6,6 +6,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,6 +23,9 @@ import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
+import mirror.tasks.TaskFactory;
+import mirror.tasks.TaskLogic;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 public class MirrorClient {
 
@@ -37,7 +41,12 @@ public class MirrorClient {
 
     Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(localRoot, remoteRoot, new ConnectionDetector.Impl(), FileSystems.getDefault());
+    MirrorClient client = new MirrorClient(//
+      localRoot,
+      remoteRoot,
+      new ThreadBasedTaskFactory(),
+      new ConnectionDetector.Impl(),
+      FileSystems.getDefault());
     client.startSession(stub);
 
     // TODO something better
@@ -47,31 +56,33 @@ public class MirrorClient {
 
   private final Path localRoot;
   private final Path remoteRoot;
+  private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileSystem fileSystem;
+  private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
-  private volatile boolean stopped;
 
-  public MirrorClient(Path localRoot, Path remoteRoot, ConnectionDetector detector, FileSystem fileSystem) {
+  public MirrorClient(Path localRoot, Path remoteRoot, TaskFactory taskFactory, ConnectionDetector detector, FileSystem fileSystem) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
+    this.taskFactory = taskFactory;
     this.detector = detector;
     this.fileSystem = fileSystem;
   }
 
   /** Connects to the server and starts a sync session. */
-  public void startSession(MirrorStub stub) {
+  public void startSession(MirrorStub stub) throws InterruptedException {
+    CountDownLatch started = new CountDownLatch(1);
+    sessionStarter = new SessionStarter(stub, started);
+    taskFactory.runTask(sessionStarter);
+    started.await();
+  }
+
+  private void startSession(MirrorStub stub, CountDownLatch onFailure) {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session");
 
-    session = new MirrorSession(localRoot.toAbsolutePath(), fileSystem);
-
-    // Automatically re-connect when we're disconnected
-    session.addStoppedCallback(() -> {
-      if (!stopped) {
-        startSession(stub);
-      }
-    });
+    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), fileSystem);
 
     // 1. see what our current state is
     try {
@@ -142,6 +153,14 @@ public class MirrorClient {
       outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get().toString()).build());
 
       session.diffAndStartPolling(outgoingChanges);
+
+      // Automatically re-connect when we're disconnected
+      session.addStoppedCallback(() -> {
+        // Don't call startSession again directly, because then we'll start running
+        // our connection code on whatever thread is running this callback. Instead
+        // just signal our main client thread that it should try again.
+        onFailure.countDown();
+      });
     } catch (Exception e) {
       log.error("Exception starting the client", e);
       session.stop();
@@ -149,7 +168,26 @@ public class MirrorClient {
   }
 
   public void stop() {
-    stopped = true;
+    taskFactory.stopTask(sessionStarter);
     session.stop();
+  }
+
+  private class SessionStarter implements TaskLogic {
+    private final MirrorStub stub;
+    private final CountDownLatch started;
+
+    private SessionStarter(MirrorStub stub, CountDownLatch started) {
+      this.stub = stub;
+      this.started = started;
+    }
+
+    @Override
+    public Duration runOneLoop() throws InterruptedException {
+      CountDownLatch onFailure = new CountDownLatch(1);
+      startSession(stub, onFailure);
+      started.countDown();
+      onFailure.await();
+      return null;
+    }
   }
 }

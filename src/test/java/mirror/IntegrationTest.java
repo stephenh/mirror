@@ -20,6 +20,7 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.internal.ServerImpl;
 import mirror.MirrorGrpc.MirrorStub;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 public class IntegrationTest {
 
@@ -466,7 +467,12 @@ public class IntegrationTest {
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
-    client = new MirrorClient(root2.toPath(), root1.toPath(), new ConnectionDetector.Impl(), FileSystems.getDefault());
+    client = new MirrorClient(// 
+      root2.toPath(),
+      root1.toPath(),
+      new ThreadBasedTaskFactory(),
+      new ConnectionDetector.Impl(),
+      FileSystems.getDefault());
     client.startSession(stub);
     log.info("started client");
   }

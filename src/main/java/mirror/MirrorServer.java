@@ -16,6 +16,7 @@ import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 /**
  * Listens for incoming clients and sets up {@link MirrorSession}s.
@@ -48,7 +49,7 @@ public class MirrorServer extends MirrorImplBase {
     Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
 
     log.info("Starting new session " + sessionId + " for + " + root);
-    MirrorSession session = new MirrorSession(root, FileSystems.getDefault());
+    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, FileSystems.getDefault());
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

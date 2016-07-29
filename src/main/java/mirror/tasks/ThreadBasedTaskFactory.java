@@ -11,8 +11,8 @@ public class ThreadBasedTaskFactory implements TaskFactory {
   private final Map<TaskLogic, ThreadBasedTask> tasks = new ConcurrentHashMap<>();
 
   @Override
-  public TaskHandle runTask(TaskLogic logic) {
-    ThreadBasedTask task = new ThreadBasedTask(logic);
+  public TaskHandle runTask(TaskLogic logic, Runnable onFailure) {
+    ThreadBasedTask task = new ThreadBasedTask(logic, onFailure);
     tasks.put(logic, task);
     return () -> stopTask(logic);
   }
@@ -20,10 +20,11 @@ public class ThreadBasedTaskFactory implements TaskFactory {
   @Override
   public void stopTask(TaskLogic logic) {
     ThreadBasedTask task = tasks.get(logic);
-    if (task != null) {
-      tasks.remove(task);
-      task.stop();
+    if (task == null) {
+      throw new IllegalArgumentException("No task found for " + logic);
     }
+    tasks.remove(task);
+    task.stop();
   }
 
 }

@@ -25,13 +25,15 @@ class ThreadBasedTask {
   private final CountDownLatch isShutdown = new CountDownLatch(1);
   private final Thread thread;
   private final TaskLogic task;
+  private final Runnable onFailure;
 
   private static synchronized int nextThreadId() {
     return nextThread++;
   }
 
-  protected ThreadBasedTask(TaskLogic task) {
+  protected ThreadBasedTask(TaskLogic task, Runnable onFailure) {
     this.task = task;
+    this.onFailure = onFailure;
     thread = new ThreadFactoryBuilder().setDaemon(true).setNameFormat(nextThreadId() + "-" + task.getName() + "-%s").build().newThread(() -> run());
     thread.start();
   }
@@ -59,7 +61,8 @@ class ThreadBasedTask {
         // shutting down
       } catch (Exception e) {
         log.error("Error returned from runOneLoop", e);
-        task.onFailure();
+        callTaskFailureCallback();
+        callFactoryFailureCallback();
       }
       task.onStop();
     } catch (InterruptedException ie) {
@@ -67,6 +70,24 @@ class ThreadBasedTask {
       // shutting down
     } finally {
       isShutdown.countDown();
+    }
+  }
+
+  private void callTaskFailureCallback() {
+    try {
+      task.onFailure();
+    } catch (Exception e2) {
+      log.error("task.onFailure() call failed", e2);
+    }
+  }
+
+  private void callFactoryFailureCallback() {
+    if (onFailure != null) {
+      try {
+        onFailure.run();
+      } catch (Exception e2) {
+        log.error("onFailure call failed", e2);
+      }
     }
   }
 

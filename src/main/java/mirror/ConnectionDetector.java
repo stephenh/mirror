@@ -1,10 +1,9 @@
 package mirror;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
@@ -35,7 +34,7 @@ public interface ConnectionDetector {
 
   /** A detector that uses our app-specific PingRequest/PingResponse. */
   public static class Impl implements ConnectionDetector {
-    private static final Logger log = LoggerFactory.getLogger(Impl.class);
+    private static final Duration durationBetweenDetections = Duration.ofMinutes(1);
 
     @Override
     public boolean isAvailable(MirrorStub stub) {
@@ -49,7 +48,7 @@ public interface ConnectionDetector {
 
         @Override
         public void onError(Throwable t) {
-          log.debug("Server not available: " + t.getMessage());
+          // log.debug("Server not available: " + t.getMessage());
           done.countDown();
         }
 
@@ -58,14 +57,14 @@ public interface ConnectionDetector {
           done.countDown();
         }
       });
-      Utils.resetIfInterrupted(() -> done.await());
+      Utils.resetIfInterrupted(() -> done.await(1_000, TimeUnit.MILLISECONDS));
       return available.get();
     }
 
     @Override
     public void blockUntilConnected(MirrorStub stub) {
       while (!isAvailable(stub)) {
-        Utils.resetIfInterrupted(() -> Thread.sleep(1_000));
+        Utils.resetIfInterrupted(() -> Thread.sleep(durationBetweenDetections.toMillis()));
       }
     }
   }

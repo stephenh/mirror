@@ -6,6 +6,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 /**
  * Holds the state (currently just stopped/not-stopped) and a list of callbacks.
  */
@@ -23,11 +25,29 @@ public class MirrorSessionState {
   }
 
   /**
-   * Called when the session is over, or most likely when an unhandled exception happens (e.g. network error) and we need to restart the session.
+   * Called when the session is over, or when an unhandled exception happens (e.g. network error) and we need to restart the session.
+   *
+   * We don't technically restart the session here, but instead assume one of
+   * the callbacks will kick off that process.
    */
   public synchronized void stop() {
-    if (!stopped) {
+    if (stopped) {
+      log.warn("Session is already stopped");
+    } else {
       stopped = true;
+      invokeOnSeparateThread(new ArrayList<>(callbacks));
+    }
+  }
+
+  public Runnable stopOnFailure() {
+    return () -> {
+      log.error("Failure indicated, so stopping the session");
+      stop();
+    };
+  }
+
+  private static void invokeOnSeparateThread(final List<Runnable> callbacks) {
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("MirrorSessionStateCloser-%s").build().newThread(() -> {
       callbacks.forEach(r -> {
         try {
           r.run();
@@ -35,10 +55,7 @@ public class MirrorSessionState {
           log.error("Error calling callback", e);
         }
       });
-    }
-  }
-
-  public Runnable stopOnFailure() {
-    return () -> stop();
+      log.info("All callbacks complete");
+    }).start();
   }
 }

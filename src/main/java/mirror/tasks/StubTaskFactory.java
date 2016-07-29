@@ -11,8 +11,8 @@ public class StubTaskFactory implements TaskFactory {
   private final Map<TaskLogic, StubTask> tasks = new ConcurrentHashMap<>();
 
   @Override
-  public TaskHandle runTask(TaskLogic logic) {
-    StubTask task = new StubTask(logic);
+  public TaskHandle runTask(TaskLogic logic, Runnable onFailure) {
+    StubTask task = new StubTask(logic, onFailure);
     tasks.put(logic, task);
     return () -> stopTask(logic);
   }

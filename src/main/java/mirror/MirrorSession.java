@@ -1,11 +1,12 @@
 package mirror;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.WatchService;
 import java.time.Clock;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
-import mirror.tasks.ThreadBasedTaskFactory;
 
 /**
  * Represents a session of an initial sync plus on-going synchronization of
@@ -47,13 +47,13 @@ public class MirrorSession {
   private SessionWatcher sessionWatcher;
   private StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(Path root, FileSystem fileSystem) {
-    this(//
-      new ThreadBasedTaskFactory(),
+  public MirrorSession(TaskFactory factory, Path root, FileSystem fileSystem) {
+    this(
+      factory,
       Clock.systemUTC(),
       root,
       new NativeFileAccess(root),
-      new WatchServiceFileWatcher(new ThreadBasedTaskFactory(), newWatchService(fileSystem), root));
+      new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
   }
 
   public MirrorSession(TaskFactory taskFactory, Clock clock, Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
@@ -71,20 +71,17 @@ public class MirrorSession {
     start(queueWatcher);
 
     state.addStoppedCallback(() -> {
-      taskFactory.stopTask(syncLogic);
-      taskFactory.stopTask(saveToLocal);
-      taskFactory.stopTask(fileWatcher); // may not have been started, but won't be null
-      if (saveToRemote != null) {
-        taskFactory.stopTask(saveToRemote);
-      }
-      if (queueWatcher != null) {
-        taskFactory.stopTask(queueWatcher);
-      }
-      if (sessionWatcher != null) {
-        taskFactory.stopTask(sessionWatcher);
-      }
-      if (outgoingChanges != null) {
-        outgoingChanges.onCompleted();
+      try {
+        log.info("Stopping tasks");
+        List<TaskLogic> tasks = newArrayList(syncLogic, saveToLocal, fileWatcher, saveToRemote, queueWatcher, sessionWatcher);
+        tasks.stream().filter(t -> t != null).forEach(t -> {
+          taskFactory.stopTask(t);
+        });
+        if (outgoingChanges != null) {
+          outgoingChanges.onCompleted();
+        }
+      } catch (Exception e) {
+        log.error("Stopping failed", e);
       }
     });
   }
@@ -148,10 +145,6 @@ public class MirrorSession {
     state.stop();
   }
 
-  private void start(TaskLogic task) {
-    taskFactory.runTask(stopSessionOnFailure(state, task));
-  }
-
   private static WatchService newWatchService(FileSystem fileSystem) {
     try {
       return fileSystem.newWatchService();
@@ -160,33 +153,7 @@ public class MirrorSession {
     }
   }
 
-  private static TaskLogic stopSessionOnFailure(MirrorSessionState state, TaskLogic delegate) {
-    return new TaskLogic() {
-      @Override
-      public Duration runOneLoop() throws InterruptedException {
-        return delegate.runOneLoop();
-      }
-
-      @Override
-      public void onStart() throws InterruptedException {
-        delegate.onStart();
-      }
-
-      @Override
-      public void onStop() throws InterruptedException {
-        delegate.onStop();
-      }
-
-      @Override
-      public void onFailure() throws InterruptedException {
-        delegate.onFailure();
-        state.stop();
-      }
-
-      @Override
-      public String getName() {
-        return delegate.getName();
-      }
-    };
+  private void start(TaskLogic logic) {
+    taskFactory.runTask(logic, state.stopOnFailure());
   }
 }
