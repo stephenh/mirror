@@ -35,7 +35,11 @@ class ThreadBasedTask {
     this.task = task;
     this.onFailure = onFailure;
     thread = new ThreadFactoryBuilder().setDaemon(true).setNameFormat(nextThreadId() + "-" + task.getName() + "-%s").build().newThread(() -> run());
+  }
+
+  void start() {
     thread.start();
+    Utils.resetIfInterrupted(() -> isStarted.await());
   }
 
   void stop() {
@@ -53,6 +57,9 @@ class ThreadBasedTask {
         while (!shouldStop()) {
           Duration wait = task.runOneLoop();
           if (wait != null) {
+            if (wait.isNegative()) {
+              break;
+            }
             Thread.sleep(wait.toMillis());
           }
         }

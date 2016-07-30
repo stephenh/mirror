@@ -1,7 +1,5 @@
 package mirror;
 
-import static com.google.common.collect.Lists.newArrayList;
-
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
@@ -16,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
+import mirror.tasks.TaskPool;
 
 /**
  * Represents a session of an initial sync plus on-going synchronization of
@@ -34,10 +33,9 @@ public class MirrorSession {
 
   private final Logger log = LoggerFactory.getLogger(MirrorSession.class);
   private final Clock clock;
-  private final TaskFactory taskFactory;
+  private final TaskPool taskPool;
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
-  private final MirrorSessionState state = new MirrorSessionState();
   private final QueueWatcher queueWatcher = new QueueWatcher(queues);
   private final SaveToLocal saveToLocal;
   private final FileWatcher fileWatcher;
@@ -48,19 +46,16 @@ public class MirrorSession {
   private StreamObserver<Update> outgoingChanges;
 
   public MirrorSession(TaskFactory factory, Path root, FileSystem fileSystem) {
-    this(
-      factory,
-      Clock.systemUTC(),
-      root,
-      new NativeFileAccess(root),
-      new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
+    this(factory, Clock.systemUTC(), root, new NativeFileAccess(root), new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
   }
 
   public MirrorSession(TaskFactory taskFactory, Clock clock, Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
-    this.taskFactory = taskFactory;
     this.clock = clock;
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcher;
+
+    // Run all our tasks in a pool so they are terminated together
+    taskPool = taskFactory.newTaskPool();
 
     syncLogic = new SyncLogic(queues, fileAccess, tree);
     // started in diffAndStartPolling
@@ -70,18 +65,9 @@ public class MirrorSession {
 
     start(queueWatcher);
 
-    state.addStoppedCallback(() -> {
-      try {
-        log.info("Stopping tasks");
-        List<TaskLogic> tasks = newArrayList(syncLogic, saveToLocal, fileWatcher, saveToRemote, queueWatcher, sessionWatcher);
-        tasks.stream().filter(t -> t != null).forEach(t -> {
-          taskFactory.stopTask(t);
-        });
-        if (outgoingChanges != null) {
-          outgoingChanges.onCompleted();
-        }
-      } catch (Exception e) {
-        log.error("Stopping failed", e);
+    taskPool.addShutdownCallback(() -> {
+      if (outgoingChanges != null) {
+        outgoingChanges.onCompleted();
       }
     });
   }
@@ -93,8 +79,8 @@ public class MirrorSession {
     }
   }
 
-  public void addStoppedCallback(Runnable r) {
-    state.addStoppedCallback(r);
+  public void addStoppedCallback(Runnable callback) {
+    taskPool.addShutdownCallback(callback);
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
@@ -136,13 +122,14 @@ public class MirrorSession {
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     start(saveToRemote);
 
-    sessionWatcher = new SessionWatcher(clock, taskFactory, state, outgoingChanges);
+    sessionWatcher = new SessionWatcher(this, clock, taskPool, outgoingChanges);
     start(sessionWatcher);
   }
 
   public void stop() {
     log.info("Stopping session");
-    state.stop();
+    // this won't block; could potentially add a CountDownLatch
+    taskPool.stopAllTasks();
   }
 
   private static WatchService newWatchService(FileSystem fileSystem) {
@@ -154,6 +141,6 @@ public class MirrorSession {
   }
 
   private void start(TaskLogic logic) {
-    taskFactory.runTask(logic, state.stopOnFailure());
+    taskPool.runTask(logic);
   }
 }

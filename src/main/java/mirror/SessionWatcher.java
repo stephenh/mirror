@@ -8,8 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.grpc.stub.StreamObserver;
-import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
+import mirror.tasks.TaskPool;
 
 /**
  * Sends dummy updates back/forth over our streaming connections as make-shift pings.
@@ -22,17 +22,17 @@ public class SessionWatcher implements TaskLogic {
   public static final String heartbeatPath = "SessionWatcherHeartbeat";
   private static final Logger log = LoggerFactory.getLogger(SessionWatcher.class);
   private static final Duration timeout = Duration.ofMinutes(2);
+  private final MirrorSession session;
   private final Clock clock;
-  private final TaskFactory taskFactory;
-  private final MirrorSessionState state;
+  private final TaskPool taskPool;
   private final StreamObserver<Update> outgoingUpdates;
   private final TaskLogic heartbeat = new HeartbeatSender();
   private volatile Instant lastReceived = null;
 
-  public SessionWatcher(Clock clock, TaskFactory taskFactory, MirrorSessionState state, StreamObserver<Update> outgoingUpdates) {
+  public SessionWatcher(MirrorSession session, Clock clock, TaskPool taskPool, StreamObserver<Update> outgoingUpdates) {
+    this.session = session;
     this.clock = clock;
-    this.taskFactory = taskFactory;
-    this.state = state;
+    this.taskPool = taskPool;
     this.outgoingUpdates = outgoingUpdates;
   }
 
@@ -42,12 +42,7 @@ public class SessionWatcher implements TaskLogic {
 
   @Override
   public void onStart() {
-    taskFactory.runTask(heartbeat);
-  }
-
-  @Override
-  public void onStop() {
-    taskFactory.stopTask(heartbeat);
+    taskPool.runTask(heartbeat);
   }
 
   @Override
@@ -60,7 +55,7 @@ public class SessionWatcher implements TaskLogic {
         lastReceived,
         now,
         Duration.between(lastReceived, now));
-      state.stop();
+      session.stop();
     }
     return timeout;
   }
