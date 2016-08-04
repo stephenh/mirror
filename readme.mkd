@@ -50,6 +50,7 @@ I looked at several sync options before starting mirror, but didn't find anythin
 * sshfs is too slow and doesn't support inotify
 * doppleganger (an internal tool) is real-time, but not two-way
   * It also generally assumes you can run the build tool (e.g. gradle) on both laptop and desktop, and for my setup I want to only run it on the desktop
+  * Similarly, doppleganger does let you have a git working copy on both laptop/desktop, but so far mirror generally assumes you have a git copy on only one of the desktop or laptop (your choice) and then the other side is just a dumb copy. Which means git commands, like `git log`, `tig`, etc., will only work on whatever machine you have your git check on.
 
 Setup
 =====
