@@ -27,9 +27,9 @@ Goals
 Non-Goals
 =========
 
-* Unison-style/"smart" disconnected support
+* Unison-style/long-duration disconnected support
   * `mirror` will automatically re-connect (e.g. if you close your laptop and then go home) and restart syncing (inspired by mosh), but if files have changed on both sides while disconnected, then the last write wins
-  * This hueristic is generally fine, it just means `mirror` is not meant for a use case of "make new changes on the desktop for a few days, make new changes on the laptop for a few days, and then run `mirror` once per week to intelligently merge your work".
+  * This hueristic is generally fine, it just means `mirror` is not meant for a use case of "make new changes on the desktop for a few days, make new changes on the laptop for a few days, and then run `mirror` once per week to intelligently merge your work". Use `git` or `unison` for that; `mirror` is for real-time syncing.
 * Maintain Unix permissions/owner/group
   * Whatever Unix user runs the `mirror` commands will be the owner/group/etc. of the files
 * Support for multiple clients
@@ -38,6 +38,7 @@ Non-Goals
   * The assumption is that most files are source code, and occassional binary artifacts that are generally in the below-100mb range
 * Super-efficient diff/transmission logic like rsync
   * Instead we assume a generally fast network connection (as in "faster than a modem", i.e. mirror works fine over a VPN)
+  * Basically, if a file changes, `mirror` retransmits the whole file instead of trying to diff only what changed
 
 Comparison to Existing Options
 ==============================
@@ -62,7 +63,7 @@ Current (pre-release) instructions using master:
 * Copy to remote home directory
   * `scp build/libs/mirror-all.jar your-desktop.com:~/`
   * `scp mirror your-desktop.com:~/`
-* Copy to your local home directory (not really necessary)
+* Copy to your local home directory
   * `cp build/libs/mirror-all.jar ~/`
   * `cp mirror ~/`
 * Start the server-side from the desktop's home directory
@@ -74,9 +75,9 @@ This will sync the `$HOME/code` directory on your two machines.
 
 Eventually it would be nice to run just one command, e.g. on the client-side have a single `mirror ...` invocation, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
 
-Also, there are currently no user-available config options for what to include/exclude, for now I've just hardcoded defaults that are appropriate to my work.
+Also, there are currently no user-available config options for what files to include/exclude (although everything in your `.gitignore` is respected automatically), as for now I've just hardcoded defaults that are appropriate to my work (e.g. even though `build/*` is in the `.gitignore`, I've whitelisted `*-SNAPSHOT.jar` files to always be synced) .
 
-Note that you might have to increase the native file system limits, e.g.
+Note that if you have a lot of directories, you might have to increase the native file system limits, e.g.
 
 * For Linux see [https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers](this wiki page)
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
@@ -94,17 +95,20 @@ Todo
   * **Done** but might need some tweaks
 * Handle various IOExceptions will inevitably happen, probably by restarting session
 * Really easy setup/install process, e.g.:
-  * Currently you have to run `java -cp ...` and `java -cp ...` on both sides
+  * Currently you have to run `mirror ...` and `mirror ...` on both sides
   * Should the server-side be an always-running daemon? Same thing with the client-side?
   * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
 * Include file hashes to avoid sending files with different modification times
-  * See Digest for an experiment; it's not that slow
+  * See Digest for an experiment; collecting digests not that slow, but currently needless syncs don't seem that frequent/expensive
 * Use file hashes to detect renames
-* Support svn:ignore
+  * Right now renaming `~/code/project-a` to `project-b` will treat every file as a delete+create; that said, it's still pretty fast, so probably not worth being smarter
+* Support `svn:ignore`
   * Or else just suggest users use git-svn for all svn repos
-  * Possibly by converting in-memory to .gitignore
-* Support .git/info/exclude
+  * Possibly by converting in-memory to `.gitignore`-format using that
+* Support `.git/info/exclude`
+  * Not sure how often this is used
 * Should syncing .git be a good idea? (then `git log`/etc. would work on both sides)
+  * Probably not; especially cross-platforms/versions of git, things could break
 * Integrate with [watchman](https://facebook.github.io/watchman/) (potentially more reliable)
 
 
