@@ -61,12 +61,14 @@ Current (pre-release) instructions using master:
   * `gradle shadowJar`
 * Copy to remote home directory
   * `scp build/libs/mirror-all.jar your-desktop.com:~/`
+  * `scp mirror your-desktop.com:~/`
 * Copy to your local home directory (not really necessary)
   * `cp build/libs/mirror-all.jar ~/`
+  * `cp mirror ~/`
 * Start the server-side from the desktop's home directory
-  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorServer 10000`
+  * `./mirror server -p 10000`
 * Start the client-side from the laptop's home directory
-  * `java -Xmx1G -cp mirror-all.jar mirror.MirrorClient example.com 10000 ./code/ ./code/`
+  * `./mirror client -h example.com -p 10000 -l ./code/ -r ./code/`
 
 This will sync the `$HOME/code` directory on your two machines.
 

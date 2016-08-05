@@ -35,7 +35,7 @@ dependencies {
   compile 'commons-io:commons-io:2.4'
   compile 'org.apache.commons:commons-lang3:3.4'
   compile 'org.jooq:jool:0.9.10'
-  compile 'io.airlift:airline:0.7'
+  compile 'com.github.rvesse:airline:2.1.1'
   compile 'joist:joist-util:1.13.1'
   testCompile 'junit:junit:4.12'
   testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'

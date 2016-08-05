@@ -11,8 +11,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.internal.ServerImpl;
-import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
@@ -30,18 +28,6 @@ public class MirrorServer extends MirrorImplBase {
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
   private final Map<Integer, MirrorSession> sessions = new HashMap<>();
   private int nextSessionId = 1;
-
-  public static void main(String[] args) throws Exception {
-    LoggingConfig.init();
-    Integer port = Integer.parseInt(args[0]);
-    ServerImpl rpc = NettyServerBuilder //
-      .forPort(port)
-      .maxMessageSize(1073741824)
-      .addService(new MirrorServer())
-      .build();
-    rpc.start();
-    rpc.awaitTermination();
-  }
 
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {

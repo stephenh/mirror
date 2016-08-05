@@ -3,9 +3,7 @@ package mirror;
 import static mirror.Utils.withTimeout;
 
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -16,43 +14,16 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.SettableFuture;
 
-import io.grpc.Channel;
-import io.grpc.netty.NegotiationType;
-import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
-import mirror.tasks.ThreadBasedTaskFactory;
 
 public class MirrorClient {
 
   private static final Logger log = LoggerFactory.getLogger(MirrorClient.class);
-
-  public static void main(String[] args) throws Exception {
-    LoggingConfig.init();
-
-    String host = args[0];
-    Integer port = Integer.parseInt(args[1]);
-    Path remoteRoot = Paths.get(args[2]);
-    Path localRoot = Paths.get(args[3]);
-
-    Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
-    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
-    MirrorClient client = new MirrorClient(//
-      localRoot,
-      remoteRoot,
-      new ThreadBasedTaskFactory(),
-      new ConnectionDetector.Impl(),
-      FileSystems.getDefault());
-    client.startSession(stub);
-
-    // TODO something better
-    CountDownLatch cl = new CountDownLatch(1);
-    cl.await();
-  }
 
   private final Path localRoot;
   private final Path remoteRoot;
