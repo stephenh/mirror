@@ -25,6 +25,7 @@ import mirror.tasks.ThreadBasedTaskFactory;
 public class Mirror {
 
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
+  private static final int defaultPort = 49172;
 
   static {
     LoggingConfig.init();
@@ -40,8 +41,8 @@ public class Mirror {
 
   @Command(name = "server", description = "starts a server for the remote client to connect to")
   public static class MirrorServerArgs implements Runnable {
-    @Option(name = { "-p", "--post" }, description = "port to listen on", arity = 1)
-    public int port;
+    @Option(name = { "-p", "--post" }, description = "port to listen on, default: " + defaultPort)
+    public int port = defaultPort;
 
     @Override
     public void run() {
@@ -61,16 +62,16 @@ public class Mirror {
 
   @Command(name = "client", description = "two-way real-time sync")
   public static class MirrorClientArgs implements Runnable {
-    @Option(name = { "-h", "--host" }, description = "host name of remote server to connect to", arity = 1)
+    @Option(name = { "-h", "--host" }, description = "host name of remote server to connect to")
     public String host;
 
-    @Option(name = { "-p", "--post" }, description = "port remote server to connect to", arity = 1)
-    public int port;
+    @Option(name = { "-p", "--post" }, description = "port remote server to connect to, default: " + defaultPort)
+    public int port = defaultPort;
 
-    @Option(name = { "-l", "--local-root" }, description = "path on the local side to sync, e.g. ~/code", arity = 1)
+    @Option(name = { "-l", "--local-root" }, description = "path on the local side to sync, e.g. ~/code")
     public String localRoot;
 
-    @Option(name = { "-r", "--remote-root" }, description = "path on the remote side to sync, e.g. ~/code", arity = 1)
+    @Option(name = { "-r", "--remote-root" }, description = "path on the remote side to sync, e.g. ~/code")
     public String remoteRoot;
 
     @Override
