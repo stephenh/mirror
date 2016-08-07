@@ -67,9 +67,9 @@ Current (pre-release) instructions using master:
   * `cp build/libs/mirror-all.jar ~/`
   * `cp mirror ~/`
 * Start the server-side from the desktop's home directory
-  * `./mirror server -p 10000`
+  * `./mirror server`
 * Start the client-side from the laptop's home directory
-  * `./mirror client -h example.com -p 10000 -l ./code/ -r ./code/`
+  * `./mirror client -h example.com -l ./code/ -r ./code/`
 
 This will sync the `$HOME/code` directory on your two machines.
 
