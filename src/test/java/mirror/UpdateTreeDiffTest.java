@@ -331,7 +331,7 @@ public class UpdateTreeDiffTest {
     // given a local file
     PathRules e = new PathRules();
     PathRules i = new PathRules("*.txt");
-    tree = UpdateTree.newRoot(e, i);
+    tree = UpdateTree.newRoot(i, e);
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
     tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());

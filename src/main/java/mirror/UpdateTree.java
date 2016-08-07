@@ -38,37 +38,6 @@ public class UpdateTree {
   private final PathRules extraIncludes;
   private final PathRules extraExcludes;
 
-  public static UpdateTree newRoot() {
-    // IntegrationTest currently depends on these values
-    PathRules extraExcludes = new PathRules();
-    extraExcludes.setRules(
-      "tmp",
-      "temp",
-      "target",
-      "build",
-      "bin",
-      "*___jb_bak___", // IntelliJ safe write files
-      "*___jb_old___",
-      ".*");
-    PathRules extraIncludes = new PathRules();
-    extraIncludes.setRules(
-      "**/src/mainGeneratedRest",
-      "**/src/mainGeneratedDataTemplate",
-      "testGeneratedRest",
-      "testGeneratedDataTemplate",
-      "**/build/*/classes/mainGeneratedInternalUrns/",
-      "**/build/*/resources/mainGeneratedInternalUrns/",
-      "src_managed",
-      "*-SNAPSHOT.jar",
-      "*.iml",
-      "*.ipr",
-      "*.iws",
-      ".classpath",
-      ".project",
-      ".gitignore");
-    return new UpdateTree(extraExcludes, extraIncludes);
-  }
-
   public static NodeType getType(Update u) {
     return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
   }
@@ -85,13 +54,17 @@ public class UpdateTree {
     return !u.getSymlink().isEmpty();
   }
 
-  public static UpdateTree newRoot(PathRules extraExcludes, PathRules extraIncludes) {
-    return new UpdateTree(extraExcludes, extraIncludes);
+  public static UpdateTree newRoot() {
+    return newRoot(new PathRules(), new PathRules());
   }
 
-  private UpdateTree(PathRules extraExcludes, PathRules extraIncludes) {
-    this.extraExcludes = extraExcludes;
+  public static UpdateTree newRoot(PathRules extraIncludes, PathRules extraExcludes) {
+    return new UpdateTree(extraIncludes, extraExcludes);
+  }
+
+  private UpdateTree(PathRules extraIncludes, PathRules extraExcludes) {
     this.extraIncludes = extraIncludes;
+    this.extraExcludes = extraExcludes;
     this.root = new Node(null, "");
     this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
     this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());

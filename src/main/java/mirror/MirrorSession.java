@@ -39,20 +39,35 @@ public class MirrorSession {
   private final QueueWatcher queueWatcher = new QueueWatcher(queues);
   private final SaveToLocal saveToLocal;
   private final FileWatcher fileWatcher;
-  private final UpdateTree tree = UpdateTree.newRoot();
+  private final UpdateTree tree;
   private final SyncLogic syncLogic;
   private SaveToRemote saveToRemote;
   private SessionWatcher sessionWatcher;
   private StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, Path root, FileSystem fileSystem) {
-    this(factory, Clock.systemUTC(), root, new NativeFileAccess(root), new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
+  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, FileSystem fileSystem) {
+    this(
+      factory,
+      Clock.systemUTC(),
+      root,
+      includes,
+      excludes,
+      new NativeFileAccess(root),
+      new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
   }
 
-  public MirrorSession(TaskFactory taskFactory, Clock clock, Path root, FileAccess fileAccess, FileWatcher fileWatcher) {
+  public MirrorSession(
+    TaskFactory taskFactory,
+    Clock clock,
+    Path root,
+    PathRules includes,
+    PathRules excludes,
+    FileAccess fileAccess,
+    FileWatcher fileWatcher) {
     this.clock = clock;
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcher;
+    this.tree = UpdateTree.newRoot(includes, excludes);
 
     // Run all our tasks in a pool so they are terminated together
     taskPool = taskFactory.newTaskPool();

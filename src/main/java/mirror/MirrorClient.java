@@ -27,15 +27,26 @@ public class MirrorClient {
 
   private final Path localRoot;
   private final Path remoteRoot;
+  private final PathRules includes;
+  private final PathRules excludes;
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileSystem fileSystem;
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
 
-  public MirrorClient(Path localRoot, Path remoteRoot, TaskFactory taskFactory, ConnectionDetector detector, FileSystem fileSystem) {
+  public MirrorClient(
+    Path localRoot,
+    Path remoteRoot,
+    PathRules includes,
+    PathRules excludes,
+    TaskFactory taskFactory,
+    ConnectionDetector detector,
+    FileSystem fileSystem) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
+    this.includes = includes;
+    this.excludes = excludes;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.fileSystem = fileSystem;
@@ -53,7 +64,7 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session");
 
-    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), fileSystem);
+    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, fileSystem);
 
     // 1. see what our current state is
     try {
@@ -66,7 +77,13 @@ public class MirrorClient {
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
-      InitialSyncRequest req = InitialSyncRequest.newBuilder().setRemotePath(remoteRoot.toString()).addAllState(localState).build();
+      InitialSyncRequest req = InitialSyncRequest //
+        .newBuilder()
+        .setRemotePath(remoteRoot.toString())
+        .addAllIncludes(includes.getLines())
+        .addAllExcludes(excludes.getLines())
+        .addAllState(localState)
+        .build();
       withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {
         @Override
         public void onNext(InitialSyncResponse value) {

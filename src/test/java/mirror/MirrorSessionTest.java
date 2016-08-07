@@ -26,7 +26,7 @@ public class MirrorSessionTest {
   private final FileWatcher fileWatcher = Mockito.mock(FileWatcher.class);
   private final StubClock clock = new StubClock();
   private final StubTaskFactory taskFactory = new StubTaskFactory();
-  private final MirrorSession session = new MirrorSession(taskFactory, clock, root, fileAccess, fileWatcher);
+  private final MirrorSession session = new MirrorSession(taskFactory, clock, root, new PathRules(), new PathRules(), fileAccess, fileWatcher);
 
   @Before
   public void before() throws Exception {
@@ -63,11 +63,11 @@ public class MirrorSessionTest {
       @Override
       public void onNext(Update value) {
       }
-      
+
       @Override
       public void onError(Throwable t) {
       }
-      
+
       @Override
       public void onCompleted() {
       }

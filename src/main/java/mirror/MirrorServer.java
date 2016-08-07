@@ -33,9 +33,11 @@ public class MirrorServer extends MirrorImplBase {
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     int sessionId = nextSessionId++;
     Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
+    PathRules includes = new PathRules(request.getIncludesList());
+    PathRules excludes = new PathRules(request.getExcludesList());
 
     log.info("Starting new session " + sessionId + " for + " + root);
-    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, FileSystems.getDefault());
+    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, FileSystems.getDefault());
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

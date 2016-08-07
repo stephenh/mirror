@@ -326,12 +326,12 @@ public class IntegrationTest {
   @Test
   public void testSkipIgnoredDirectories() throws Exception {
     // given a file that exists within an ignored directory
-    FileUtils.writeStringToFile(new File(root1, "tmp/foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root1, "target/foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
     // then it is not replicated to root2
-    assertThat(new File(root2, "tmp/foo.txt").exists(), is(false));
+    assertThat(new File(root2, "target/foo.txt").exists(), is(false));
   }
 
   @Test
@@ -348,12 +348,12 @@ public class IntegrationTest {
   @Test
   public void testIncludeWithPatternWithinExcludedDirectories() throws Exception {
     // given a file that exists within an included directory
-    FileUtils.writeStringToFile(new File(root1, "build/some-project/classes/mainGeneratedInternalUrns/foo.txt"), "abc");
+    FileUtils.writeStringToFile(new File(root1, "target/foo/includedDirectory/foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
     // then it is replicated to root2
-    assertThat(new File(root2, "build/some-project/classes/mainGeneratedInternalUrns/foo.txt").exists(), is(true));
+    assertThat(new File(root2, "target/foo/includedDirectory/foo.txt").exists(), is(true));
   }
 
   @Test
@@ -464,12 +464,16 @@ public class IntegrationTest {
     rpc.start();
     log.info("started server");
     // client
+    PathRules includes = new PathRules("includedDirectory");
+    PathRules excludes = new PathRules("target/");
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c);
     client = new MirrorClient(// 
       root2.toPath(),
       root1.toPath(),
+      includes,
+      excludes,
       new ThreadBasedTaskFactory(),
       new ConnectionDetector.Impl(),
       FileSystems.getDefault());

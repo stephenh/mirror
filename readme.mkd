@@ -83,12 +83,23 @@ Note that if you have a lot of directories, you might have to increase the nativ
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
 * For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
 
+Include/Exclude Patterns
+========================
+
+By default, mirror will respect `.gitignore` files.
+
+However, sometimes you want to sync files that ignored (e.g. generated source code or binary artifacts for your IDE); you can do this with the `-i`/`--include` parameter, e.g.:
+
+    ./mirror client -h desktop.com -l ./code/ -r ./code/ -i '*-SNAPSHOT.jar' -i 'build/codegen'
+
+Similarly, you can also exclude artifacts (granted, these are usually also excluded by `.gitignore`):
+
+    ./mirror client -h desktop.com -l ./code/ -r ./code/ -e build
+
 Todo
 ====
 
-* Configuration
-  * Right now include/exclude settings are hardcoded, should be configurable
-  * Use command line parameters? Config file? Both?
+* Configuration via a `.mirrorrc` file
 * Handle watch event overflows by restarting session
   * **Done** but might need some tweaks
 * Handle network disconnections by restarting session 
