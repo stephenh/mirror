@@ -68,7 +68,7 @@ public class TaskPool {
           log.error("Error calling callback", e);
         }
       });
-      log.info("All callbacks complete");
+      log.debug("All callbacks complete");
       return Duration.ofMillis(-1);
     }
   }
