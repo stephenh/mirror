@@ -49,7 +49,11 @@ public class Mirror {
 
     @Override
     public void run() {
-      ServerImpl rpc = NettyServerBuilder.forPort(port).maxMessageSize(maxMessageSize).addService(new MirrorServer()).build();
+      ServerImpl rpc = NettyServerBuilder
+        .forPort(port)
+        .maxMessageSize(maxMessageSize)
+        .addService(MirrorServer.createWithCompressionEnabled())
+        .build();
       try {
         rpc.start();
         log.info("Listening on " + port);

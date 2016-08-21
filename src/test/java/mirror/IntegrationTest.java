@@ -459,7 +459,7 @@ public class IntegrationTest {
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
-    // rpc = NettyServerBuilder.forPort(port).addService(MirrorGrpc.bindService(new MirrorServer(root1.toPath()))).build();
+    // rpc = NettyServerBuilder.forPort(port).addService(MirrorServer.createWithCompressionEnabled()).build();
     rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer()).build();
     rpc.start();
     log.info("started server");
@@ -468,7 +468,7 @@ public class IntegrationTest {
     PathRules excludes = new PathRules("target/");
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
-    MirrorStub stub = MirrorGrpc.newStub(c);
+    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
     client = new MirrorClient(// 
       root2.toPath(),
       root1.toPath(),
