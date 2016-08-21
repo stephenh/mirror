@@ -27,6 +27,7 @@ import mirror.tasks.ThreadBasedTaskFactory;
 public class Mirror {
 
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
+  private static final int maxMessageSize = 1073741824; // 1gb
   private static final int defaultPort = 49172;
 
   static {
@@ -48,7 +49,7 @@ public class Mirror {
 
     @Override
     public void run() {
-      ServerImpl rpc = NettyServerBuilder.forPort(port).maxMessageSize(1073741824).addService(new MirrorServer()).build();
+      ServerImpl rpc = NettyServerBuilder.forPort(port).maxMessageSize(maxMessageSize).addService(new MirrorServer()).build();
       try {
         rpc.start();
         log.info("Listening on " + port);
@@ -88,7 +89,7 @@ public class Mirror {
     @Override
     public void run() {
       try {
-        Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(1073741824).build();
+        Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(maxMessageSize).build();
         MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
 
         PathRules includes = new PathRules();
