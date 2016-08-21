@@ -3,7 +3,7 @@ apply plugin: 'eclipse'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.github.johnrengelman.shadow'
  
-def grpcVersion = '1.0.0-pre2'
+def grpcVersion = '1.0.0'
 // This version must match the protobuf-java version that grpc transitively pulls in
 def protobufVersion = '3.0.0'
 
@@ -13,7 +13,7 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.7'
+    classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.0'
     classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
   }
 }
@@ -26,7 +26,6 @@ repositories {
 
 dependencies {
   compile "io.grpc:grpc-netty:${grpcVersion}"
-  compile "io.grpc:grpc-core:${grpcVersion}"
   compile "io.grpc:grpc-protobuf:${grpcVersion}"
   compile "io.grpc:grpc-stub:${grpcVersion}"
   compile 'org.slf4j:slf4j-jdk14:1.7.18'
