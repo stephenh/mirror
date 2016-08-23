@@ -128,13 +128,15 @@ public class Mirror {
     // IntelliJ safe write files
     excludes.addRule("*___jb_bak___");
     excludes.addRule("*___jb_old___");
+    // Ignore all hidden files, e.g. especially .git/.svn directories
+    excludes.addRule(".*");
     // not sure why a .gitignore would be ignored?
     includes.addRule(".gitignore");
   }
 
   private static void addInternalDefaults(PathRules includes, PathRules excludes) {
     // Maybe most of these could be dropped if svn:ignore was supported?
-    excludes.addRules("tmp", "temp", "target", "build", "bin", ".*");
+    excludes.addRules("tmp", "temp", "target", "build", "bin");
     // these are resources in the build/ directory that are still useful to have
     // on the laptop, e.g. for the IDE
     includes.setRules(
