@@ -111,6 +111,21 @@ Note that if you have a lot of directories, you might have to increase the nativ
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
 * For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
 
+Syncing More than Two Machines
+==============================
+
+Although not an initial design goal, due to it's approach, `mirror` also supports a "hub and spoke" model of syncing more than two machines.
+
+E.g. you could have:
+
+1. Desktop runs the mirror server process
+2. Laptop 1 connects to the desktop and syncs it's `~/code` to the desktop's `~/code`
+2. Laptop 2 also connects to the desktop and syncs it's `~/code` to the desktop's `~/code`
+
+Now all three machines will be kept in sync.
+
+E.g. if you change a file on Laptop 2, it will be sent to the desktop, and the desktop watcher for Laptop 1 will see Laptop 2's write as if it were any other desktop-based write, and send the write on to Laptop 1.
+
 Todo
 ====
 
@@ -133,8 +148,6 @@ Todo
   * Possibly by converting in-memory to `.gitignore`-format using that
 * Support `.git/info/exclude`
   * Not sure how often this is used
-* Should syncing .git be a good idea? (then `git log`/etc. would work on both sides)
-  * Probably not; especially cross-platforms/versions of git, things could break
 * Integrate with [watchman](https://facebook.github.io/watchman/) (potentially more reliable)
 
 
