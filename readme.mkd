@@ -32,8 +32,6 @@ Non-Goals
   * This hueristic is generally fine, it just means `mirror` is not meant for a use case of "make new changes on the desktop for a few days, make new changes on the laptop for a few days, and then run `mirror` once per week to intelligently merge your work". Use `git` or `unison` for that; `mirror` is for real-time syncing.
 * Maintain Unix permissions/owner/group
   * Whatever Unix user runs the `mirror` commands will be the owner/group/etc. of the files
-* Support for multiple clients
-  * The server code technically supports this (e.g. you could have two laptops connect to your desktop), and it should work in theory (each client would just see each other's write as any other file system write), but handling this use case is not an explicit goal
 * Support for huge files
   * The assumption is that most files are source code, and occassional binary artifacts that are generally in the below-100mb range
 * Super-efficient diff/transmission logic like rsync
@@ -53,48 +51,65 @@ I looked at several sync options before starting mirror, but didn't find anythin
   * It also generally assumes you can run the build tool (e.g. gradle) on both laptop and desktop, and for my setup I want to only run it on the desktop
   * Similarly, doppleganger does let you have a git working copy on both laptop/desktop, but so far mirror generally assumes you have a git copy on only one of the desktop or laptop (your choice) and then the other side is just a dumb copy. Which means git commands, like `git log`, `tig`, etc., will only work on whatever machine you have your git check on.
 
-Setup
-=====
+Install
+=======
 
 Current (pre-release) instructions using master:
 
-* Build the project's uberjar
-  * `gradle shadowJar`
-* Copy to remote home directory
-  * `scp build/libs/mirror-all.jar your-desktop.com:~/`
+* Download the latest [mirror](http://repo.joist.ws/mirror) and [mirror-all.jar](http://repo.joist.ws/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
+  * `wget http://repo.joist.ws/mirror-all.jar ~/`
+  * `wget http://repo.joist.ws/mirror ~/`
+* Make the `mirror` file executable
+  * `chmod u+x mirror`
+* Copy both to your remote home directory (or some other directory on your path, e.g. `~/bin`)
+  * `scp mirror-all.jar your-desktop.com:~/`
   * `scp mirror your-desktop.com:~/`
-* Copy to your local home directory
-  * `cp build/libs/mirror-all.jar ~/`
-  * `cp mirror ~/`
 * Start the server-side from the desktop's home directory
   * `./mirror server`
 * Start the client-side from the laptop's home directory
-  * `./mirror client -h example.com -l ./code/ -r ./code/`
+  * `./mirror client -h your-desktop.com -l ./code/ -r ./code/`
 
 This will sync the `$HOME/code` directory on your two machines.
 
-Eventually it would be nice to run just one command, e.g. on the client-side have a single `mirror ...` invocation, and have it auto-detect/auto-start the server daemon, and even SCP over the jar if needed, but currently it's not that fancy.
+Config
+======
 
-Also, there are currently no user-available config options for what files to include/exclude (although everything in your `.gitignore` is respected automatically), as for now I've just hardcoded defaults that are appropriate to my work (e.g. even though `build/*` is in the `.gitignore`, I've whitelisted `*-SNAPSHOT.jar` files to always be synced) .
+By default, `mirror` will not sync any files in your `.gitignore` files.
+
+However, you can also configure `mirror` with extra includes or excludes in addition to the `.gitignore`, e.g. if for some reason you want to not sync files that are not ignored, or sync files that are actually ignored (e.g. certain build artifacts).
+
+Extra includes and excludes patterns can be passed when starting the client, and follow the `.gitignore` format, e.g.:
+
+    ./mirror client --include '*-SNAPSHOT.jar` --exclude `build/`
+
+(There is also a `--use-internal-patterns` that has useful defaults if you work at the same place I do.)
+
+Git Usage Note
+==============
+
+In general, `mirror` will work best if you have just one machine (probably the desktop) have the git (or svn/other SCM) working copy, and have the laptop just get all of it's files via `mirror` from the desktop, and not also use `git` directly.
+
+The reason is that if you had `git` working copies on both the laptop and desktop, you could run into:
+
+1. Desktop: `git checkout master`
+2. Laptop: `git checkout master`
+3. Run `mirror`, everything syncs fine, because they're on the same branch
+4. On the laptop, run `git checkout feature_a`
+5. `mirror` copies all the files changes on the laptop (basically all `feature_a`'s changes) to the server
+6. Now the server git directory *thinks* it's still on `master`, but we've written the `feature_a` files to it
+
+Instead, it works better if you only ever run `git` commands on the desktop, and so any branch changes happen there, and then the laptop just follows/copies where ever the server is at.
+
+The downside of this approach is that you can't use `git log`, `git blame`, etc. on the laptop. But the upshot is that's pretty simple, and makes it harder/less likely to accidentally nuke code, because the desktop is also the "leader", at least in terms of git branches.
+
+System Watch Limits
+===================
 
 Note that if you have a lot of directories, you might have to increase the native file system limits, e.g.
 
 * For Linux see [https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers](this wiki page)
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
 * For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
-
-Include/Exclude Patterns
-========================
-
-By default, mirror will respect `.gitignore` files.
-
-However, sometimes you want to sync files that ignored (e.g. generated source code or binary artifacts for your IDE); you can do this with the `-i`/`--include` parameter, e.g.:
-
-    ./mirror client -h desktop.com -l ./code/ -r ./code/ -i '*-SNAPSHOT.jar' -i 'build/codegen'
-
-Similarly, you can also exclude artifacts (granted, these are usually also excluded by `.gitignore`):
-
-    ./mirror client -h desktop.com -l ./code/ -r ./code/ -e build
 
 Todo
 ====
