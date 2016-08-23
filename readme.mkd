@@ -98,9 +98,11 @@ The reason is that if you had `git` working copies on both the laptop and deskto
 5. `mirror` copies all the files changes on the laptop (basically all `feature_a`'s changes) to the server
 6. Now the server git directory *thinks* it's still on `master`, but we've written the `feature_a` files to it
 
-Instead, it works better if you only ever run `git` commands on the desktop, and so any branch changes happen there, and then the laptop just follows/copies where ever the server is at.
+Basically, `mirror` makes no attempts to keep your two `git` working copies on the same branch, and instead just naively copies files back/forth.
 
-The downside of this approach is that you can't use `git log`, `git blame`, etc. on the laptop. But the upshot is that's pretty simple, and makes it harder/less likely to accidentally nuke code, because the desktop is also the "leader", at least in terms of git branches.
+So, instead, it works better if you only ever run `git` commands on the desktop, and so any branch changes happen there, and then the laptop just follows/copies where ever the server is at.
+
+The downside of this approach is that you can't use `git log`, `git blame`, etc. on the laptop. But the upshot is that's pretty simple, and makes it harder/less likely to accidentally nuke code by either knowingly or unknowingly getting the two machines on different branches, and then having one overwrite the other.
 
 System Watch Limits
 ===================
