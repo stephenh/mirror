@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +85,14 @@ public class Utils {
   /** @return whether localModTime was within the last 2 seconds. */
   private static boolean fileWasJustModified(long localModTime) {
     return (System.currentTimeMillis() - localModTime) <= 2000;
+  }
+
+  public static String abbreviatePath(String path) {
+    if (StringUtils.countMatches(path, '/') < 2) {
+      return path;
+    } else {
+      return StringUtils.substringBefore(path, "/") + "/.../" + StringUtils.substringAfterLast(path, "/");
+    }
   }
 
 }

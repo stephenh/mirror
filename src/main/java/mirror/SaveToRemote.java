@@ -1,5 +1,6 @@
 package mirror;
 
+import static mirror.Utils.abbreviatePath;
 import static mirror.Utils.debugString;
 
 import java.io.IOException;
@@ -53,7 +54,7 @@ public class SaveToRemote implements TaskLogic {
         b.setData(fileAccess.read(Paths.get(update.getPath())));
       }
       String maybeDelete = update.getDelete() ? "(delete) " : "";
-      log.debug("Sending to remote " + maybeDelete + update.getPath());
+      log.info("Sending " + maybeDelete + abbreviatePath(update.getPath()));
       outgoingChanges.onNext(b.build());
     } catch (IOException e) {
       // TODO Should we error here, so that the session is restarted?

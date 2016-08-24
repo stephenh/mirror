@@ -1,5 +1,6 @@
 package mirror;
 
+import static mirror.Utils.abbreviatePath;
 import static mirror.Utils.debugString;
 
 import java.io.IOException;
@@ -66,13 +67,13 @@ public class SaveToLocal implements TaskLogic {
   // different type, e.g. a file -> a directory), but we end up ignoring
   // this stale delete event with isStaleLocalUpdate
   private void deleteLocally(Update remote) throws IOException {
-    log.info("Deleting {}", remote.getPath());
+    log.info("Remote delete {}", abbreviatePath(remote.getPath()));
     Path path = Paths.get(remote.getPath());
     fileAccess.delete(path);
   }
 
   private void saveSymlinkLocally(Update remote) throws IOException {
-    log.info("Symlink {}", remote.getPath());
+    log.info("Remote symlink {}", abbreviatePath(remote.getPath()));
     Path path = Paths.get(remote.getPath());
     Path target = Paths.get(remote.getSymlink());
     fileAccess.createSymlink(path, target);
@@ -82,14 +83,14 @@ public class SaveToLocal implements TaskLogic {
   }
 
   private void createDirectoryLocally(Update remote) throws IOException {
-    log.info("Directory {}", remote.getPath());
+    log.info("Remote directory {}", abbreviatePath(remote.getPath()));
     Path path = Paths.get(remote.getPath());
     fileAccess.mkdir(path);
     fileAccess.setModifiedTime(path, remote.getModTime());
   }
 
   private void saveFileLocally(Update remote) throws IOException {
-    log.info("Remote update {}", remote.getPath());
+    log.info("Remote update {}", abbreviatePath(remote.getPath()));
     Path path = Paths.get(remote.getPath());
     ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
     fileAccess.write(path, data);
