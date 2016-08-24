@@ -57,6 +57,8 @@ public class SystemChecks {
     if (limit.rlimCur() < 10240) {
       log.error("Your file limit is {} and should probably be increased", limit);
       log.info("  See https://facebook.github.io/watchman/docs/install.html#system-specific-preparation");
+      log.info("  E.g. run: sudo sysctl -w kern.maxfiles=10485760 && sudo sysctl -w kern.maxfilesperproc=1048576");
+      log.info("  Or use --skip-limit-checks to ignore this");
       return false;
     }
     return true;
@@ -69,7 +71,8 @@ public class SystemChecks {
       int maxUserWatches = Integer.parseInt(StringUtils.chomp(r.out));
       if (maxUserWatches < 10_000) {
         log.error("Your max_user_watches is {} and should probably be increased (each directory == 1 watch)", maxUserWatches);
-        log.info("  See https://facebook.github.io/watchman/docs/install.html#system-specific-preparation");
+        log.info("  See https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers");
+        log.info("  E.g. run: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p");
         log.info("  Or use --skip-limit-checks to ignore this");
         return false;
       }
