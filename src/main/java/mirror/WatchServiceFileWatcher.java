@@ -214,7 +214,6 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
    *
    * We perform this on it's own dedicated thread, so that the FileWatcher thread
    * can keep immediately grabbing updates from the watcher service, to help prevent
-   * 
    *
    * We used to check writes after diffing, but doing it here means that the UpdateTree
    * will have all of the right metadata. (The con is that we'll debounce writes that
