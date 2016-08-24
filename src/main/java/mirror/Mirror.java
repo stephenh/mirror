@@ -46,8 +46,14 @@ public class Mirror {
     @Option(name = "--skip-limit-checks", description = "skip system file descriptor/watches checks")
     public boolean skipLimitChecks;
 
+    @Option(name = "--enable-log-file", description = "enables logging debug statements to mirror.log")
+    public boolean enableLogFile;
+
     @Override
     public final void run() {
+      if (enableLogFile) {
+        LoggingConfig.enableLogFile();
+      }
       if (!skipLimitChecks && !SystemChecks.checkLimits()) {
         // SystemChecks will have log.error'd some output
         System.exit(-1);

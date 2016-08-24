@@ -69,7 +69,7 @@ public class Utils {
           long size2 = fileAccess.getFileSize(path);
           shouldBeComplete = size1 == size2;
           if (!shouldBeComplete) {
-            log.info("{} not settled {} {}", path, size1, size2);
+            log.debug("{} not settled {} {}", path, size1, size2);
           }
         } else {
           shouldBeComplete = true; // no need to check

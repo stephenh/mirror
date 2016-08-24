@@ -25,7 +25,7 @@ public class QueueWatcher implements TaskLogic {
     int local = queues.saveToLocal.size();
     int remote = queues.saveToRemote.size();
     if (updates != lastUpdates || local != lastLocal || remote != lastRemote) {
-      log.info("Queues: updates=" + updates + ", local=" + local + ", remote=" + remote);
+      log.debug("Queues: updates=" + updates + ", local=" + local + ", remote=" + remote);
       lastUpdates = updates;
       lastLocal = local;
       lastRemote = remote;

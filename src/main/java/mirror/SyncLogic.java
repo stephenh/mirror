@@ -147,6 +147,9 @@ public class SyncLogic implements TaskLogic {
   }
 
   private void logLocalUpdates(List<Update> batch) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
     // print out what came in locally
     Map<String, List<Tuple2<String, Update>>> byExt = seq(batch) //
       .filter(u -> u.getLocal())
@@ -154,7 +157,7 @@ public class SyncLogic implements TaskLogic {
       .groupBy(t -> t.v1());
     String exts = seq(byExt).map(t -> t.v1() + "=" + t.v2().size()).toString(", ");
     if (!exts.isEmpty()) {
-      log.info("Local updates: " + exts);
+      log.debug("Local updates: " + exts);
     }
   }
 
