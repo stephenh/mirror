@@ -62,7 +62,7 @@ public class PathRules {
   }
 
   /** @return true if we should ignore {@code path} */
-  public boolean shouldIgnore(String path, boolean isDirectory) {
+  public boolean matches(String path, boolean isDirectory) {
     boolean result = false;
     for (Pair<String, FastIgnoreRule> t : rules) {
       FastIgnoreRule rule = t.getRight();

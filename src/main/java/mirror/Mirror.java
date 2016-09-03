@@ -120,13 +120,7 @@ public class Mirror {
 
         PathRules includes = new PathRules();
         PathRules excludes = new PathRules();
-
-        addDefaultIncludeExcludeRules(includes, excludes);
-        if (useInternalPatterns) {
-          addInternalDefaults(includes, excludes);
-        }
-        extraIncludes.forEach(line -> includes.addRule(line));
-        extraExcludes.forEach(line -> excludes.addRule(line));
+        setupIncludesAndExcludes(includes, excludes, extraIncludes, extraExcludes, useInternalPatterns);
 
         MirrorClient client = new MirrorClient(//
           Paths.get(localRoot),
@@ -146,6 +140,20 @@ public class Mirror {
     }
   }
 
+  public static void setupIncludesAndExcludes(
+    PathRules includes,
+    PathRules excludes,
+    List<String> extraIncludes,
+    List<String> extraExcludes,
+    boolean useInternalPatterns) {
+    addDefaultIncludeExcludeRules(includes, excludes);
+    if (useInternalPatterns) {
+      addInternalDefaults(includes, excludes);
+    }
+    extraIncludes.forEach(line -> includes.addRule(line));
+    extraExcludes.forEach(line -> excludes.addRule(line));
+  }
+
   private static void addDefaultIncludeExcludeRules(PathRules includes, PathRules excludes) {
     // IntelliJ safe write files
     excludes.addRule("*___jb_bak___");
@@ -162,20 +170,26 @@ public class Mirror {
     // these are resources in the build/ directory that are still useful to have
     // on the laptop, e.g. for the IDE
     includes.setRules(
+      // include generated source code
+      "src_managed",
       "**/src/mainGeneratedRest",
       "**/src/mainGeneratedDataTemplate",
       "testGeneratedRest",
       "testGeneratedDataTemplate",
       "**/build/*/classes/mainGeneratedInternalUrns/",
       "**/build/*/resources/mainGeneratedInternalUrns/",
-      "src_managed",
+      // sync the MP-level config directory
+      "*/config",
+      // but not svn directories within it
+      "!*/config/**/.svn",
+      // include the binaries the laptop-side IDE will want
       "*-SNAPSHOT.jar",
+      // include project files for the laptop-side IDE
       "*.iml",
       "*.ipr",
       "*.iws",
       ".classpath",
-      ".project",
-      ".gitignore");
+      ".project");
   }
 
 }

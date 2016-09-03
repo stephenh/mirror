@@ -274,14 +274,14 @@ public class UpdateTree {
         } else if (node.ignoreRules.hasAnyRules()) {
           // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
           String relative = path.substring(node.path.length());
-          return node.ignoreRules.shouldIgnore(relative, isDirectory());
+          return node.ignoreRules.matches(relative, isDirectory());
         } else {
           return false;
         }
       });
       // besides parent .gitignores, also use our extra includes/excludes
-      boolean extraIncluded = extraIncludes.shouldIgnore(path, isDirectory());
-      boolean extraExcluded = extraExcludes.shouldIgnore(path, isDirectory());
+      boolean extraIncluded = extraIncludes.matches(path, isDirectory());
+      boolean extraExcluded = extraExcludes.matches(path, isDirectory());
       shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
       return shouldIgnore;
     }
