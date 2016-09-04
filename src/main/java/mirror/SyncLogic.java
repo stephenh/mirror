@@ -67,7 +67,7 @@ public class SyncLogic implements TaskLogic {
     List<Update> updates = new ArrayList<>();
     // block for at least one
     Update update = queues.incomingQueue.take();
-    // then try to grab more if they size
+    // then try to grab more if they exist
     do {
       if (update != null) {
         updates.add(update);
