@@ -108,7 +108,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
           throw new RuntimeException("Watcher overflow");
         }
         if (parentDir == null) {
-          log.error("Missing parentDir for " + watchKey + "/" + watchEvent.context());
+          log.error("Missing parentDir for " + watchKey + " / " + watchKey.watchable() + ": " + watchEvent.context());
           continue;
         }
         Path child = parentDir.resolve((Path) watchEvent.context());
