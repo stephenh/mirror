@@ -4,7 +4,9 @@ Primary Workflow
 
 Mirror is built to support a two-machine (e.g. desktop+laptop) development workflow where you want to run a command line compile/build process on a powerful/dedicated desktop, but still edit files remotely on a laptop.
 
-This is fairly common (see "Comparison to Existing Options" section below), but what makes Mirror unique is that it is two-way: it simultaneously syncs both laptop-to-desktop as well as desktop-to-laptop, in real time. For my personal use case, this is to facilitate using an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts (or build time-generated source code) from the desktop-hosted build process, e.g.:
+This is fairly common (see "Comparison to Existing Options" section below), but what makes Mirror unique is that it is two-way: it simultaneously syncs both laptop-to-desktop as well as desktop-to-laptop, in real time.
+
+For my personal use case, this is to facilitate using an IDE on the laptop (e.g. for code completion, navigation, etc.), and IDEs often need local access to the binary artifacts (or build time-generated source code) from the desktop-hosted build process, e.g.:
 
 * On your laptop, save `projectA/foo.java`
   * Mirror sends `foo.java` to the desktop
@@ -28,7 +30,7 @@ Non-Goals
 =========
 
 * Unison-style/long-duration disconnected support
-  * `mirror` will automatically re-connect (e.g. if you close your laptop and then go home) and restart syncing (inspired by mosh), but if files have changed on both sides while disconnected, then the last write wins
+  * `mirror` will automatically re-connect (e.g. if you close your laptop and then go home) and restart syncing when it detects the server is available again (inspired by mosh), but if files have changed on both sides while disconnected, then the last write wins
   * This hueristic is generally fine, it just means `mirror` is not meant for a use case of "make new changes on the desktop for a few days, make new changes on the laptop for a few days, and then run `mirror` once per week to intelligently merge your work". Use `git` or `unison` for that; `mirror` is for real-time syncing.
 * Maintain Unix permissions/owner/group
   * Whatever Unix user runs the `mirror` commands will be the owner/group/etc. of the files
@@ -56,8 +58,6 @@ I looked at several sync options before starting mirror, but didn't find anythin
 Install
 =======
 
-Current (pre-release) instructions using master:
-
 * Download the latest [mirror](http://repo.joist.ws/mirror) and [mirror-all.jar](http://repo.joist.ws/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
   * `wget http://repo.joist.ws/mirror-all.jar ~/`
   * `wget http://repo.joist.ws/mirror ~/`
@@ -82,7 +82,7 @@ However, you can also configure `mirror` with extra includes or excludes in addi
 
 Extra includes and excludes patterns can be passed when starting the client, and follow the `.gitignore` format, e.g.:
 
-    ./mirror client --include '*-SNAPSHOT.jar` --exclude `build/`
+    ./mirror client --include '*-SNAPSHOT.jar` --include '.classpath' --include '.project' --exclude `build/`
 
 (There is also a `--use-internal-patterns` that has useful defaults if you work at the same place I do.)
 
@@ -118,17 +118,15 @@ Note that if you have a lot of directories, you might have to increase the nativ
 Syncing More than Two Machines
 ==============================
 
-Although not an initial design goal, due to it's approach, `mirror` also supports a "hub and spoke" model of syncing more than two machines.
+Although not an initial design goal, due to it's approach, `mirror` also supports a hub and spoke model of syncing more than two machines.
 
 E.g. you could have:
 
-1. Desktop runs the mirror server process
+1. Desktop runs the mirror server process (you don't need to start multiple `mirror server` processes)
 2. Laptop 1 connects to the desktop and syncs it's `~/code` to the desktop's `~/code`
-2. Laptop 2 also connects to the desktop and syncs it's `~/code` to the desktop's `~/code`
+3. Laptop 2 also connects to the desktop and syncs it's `~/code` to the desktop's `~/code`
 
 Now all three machines will be kept in sync.
-
-E.g. if you change a file on Laptop 2, it will be sent to the desktop, and the desktop watcher for Laptop 1 will see Laptop 2's write as if it were any other desktop-based write, and send the write on to Laptop 1.
 
 Todo
 ====
@@ -136,22 +134,24 @@ Todo
 * Configuration via a `.mirrorrc` file
 * Handle watch event overflows by restarting session
   * **Done** but might need some tweaks
-* Handle network disconnections by restarting session 
-  * **Done** but might need some tweaks
-* Handle various IOExceptions will inevitably happen, probably by restarting session
 * Really easy setup/install process, e.g.:
   * Currently you have to run `mirror ...` and `mirror ...` on both sides
-  * Should the server-side be an always-running daemon? Same thing with the client-side?
-  * Maybe you just run the client, and it self-boots a server-daemon by SSH'ing it's jar over?
+  * Ideally you could just run `mirror` on the client, and it would self-start the desktop-side process by SSH'ing the jar over
+  * Maybe the server-side should be an always-running daemon? Same thing with the client-side?
 * Include file hashes to avoid sending files with different modification times
-  * See Digest for an experiment; collecting digests not that slow, but currently needless syncs don't seem that frequent/expensive
+  * See Digest for an experiment; collecting digests does slow down the initial scan, but not egregiously
+  * Currently needless syncs don't seem that frequent/expensive (text files are small), so this is low priority
 * Use file hashes to detect renames
-  * Right now renaming `~/code/project-a` to `project-b` will treat every file as a delete+create; that said, it's still pretty fast, so probably not worth being smarter
+  * Right now renaming `~/code/project-a` to `~/code/project-b` will treat every file as a delete+create
+  * So far seems like a limited use case, and also is still handled pretty quickly, so this is also low priority
 * Support `svn:ignore`
+  * Would be easiest by converting it in-memory to `.gitignore`-format via something like [this](https://gist.github.com/iegik/3450385)
   * Or else just suggest users use git-svn for all svn repos
-  * Possibly by converting in-memory to `.gitignore`-format using that
-* Support `.git/info/exclude`
+* Support `.git/info/exclude`?
   * Not sure how often this is used
-* Integrate with [watchman](https://facebook.github.io/watchman/) (potentially more reliable)
+* Integrate with [watchman](https://facebook.github.io/watchman/)
+  * This is potentially more reliable than the JDK file watcher API
+  * Should be easy, by just providing a new [FileWatcher](https://github.com/stephenh/mirror/blob/master/src/main/java/mirror/FileWatcher.java) implementation
+  * I've not had any issues with the JDK file watcher yet, so currently low priority
 
 
