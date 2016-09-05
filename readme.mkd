@@ -43,10 +43,12 @@ Comparison to Existing Options
 
 I looked at several sync options before starting mirror, but didn't find anything that quite fit:
 
+* X-Forwarding (to just run everything, IDE included, on the desktop) has noticeable lag, even on a LAN
 * rsync is not two-way, nor real-time
 * unison is two-way, but not real-time
-* lsyncd is real-time, but not two-way, and doesn't handle the initial sync
+* lsyncd is real-time, but does not officially support two-way (see [issue 303](https://github.com/axkibe/lsyncd/issues/303#issuecomment-244569307))
 * sshfs is too slow and doesn't support inotify
+* NFS and other network file systems don't support inotify
 * doppleganger (an internal tool) is real-time, but not two-way
   * It also generally assumes you can run the build tool (e.g. gradle) on both laptop and desktop, and for my setup I want to only run it on the desktop
   * Similarly, doppleganger does let you have a git working copy on both laptop/desktop, but so far mirror generally assumes you have a git copy on only one of the desktop or laptop (your choice) and then the other side is just a dumb copy. Which means git commands, like `git log`, `tig`, etc., will only work on whatever machine you have your git check on.
