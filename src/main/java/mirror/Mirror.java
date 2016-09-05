@@ -160,7 +160,7 @@ public class Mirror {
     excludes.addRule("*___jb_old___");
     // Ignore all hidden files, e.g. especially .git/.svn directories
     excludes.addRule(".*");
-    // not sure why a .gitignore would be ignored?
+    // Since we exclude hidden files, re-include .gitignore so the remote-side knows what to ignore
     includes.addRule(".gitignore");
   }
 
