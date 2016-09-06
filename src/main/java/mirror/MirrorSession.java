@@ -41,9 +41,9 @@ public class MirrorSession {
   private final FileWatcher fileWatcher;
   private final UpdateTree tree;
   private final SyncLogic syncLogic;
-  private SaveToRemote saveToRemote;
-  private SessionWatcher sessionWatcher;
-  private StreamObserver<Update> outgoingChanges;
+  private volatile SaveToRemote saveToRemote;
+  private volatile SessionWatcher sessionWatcher;
+  private volatile StreamObserver<Update> outgoingChanges;
 
   public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, FileSystem fileSystem) {
     this(
