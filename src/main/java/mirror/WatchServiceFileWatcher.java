@@ -20,17 +20,15 @@ import java.nio.file.WatchService;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.io.FileUtils;
 import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.Maps;
 
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
@@ -45,8 +43,10 @@ import mirror.tasks.TaskLogic;
 public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(WatchServiceFileWatcher.class);
-  // Use a synchronizedBiMap because technically performInitialScan and startPolling use different threads
-  private final BiMap<WatchKey, Path> watchedDirectories = Maps.synchronizedBiMap(HashBiMap.create());
+  // I originally used a guava BiMap, but was seeing inconsistencies where writes were not seen,
+  // so instead we just maintain two separate ConcurrentHashMaps by hand
+  private final Map<WatchKey, Path> keyToPath = new ConcurrentHashMap<>();
+  private final Map<Path, WatchKey> pathToKey = new ConcurrentHashMap<>();
   private final TaskFactory taskFactory;
   private final Path rootDirectory;
   private final FileAccess fileAccess;
@@ -101,14 +101,14 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
       // Path parentDir = (Path) watchKey.watchable();
       // Because it might be stale when the directory renames, see:
       // https://bugs.openjdk.java.net/browse/JDK-7057783
-      Path parentDir = watchedDirectories.get(watchKey);
+      Path parentDir = keyToPath.get(watchKey);
       for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
         WatchEvent.Kind<?> eventKind = watchEvent.kind();
         if (eventKind == OVERFLOW) {
           throw new RuntimeException("Watcher overflow");
         }
         if (parentDir == null) {
-          log.error("Missing parentDir for " + watchKey + " / " + watchKey.watchable() + ": " + watchEvent.context());
+          log.error("Missing parentDir for " + watchKey + " (" + watchKey.hashCode() + ") / " + watchKey.watchable() + ": " + watchEvent.context());
           continue;
         }
         Path child = parentDir.resolve((Path) watchEvent.context());
@@ -151,9 +151,10 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     // event.)
     queue.put(Update.newBuilder().setPath(toRelativePath(path)).setDelete(true).setLocal(true).build());
     // in case this was a deleted directory, we'll want to start watching it again if it's re-created
-    WatchKey key = watchedDirectories.inverse().get(path);
+    WatchKey key = pathToKey.get(path);
     if (key != null) {
-      watchedDirectories.remove(key);
+      pathToKey.remove(path);
+      keyToPath.remove(key);
       key.cancel();
     }
   }
@@ -168,9 +169,10 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
       .setModTime(lastModified(directory))
       .build());
     // but only setup a new watcher for new directories
-    if (!watchedDirectories.containsValue(directory)) {
+    if (!pathToKey.containsKey(directory)) {
       WatchKey key = directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-      watchedDirectories.put(key, directory);
+      keyToPath.put(key, directory);
+      pathToKey.put(directory, key);
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
         stream.forEach(Unchecked.consumer(p -> onChangedPath(queue, p)));
       }
