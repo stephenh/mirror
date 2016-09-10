@@ -34,13 +34,13 @@ public interface ConnectionDetector {
 
   /** A detector that uses our app-specific PingRequest/PingResponse. */
   public static class Impl implements ConnectionDetector {
-    private static final Duration durationBetweenDetections = Duration.ofMinutes(1);
+    private static final Duration durationBetweenDetections = Duration.ofSeconds(10);
 
     @Override
     public boolean isAvailable(MirrorStub stub) {
       AtomicBoolean available = new AtomicBoolean(false);
       CountDownLatch done = new CountDownLatch(1);
-      Utils.withTimeout(stub).ping(PingRequest.newBuilder().build(), new StreamObserver<PingResponse>() {
+      stub.ping(PingRequest.newBuilder().build(), new StreamObserver<PingResponse>() {
         @Override
         public void onNext(PingResponse value) {
           available.set(true);
@@ -48,7 +48,6 @@ public interface ConnectionDetector {
 
         @Override
         public void onError(Throwable t) {
-          // log.debug("Server not available: " + t.getMessage());
           done.countDown();
         }
 
