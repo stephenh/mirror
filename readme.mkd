@@ -138,6 +138,9 @@ Todo
   * Currently you have to run `mirror ...` and `mirror ...` on both sides
   * Ideally you could just run `mirror` on the client, and it would self-start the desktop-side process by SSH'ing the jar over
   * Maybe the server-side should be an always-running daemon? Same thing with the client-side?
+* Really easy upgrade process
+  * Ping `repo.joist.ws/mirror-version.txt`, and if a new version, exit with a code that tells bootscript script to redownload the jar
+  * Add version to intial sync request to detect out-of-sync desktop/laptop
 * Include file hashes to avoid sending files with different modification times
   * See Digest for an experiment; collecting digests does slow down the initial scan, but not egregiously
   * Currently needless syncs don't seem that frequent/expensive (text files are small), so this is low priority
