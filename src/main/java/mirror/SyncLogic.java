@@ -66,14 +66,9 @@ public class SyncLogic implements TaskLogic {
   private List<Update> getNextBatchOrBlock() throws InterruptedException {
     List<Update> updates = new ArrayList<>();
     // block for at least one
-    Update update = queues.incomingQueue.take();
-    // then try to grab more if they exist
-    do {
-      if (update != null) {
-        updates.add(update);
-      }
-      update = queues.incomingQueue.poll();
-    } while (update != null && updates.size() <= 1000);
+    updates.add(queues.incomingQueue.take());
+    // now go ahead and drain the rest while we're here
+    queues.incomingQueue.drainTo(updates);
     return updates;
   }
 
