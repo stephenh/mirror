@@ -10,10 +10,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
@@ -24,14 +26,18 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.io.FileUtils;
 import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.protobuf.TextFormat;
+
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
+import mirror.tasks.ThreadBasedTaskFactory;
 
 /**
  * Recursively watches a directory for changes and sends them to a BlockingQueue for processing.
@@ -39,6 +45,30 @@ import mirror.tasks.TaskLogic;
  * All of the events that we fire should use paths relative to {@code rootDirectory},
  * e.g. if we're watching {@code /home/user/code/}, and {@code project-a/foo.txt changes},
  * the path of the event should be {@code project-a/foo.txt}.
+ *
+ * The observed behavior of renames is that if you have:
+ * 
+ * - mkdir dir1
+ * - mkdir dir1/dir2
+ * - touch dir1/dir2/foo.txt
+ * - mv dir1 dirA
+ * - touch dirA/dir2/foo.txt
+ *
+ * And rename dir1 to dirA, a WatchEvent is fired with DELETE dir1, CREATE
+ * dirA, and nothing about dir2 or foo.txt (they are silently moved).
+ *
+ * This means our UpdateTree should treat dir1 being deleted as all of
+ * it's children being deleted.
+ *
+ * (As an implementation detail, the same WatchKey instance will be used
+ * for both dir1 and dirA.)
+ *
+ * This observed behavior of deletes if that if you have:
+ * 
+ * - dir1/dir2/foo.txt
+ *
+ * And delete dir1, then we'll get DELETE events for foo.txt, dir2, and
+ * then dir1.
  */
 public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
@@ -54,6 +84,20 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
   private final WatchService watchService;
   private final Debouncer debouncer;
   private volatile BlockingQueue<Update> queue;
+
+  /** Main method for doing manual debugging/observation of behavior. */
+  public static void main(String[] args) throws Exception {
+    LoggingConfig.initWithTracing();
+    TaskFactory f = new ThreadBasedTaskFactory();
+    Path testDirectory = Paths.get("/home/stephen/foo");
+    WatchServiceFileWatcher w = new WatchServiceFileWatcher(f, FileSystems.getDefault().newWatchService(), testDirectory);
+    BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
+    w.performInitialScan(queue);
+    f.runTask(w);
+    while (true) {
+      queue.take();
+    }
+  }
 
   public WatchServiceFileWatcher(TaskFactory taskFactory, WatchService watchService, Path rootDirectory) {
     this.taskFactory = taskFactory;
@@ -104,6 +148,9 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
       Path parentDir = keyToPath.get(watchKey);
       for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
         WatchEvent.Kind<?> eventKind = watchEvent.kind();
+        if (log.isTraceEnabled()) {
+          log.trace("WatchEvent {} {}", eventKind, watchEvent);
+        }
         if (eventKind == OVERFLOW) {
           throw new RuntimeException("Watcher overflow");
         }
@@ -118,6 +165,9 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
           onRemovedPath(rawUpdates, child);
         }
       }
+      // This returns a "stillValid" boolean, but observed behavior is that
+      // so far stillValid=false only after we've deleted a directory, and
+      // we already cancel/clear our watches for that in onRemovedPath
       watchKey.reset();
     } catch (IOException io) {
       throw new RuntimeException(io);
@@ -149,7 +199,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     // actually already be stale, if a file was quickly deleted then recreated, and both events
     // are in our queue. (E.g. the new file's mod time could be after our guess when we see the delete
     // event.)
-    queue.put(Update.newBuilder().setPath(toRelativePath(path)).setDelete(true).setLocal(true).build());
+    put(queue, Update.newBuilder().setPath(toRelativePath(path)).setDelete(true).setLocal(true).build());
     // in case this was a deleted directory, we'll want to start watching it again if it's re-created
     WatchKey key = pathToKey.get(path);
     if (key != null) {
@@ -161,7 +211,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
   private void onChangedDirectory(BlockingQueue<Update> queue, Path directory) throws IOException, InterruptedException {
     // for either new or changed directories, always emit an Update event
-    queue.put(Update //
+    put(queue, Update //
       .newBuilder()
       .setPath(toRelativePath(directory))
       .setDirectory(true)
@@ -185,7 +235,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     if (file.getFileName().toString().equals(".gitignore")) {
       b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
     }
-    queue.put(b.build());
+    put(queue, b.build());
   }
 
   private void onChangedSymbolicLink(BlockingQueue<Update> queue, Path path) throws IOException, InterruptedException {
@@ -199,7 +249,14 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     }
     String relativePath = toRelativePath(path);
     log.trace("Symlink {}, relative={}, target={}", path, relativePath, targetPath);
-    queue.put(Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setModTime(lastModified(path)).setLocal(true).build());
+    put(queue, Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setModTime(lastModified(path)).setLocal(true).build());
+  }
+
+  private static void put(BlockingQueue<Update> queue, Update update) throws InterruptedException {
+    if (log.isTraceEnabled()) {
+      log.trace("  PUT: " + TextFormat.shortDebugString(update));
+    }
+    queue.put(update);
   }
 
   private String toRelativePath(Path path) {
