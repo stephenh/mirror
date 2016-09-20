@@ -128,6 +128,29 @@ E.g. you could have:
 
 Now all three machines will be kept in sync.
 
+Syncing Jar Caches
+==================
+
+If you're running most build commands on your desktop, but the IDE on your laptop, your `.classpath`/etc. files will likely have references to downloaded jars, e.g. in the Maven cache or Gradle cache directories.
+
+Since these files are cached and so don't change, and aren't created very often (only when dependencies are updated), I currently sync these jar caches as needed with a shell script:
+
+```bash
+rsync -azP user@your-desktop.com:.ivy2/sbt ~/.ivy2/sbt/
+rsync -azP user@your-desktop.com:.gradle/caches/ ~/.gradle/caches/
+```
+
+In theory mirror could keep these in sync as well, either by just running ~2-3 more invocations of the `mirror` client, but it would also be nice to pass in multiple sync directories in a single `mirror` command invocation, e.g.:
+
+```bash
+mirror \
+  --sync ./.ivy2/sbt:./.ivy2/sbt \
+  --sync ./.gradle/caches:./.gradle/caches \
+  --sync ./code:./code
+```
+
+But currently mirror only supports a single remote/local sync at a time.
+
 Todo
 ====
 
