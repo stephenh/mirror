@@ -58,7 +58,8 @@ public class MirrorSessionTest {
 
   @Test
   public void shouldTimeoutAfterTwoMinutes() throws Exception {
-    List<Update> updates = session.calcInitialState();
+    // TODO
+    session.calcInitialState();
     session.diffAndStartPolling(new StreamObserver<Update>() {
       @Override
       public void onNext(Update value) {
