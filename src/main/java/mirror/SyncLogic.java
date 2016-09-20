@@ -35,6 +35,7 @@ public class SyncLogic implements TaskLogic {
   private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
+  private boolean diffPaused;
 
   public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
     this.queues = queues;
@@ -83,16 +84,25 @@ public class SyncLogic implements TaskLogic {
 
   private void handleUpdate(Update u) throws IOException, InterruptedException {
     if (u.getLocal()) {
-      if (isStaleLocalUpdate(u)) {
+      if (u.getData().equals(UpdateTree.localOverflowMarker)) {
+        tree.markAllLocalNodesDeleted();
+        diffPaused = true;
+      } else if (u.getData().equals(UpdateTree.overflowRecoveredMarker)) {
+        diffPaused = false;
+      } else if (isStaleLocalUpdate(u)) {
         return;
+      } else {
+        tree.addLocal(readLatestTimeAndSymlink(u));
       }
-      tree.addLocal(readLatestTimeAndSymlink(u));
     } else {
       tree.addRemote(u);
     }
   }
 
   private void diff() throws InterruptedException {
+    if (diffPaused) {
+      return;
+    }
     DiffResults r = new UpdateTreeDiff(tree).diff();
     for (Update u : r.saveLocally) {
       queues.saveToLocal.put(u);
@@ -111,6 +121,9 @@ public class SyncLogic implements TaskLogic {
    * be rarer.)
    */
   private boolean isStaleLocalUpdate(Update local) throws IOException {
+    if (local.getPath().equals("")) {
+      return false;
+    }
     Path path = Paths.get(local.getPath());
     boolean stillDeleted = local.getDelete() && !fileAccess.exists(path);
     boolean stillExists = !local.getDelete() && fileAccess.exists(path);

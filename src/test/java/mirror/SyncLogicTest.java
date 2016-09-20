@@ -315,6 +315,35 @@ public class SyncLogicTest {
     assertThat(sent.getModTime(), is(3L));
   }
 
+  @Test
+  public void handleLocalOverflow() throws Exception {
+    // given we have an existing file that is already in sync
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data), 1L);
+    // and our file watcher overflows
+    changes.add(Update.newBuilder().setPath("").setLocal(true).setData(UpdateTree.localOverflowMarker).build());
+    poll();
+    // then we assume (temporarily, while the recrawl happens) that all nodes are deleted
+    assertThat(tree.find("foo.txt").getLocal().getDelete(), is(true));
+    assertThat(tree.find("foo.txt").getLocal().getModTime(), is(1L));
+    // and we do not issue any remote updates 
+    assertThat(outgoing.values.size(), is(0));
+    // when our watcher recovers, and noticed foo.txt has actually changed
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
+    fileAccess.write(fooDotTxt, ByteBuffer.wrap(data), 2L);
+    changes.add(Update.newBuilder().setPath("").setLocal(true).setData(UpdateTree.overflowRecoveredMarker).build());
+    poll();
+    poll();
+    // then we've unmarked foo for deletion
+    assertThat(tree.find("foo.txt").getLocal().getDelete(), is(false));
+    // and we've sent it to the remote
+    assertThat(outgoing.values.size(), is(1));
+    // and it has the correct data
+    assertThat(outgoing.values.get(0).getPath(), is("foo.txt"));
+  }
+
+
   private static class StubObserver<T> implements StreamObserver<T> {
     private final List<T> values = new ArrayList<>();
     private boolean completed;

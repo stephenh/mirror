@@ -34,6 +34,8 @@ import com.google.protobuf.ByteString;
 public class UpdateTree {
 
   public static final ByteString initialSyncMarker = ByteString.copyFrom("initialSyncMarker", Charsets.UTF_8);
+  public static final ByteString localOverflowMarker = ByteString.copyFrom("localOverflowMarker", Charsets.UTF_8);
+  public static final ByteString overflowRecoveredMarker = ByteString.copyFrom("overflowRecoveredMarker", Charsets.UTF_8);
   private final Node root;
   private final PathRules extraIncludes;
   private final PathRules extraExcludes;
@@ -82,6 +84,12 @@ public class UpdateTree {
 
   public void addRemote(Update remote) {
     addUpdate(remote, false);
+  }
+
+  public void markAllLocalNodesDeleted() {
+    visit(n -> {
+      n.setLocal(Update.newBuilder(n.getLocal()).setDelete(true).build());
+    });
   }
 
   private void addUpdate(Update update, boolean local) {
@@ -209,7 +217,7 @@ public class UpdateTree {
       }
       this.local = local;
       // If we're no longer a directory, or we got deleted, clear our children
-      if (!UpdateTree.isDirectory(local) || local.getDelete()) {
+      if (local != null && (!UpdateTree.isDirectory(local))) {
         children.clear();
       }
       updateParentIgnoreRulesIfNeeded();
