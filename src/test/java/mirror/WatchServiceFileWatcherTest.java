@@ -22,6 +22,9 @@ import mirror.tasks.ThreadBasedTaskFactory;
 
 public class WatchServiceFileWatcherTest {
 
+  static {
+    LoggingConfig.init();
+  }
   private static final File dir = new File("./build/FileWatcherTest");
   private final TaskFactory taskFactory = new ThreadBasedTaskFactory();
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(100);
@@ -29,7 +32,6 @@ public class WatchServiceFileWatcherTest {
 
   @Before
   public void clearFiles() throws Exception {
-    LoggingConfig.init();
     if (dir.exists()) {
       FileUtils.forceDelete(dir);
     }
@@ -58,6 +60,40 @@ public class WatchServiceFileWatcherTest {
       Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
       // create dir1, delete dir1, create dir2, create foo.txt, modify foo.txt
       is("dir1,dir1,dir2,dir2/foo.txt,dir2/foo.txt"));
+  }
+
+  @Test
+  public void testDirectoryRenamedWithNestedContents() throws Exception {
+    // given a structure like:
+    // dir1
+    //   dir12
+    //     foo.txt
+    File dir1 = new File(dir, "dir1");
+    dir1.mkdir();
+    File dir12 = new File(dir1, "dir12");
+    dir12.mkdir();
+    File foo = new File(dir12, "foo.txt");
+    FileUtils.writeStringToFile(foo, "abc");
+    // when dir1 is renamed
+    File dir2 = new File(dir, "dir2");
+    new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
+    // and foo.txt is written to
+    FileUtils.writeStringToFile(new File(dir2, "dir12/foo.txt"), "abcd");
+    sleep();
+    // then we see:
+    assertThat(
+      Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
+      is(String.join( //
+        ",",
+        "dir1", // create
+        "dir1/dir12", // create
+        "dir1/dir12/foo.txt", // create
+        "dir1/dir12/foo.txt", // write
+        "dir1", // delete
+        "dir2", // create
+        "dir2/dir12", // create
+        "dir2/dir12/foo.txt", // create?
+        "dir2/dir12/foo.txt"))); // update
   }
 
   @Test

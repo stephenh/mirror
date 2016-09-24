@@ -9,16 +9,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.io.FileUtils;
-import org.jooq.lambda.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +70,29 @@ import mirror.tasks.ThreadBasedTaskFactory;
  *
  * And delete dir1, then we'll get DELETE events for foo.txt, dir2, and
  * then dir1.
+ *
+ * Update Sept 2016: I'm basically abandoning the Java Watch Service due
+ * to buggy behavior on Linux and only polling support on Mac OSX, e.g.
+ * see:
+ * 
+ * https://www.reddit.com/r/java/comments/3vtv8i/beware_javaniofilewatchservice_is_subtly_broken/
+ *
+ * In theory the buggy behavior on Linux can be solved using maps to
+ * track key -> path, but I've observed behavior (just by running
+ * this class's test) where:
+ *
+ * - dir1 CREATE fired, put in map
+ * - Rename dir1 to dir2
+ * - dir1 DELETE fired, remove key from map
+ * - dir2 CREATE fired, put new key in map
+ * - dir1/foo.txt CREATE fired with the old key
+ *
+ * And even if we did keep the old key, it would point to the prior
+ * path.
+ *
+ * For these reasons, I'm basically calling this FileWatcher impl
+ * end-of-lifed and will work on a watchman-based version going
+ * forward.
  */
 public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
@@ -149,13 +173,23 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
       for (WatchEvent<?> watchEvent : watchKey.pollEvents()) {
         WatchEvent.Kind<?> eventKind = watchEvent.kind();
         if (log.isTraceEnabled()) {
-          log.trace("WatchEvent {} {}", eventKind, watchEvent);
+          log.trace("WatchEvent {} {}", eventKind, watchEvent.context());
         }
         if (eventKind == OVERFLOW) {
           throw new RuntimeException("Watcher overflow");
         }
         if (parentDir == null) {
-          log.error("Missing parentDir for " + watchKey + " (" + watchKey.hashCode() + ") / " + watchKey.watchable() + ": " + watchEvent.context());
+          log.error("Missing parentDir for " + watchKey + " " + watchKey.watchable() + ": " + watchEvent.context());
+          if (log.isTraceEnabled()) {
+            log.trace("pathToKey");
+            for (Map.Entry<Path, WatchKey> e : pathToKey.entrySet()) {
+              log.trace("   {} -> {}", e.getKey(), e.getValue());
+            }
+            log.trace("keyToPath");
+            for (Map.Entry<WatchKey, Path> e : keyToPath.entrySet()) {
+              log.trace("   {} -> {}", e.getKey(), e.getValue());
+            }
+          }
           continue;
         }
         Path child = parentDir.resolve((Path) watchEvent.context());
@@ -203,42 +237,65 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     // in case this was a deleted directory, we'll want to start watching it again if it's re-created
     WatchKey key = pathToKey.get(path);
     if (key != null) {
-      pathToKey.remove(path);
-      keyToPath.remove(key);
-      key.cancel();
+      unwatchDirectory(key, path);
     }
   }
 
   private void onChangedDirectory(BlockingQueue<Update> queue, Path directory) throws IOException, InterruptedException {
-    // for either new or changed directories, always emit an Update event
-    put(queue, Update //
-      .newBuilder()
-      .setPath(toRelativePath(directory))
-      .setDirectory(true)
-      .setLocal(true)
-      .setModTime(lastModified(directory))
-      .build());
-    // but only setup a new watcher for new directories
-    if (!pathToKey.containsKey(directory)) {
-      WatchKey key = directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-      keyToPath.put(key, directory);
-      pathToKey.put(directory, key);
-      try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-        stream.forEach(Unchecked.consumer(p -> onChangedPath(queue, p)));
-      }
+    if (pathToKey.containsKey(directory)) {
+      // for existing directories, just emit an Update event
+      putDir(queue, directory, lastModified(directory));
+    } else {
+      // Otherwise setup watchers on the whole tree.
+      // Use walkFileTree because it in theory could minimize system calls, e.g.
+      // like http://benhoyt.com/writings/scandir/. FWIW I don't actually know if
+      // walkFileTree behaves this way, but it's cute.
+      Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+          putDir(queue, dir, attrs.lastModifiedTime().toMillis());
+          watchDirectory(dir);
+          return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+          if (attrs.isSymbolicLink()) {
+            // reuse onChangedSymbolicLink even though it will do a file access for the
+            // mod time, which we already have available in the attrs object
+            onChangedSymbolicLink(queue, file);
+          } else {
+            putFile(queue, file, attrs.lastModifiedTime().toMillis());
+          }
+          return FileVisitResult.CONTINUE;
+        }
+      });
     }
   }
 
-  private void onChangedFile(BlockingQueue<Update> queue, Path file) throws InterruptedException, IOException {
-    String relativePath = toRelativePath(file);
-    Update.Builder b = Update.newBuilder().setPath(relativePath).setModTime(lastModified(file)).setLocal(true);
-    if (file.getFileName().toString().equals(".gitignore")) {
-      b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
+  private void watchDirectory(Path directory) throws IOException {
+    WatchKey key = directory.register(watchService, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+    if (log.isTraceEnabled()) {
+      log.trace("Putting " + key + " = " + directory);
     }
-    put(queue, b.build());
+    keyToPath.put(key, directory);
+    pathToKey.put(directory, key);
   }
 
-  private void onChangedSymbolicLink(BlockingQueue<Update> queue, Path path) throws IOException, InterruptedException {
+  private void unwatchDirectory(WatchKey key, Path directory) {
+    if (log.isTraceEnabled()) {
+      log.trace("Removing " + key + " = " + directory);
+    }
+    pathToKey.remove(directory);
+    keyToPath.remove(key);
+    key.cancel();
+  }
+
+  private void onChangedFile(BlockingQueue<Update> queue, Path file) throws IOException {
+    putFile(queue, file, lastModified(file));
+  }
+
+  private void onChangedSymbolicLink(BlockingQueue<Update> queue, Path path) throws IOException {
     Path symlink = Files.readSymbolicLink(path);
     String targetPath;
     if (symlink.isAbsolute()) {
@@ -252,11 +309,27 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     put(queue, Update.newBuilder().setPath(relativePath).setSymlink(targetPath).setModTime(lastModified(path)).setLocal(true).build());
   }
 
-  private static void put(BlockingQueue<Update> queue, Update update) throws InterruptedException {
+  private void putDir(BlockingQueue<Update> queue, Path dir, long modTime) {
+    put(queue, Update.newBuilder().setPath(toRelativePath(dir)).setDirectory(true).setLocal(true).setModTime(modTime).build());
+  }
+
+  private void putFile(BlockingQueue<Update> queue, Path file, long modTime) throws IOException {
+    Update.Builder b = Update.newBuilder().setPath(toRelativePath(file)).setDirectory(false).setLocal(true).setModTime(modTime);
+    // In theory we should read this in the debouncer, but performInitialScan
+    // does not go through that codepath
+    if (file.getFileName().toString().equals(".gitignore")) {
+      b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
+    }
+    put(queue, b.build());
+  }
+
+  private static void put(BlockingQueue<Update> queue, Update update) {
     if (log.isTraceEnabled()) {
       log.trace("  PUT: " + TextFormat.shortDebugString(update));
     }
-    queue.put(update);
+    Utils.resetIfInterrupted(() -> {
+      queue.put(update);
+    });
   }
 
   private String toRelativePath(Path path) {
