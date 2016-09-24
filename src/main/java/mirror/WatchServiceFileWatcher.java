@@ -111,12 +111,14 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
 
   /** Main method for doing manual debugging/observation of behavior. */
   public static void main(String[] args) throws Exception {
-    LoggingConfig.initWithTracing();
+    // LoggingConfig.initWithTracing();
     TaskFactory f = new ThreadBasedTaskFactory();
-    Path testDirectory = Paths.get("/home/stephen/foo");
+    Path testDirectory = Paths.get("/home/stephen/linkedin");
     WatchServiceFileWatcher w = new WatchServiceFileWatcher(f, FileSystems.getDefault().newWatchService(), testDirectory);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
-    w.performInitialScan(queue);
+    log.info("Starting performInitialScan");
+    List<Update> initialScan = w.performInitialScan(queue);
+    log.info("Done " + initialScan.size());
     f.runTask(w);
     while (true) {
       queue.take();
