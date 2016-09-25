@@ -49,7 +49,7 @@ public class Mirror {
     cli.parse(args).run();
   }
 
-  public static abstract class BaseArgs implements Runnable {
+  public static abstract class BaseCommand implements Runnable {
     @Option(name = "--skip-limit-checks", description = "skip system file descriptor/watches checks")
     public boolean skipLimitChecks;
 
@@ -72,7 +72,7 @@ public class Mirror {
   }
 
   @Command(name = "server", description = "starts a server for the remote client to connect to")
-  public static class MirrorServerCommand extends BaseArgs {
+  public static class MirrorServerCommand extends BaseCommand {
     @Option(name = { "-p", "--post" }, description = "port to listen on, default: " + defaultPort)
     public int port = defaultPort;
 
@@ -102,7 +102,7 @@ public class Mirror {
   }
 
   @Command(name = "client", description = "two-way real-time sync")
-  public static class MirrorClientCommand extends BaseArgs {
+  public static class MirrorClientCommand extends BaseCommand {
     @Option(name = { "-h", "--host" }, description = "host name of remote server to connect to")
     public String host;
 
