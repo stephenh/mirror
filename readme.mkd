@@ -58,6 +58,8 @@ I looked at several sync options before starting mirror, but didn't find anythin
 Install
 =======
 
+* Optional: Install [watchman](https://facebook.github.io/watchman/)
+  * `mirror` will use the Java `WatchService` API if you don't have watchman installed, and it will basically work, but the JDK-provided `WatchService` implementations are not that great: the Linux implementation is buggy [see JDK-8145981](https://bugs.openjdk.java.net/browse/JDK-8145981), and the Mac implementation uses polling.
 * Download the latest [mirror](http://repo.joist.ws/mirror) and [mirror-all.jar](http://repo.joist.ws/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
   * `wget http://repo.joist.ws/mirror-all.jar ~/`
   * `wget http://repo.joist.ws/mirror ~/`
