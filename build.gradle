@@ -54,10 +54,6 @@ eclipse {
   pathVariables 'GRADLE_USER_HOME': gradle.gradleUserHomeDir
   pathVariables 'M2_REPO': new File("${System.getenv('HOME')}/.m2/repository")
   classpath {
-    file.whenMerged { cp ->
-      cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/generated/source/proto/main/java/', null))
-      cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/generated/source/proto/main/grpc/', null))
-    }
     downloadSources = true
   }
 }
