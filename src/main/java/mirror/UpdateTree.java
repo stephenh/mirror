@@ -228,7 +228,7 @@ public class UpdateTree {
       return a != null
         && (b == null || a.getModTime() > b.getModTime())
         && !(a.getDelete() && (b == null || b.getDelete())) // ignore no-op deletes
-        && !(UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
+        && !(!a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
     }
 
     String getName() {

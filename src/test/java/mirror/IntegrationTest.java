@@ -4,7 +4,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -20,6 +19,7 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.internal.ServerImpl;
 import mirror.MirrorGrpc.MirrorStub;
+import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
 public class IntegrationTest {
@@ -459,8 +459,10 @@ public class IntegrationTest {
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
+    TaskFactory taskFactory = new ThreadBasedTaskFactory();
+    FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
     // rpc = NettyServerBuilder.forPort(port).addService(MirrorServer.createWithCompressionEnabled()).build();
-    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer()).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer(watcherFactory)).build();
     rpc.start();
     log.info("started server");
     // client
@@ -474,9 +476,9 @@ public class IntegrationTest {
       root1.toPath(),
       includes,
       excludes,
-      new ThreadBasedTaskFactory(),
+      taskFactory,
       new ConnectionDetector.Impl(),
-      FileSystems.getDefault());
+      watcherFactory);
     client.startSession(stub);
     log.info("started client");
   }

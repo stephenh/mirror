@@ -10,4 +10,6 @@ public interface Watchman extends AutoCloseable {
 
   Map<String, Object> query(Object... query) throws IOException;
 
+  Map<String, Object> read() throws IOException;
+
 }

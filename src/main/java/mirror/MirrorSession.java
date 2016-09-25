@@ -1,9 +1,7 @@
 package mirror;
 
 import java.io.IOException;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
-import java.nio.file.WatchService;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,15 +43,8 @@ public class MirrorSession {
   private volatile SessionWatcher sessionWatcher;
   private volatile StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, FileSystem fileSystem) {
-    this(
-      factory,
-      Clock.systemUTC(),
-      root,
-      includes,
-      excludes,
-      new NativeFileAccess(root),
-      new WatchServiceFileWatcher(factory, newWatchService(fileSystem), root));
+  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, FileWatcher fileWatcher) {
+    this(factory, Clock.systemUTC(), root, includes, excludes, new NativeFileAccess(root), fileWatcher);
   }
 
   public MirrorSession(
@@ -145,14 +136,6 @@ public class MirrorSession {
     log.info("Stopping session");
     // this won't block; could potentially add a CountDownLatch
     taskPool.stopAllTasks();
-  }
-
-  private static WatchService newWatchService(FileSystem fileSystem) {
-    try {
-      return fileSystem.newWatchService();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   private void start(TaskLogic logic) {

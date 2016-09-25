@@ -1,10 +1,9 @@
-package mirror;
+package mirror.watchman;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -18,26 +17,28 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import joist.util.Execute;
+import mirror.FileWatcher;
+import mirror.LoggingConfig;
+import mirror.Update;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
 /**
- * Tests {@link WatchServiceFileWatcher}.
- *
- * Currently ignored because when files are created, e.g. foo.txt,
- * {@link WatchServiceFileWatcher} will sometimes send one update
- * (create) and sometimes send two.
+ * Tests {@link WatchmanFileWatcher}.
  * 
- * This is just what the underlying inotify events are, so it is not
- * wrong, but it makes test assertions annoying.
+ * Currently ignored because watchman returns results in non-deterministic
+ * order. Not in a harmful way, but if it notices both dir1 and dir1/foo.txt
+ * created, you will sometimes see dir1 first, sometimes dir1/foo.txt first.
+ *
+ * This should not be a big deal, but makes test assertions annoying.
  */
 @Ignore
-public class WatchServiceFileWatcherTest {
+public class WatchmanFileWatcherTest {
 
   static {
     LoggingConfig.init();
   }
-  private static final File dir = new File("./build/FileWatcherTest");
+  private static final File dir = new File("./build/WatchmanFileWatcherTest");
   private final TaskFactory taskFactory = new ThreadBasedTaskFactory();
   private final BlockingQueue<Update> queue = new ArrayBlockingQueue<>(100);
   private FileWatcher watcher;
@@ -48,9 +49,10 @@ public class WatchServiceFileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), dir.toPath());
+    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), dir.toPath().toAbsolutePath());
     watcher.performInitialScan(queue);
     taskFactory.runTask(watcher);
+    sleep();
   }
 
   @After
@@ -63,15 +65,16 @@ public class WatchServiceFileWatcherTest {
     // given a directory is created
     File dir1 = new File(dir, "dir1");
     dir1.mkdir();
+    sleep();
     // and then renamed
     File dir2 = new File(dir, "dir2");
     new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
     FileUtils.writeStringToFile(new File(dir2, "foo.txt"), "abc");
     sleep();
     assertThat( //
-      Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
-      // create dir1, delete dir1, create dir2, create foo.txt, modify foo.txt
-      is("dir1,dir1,dir2,dir2/foo.txt,dir2/foo.txt"));
+      Seq.seq(drainUpdates()).map(u -> u.getPath() + (u.getDelete() ? " delete" : "")).toString(","),
+      // create dir1, create foo.txt, create dir2, delete dir1
+      is("dir1,dir2/foo.txt,dir2,dir1 delete"));
   }
 
   @Test
@@ -86,6 +89,7 @@ public class WatchServiceFileWatcherTest {
     dir12.mkdir();
     File foo = new File(dir12, "foo.txt");
     FileUtils.writeStringToFile(foo, "abc");
+    sleep();
     // when dir1 is renamed
     File dir2 = new File(dir, "dir2");
     new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
@@ -94,18 +98,18 @@ public class WatchServiceFileWatcherTest {
     sleep();
     // then we see:
     assertThat(
-      Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
+      Seq.seq(drainUpdates()).map(u -> u.getPath() + (u.getDelete() ? " delete" : "")).toString(","),
       is(String.join( //
         ",",
-        "dir1", // create
-        "dir1/dir12", // create
         "dir1/dir12/foo.txt", // create
-        "dir1/dir12/foo.txt", // write
-        "dir1", // delete
-        "dir2", // create
+        "dir1/dir12", // create
+        "dir1", // create
+        "dir2/dir12/foo.txt", // create
         "dir2/dir12", // create
-        "dir2/dir12/foo.txt", // create?
-        "dir2/dir12/foo.txt"))); // update
+        "dir1 delete", // delete
+        "dir1/dir12/foo.txt delete", // delete
+        "dir1/dir12 delete", // delete
+        "dir2"))); // create
   }
 
   @Test
@@ -113,8 +117,10 @@ public class WatchServiceFileWatcherTest {
     // given a directory is created
     File dir1 = new File(dir, "dir1");
     dir1.mkdir();
+    sleep();
     // and then deleted
     dir1.delete();
+    sleep();
     // and then created again
     dir1.mkdir();
     sleep();
@@ -123,8 +129,8 @@ public class WatchServiceFileWatcherTest {
     sleep();
     // then we see all of the events
     assertThat( //
-      Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
-      is("dir1,dir1,dir1,dir1/foo.txt,dir1/foo.txt"));
+      Seq.seq(drainUpdates()).map(u -> u.getPath() + (u.getDelete() ? " delete" : "")).toString(","),
+      is("dir1,dir1 delete,dir1,dir1/foo.txt,dir1"));
   }
 
   private List<Update> drainUpdates() {
@@ -134,7 +140,7 @@ public class WatchServiceFileWatcherTest {
   }
 
   private static void sleep() throws InterruptedException {
-    Thread.sleep(1500);
+    Thread.sleep(50);
   }
 
 }

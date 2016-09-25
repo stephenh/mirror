@@ -236,6 +236,29 @@ public class UpdateTreeTest {
     assertThat(find("child/foo.txt").shouldIgnore(), is(true));
   }
 
+  @Test
+  public void isNewerForDirectoriesDoesNotCareAboutModTime() {
+    root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2).build());
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(false));
+    assertThat(root.getChildren().get(0).isRemoteNewer(), is(false));
+  }
+
+  @Test
+  public void isNewerForDeletedDirectoryDoesCareAboutModTime() {
+    root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setDelete(true).setModTime(2).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1).build());
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+  }
+
+  @Test
+  public void isNewerForDeletedFile() {
+    root.addLocal(Update.newBuilder().setPath("foo").setModTime(1).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setModTime(1).build());
+    root.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+  }
+
   Node find(String path) {
     return root.find(path);
   }

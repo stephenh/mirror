@@ -46,6 +46,7 @@ class ThreadBasedTask {
     Utils.resetIfInterrupted(() -> isStarted.await());
     shutdown.set(true);
     thread.interrupt();
+    task.onInterrupt();
     Utils.resetIfInterrupted(() -> isShutdown.await());
   }
 

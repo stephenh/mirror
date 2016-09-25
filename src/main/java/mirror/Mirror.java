@@ -1,7 +1,6 @@
 package mirror;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +21,7 @@ import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
 import mirror.MirrorGrpc.MirrorStub;
+import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
 public class Mirror {
@@ -71,11 +71,16 @@ public class Mirror {
 
     @Override
     protected void runIfChecksOkay() {
+      TaskFactory taskFactory = new ThreadBasedTaskFactory();
+      FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
+      MirrorServer server = new MirrorServer(watcherFactory);
+
       ServerImpl rpc = NettyServerBuilder
         .forPort(port)
         .maxMessageSize(maxMessageSize)
-        .addService(MirrorServer.createWithCompressionEnabled())
+        .addService(MirrorServer.withCompressionEnabled(server))
         .build();
+
       try {
         rpc.start();
         log.info("Listening on " + port);
@@ -122,14 +127,17 @@ public class Mirror {
         PathRules excludes = new PathRules();
         setupIncludesAndExcludes(includes, excludes, extraIncludes, extraExcludes, useInternalPatterns);
 
+        TaskFactory taskFactory = new ThreadBasedTaskFactory();
+        FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
+
         MirrorClient client = new MirrorClient(//
           Paths.get(localRoot),
           Paths.get(remoteRoot),
           includes,
           excludes,
-          new ThreadBasedTaskFactory(),
+          taskFactory,
           new ConnectionDetector.Impl(),
-          FileSystems.getDefault());
+          watcherFactory);
         client.startSession(stub);
         // dumb way of waiting until they hit control-c
         CountDownLatch cl = new CountDownLatch(1);

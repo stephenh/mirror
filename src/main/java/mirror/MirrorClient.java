@@ -2,7 +2,6 @@ package mirror;
 
 import static mirror.Utils.withTimeout;
 
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -31,7 +30,7 @@ public class MirrorClient {
   private final PathRules excludes;
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
-  private final FileSystem fileSystem;
+  private final FileWatcherFactory watcherFactory;
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
 
@@ -42,14 +41,14 @@ public class MirrorClient {
     PathRules excludes,
     TaskFactory taskFactory,
     ConnectionDetector detector,
-    FileSystem fileSystem) {
+    FileWatcherFactory watcherFactory) {
     this.localRoot = localRoot;
     this.remoteRoot = remoteRoot;
     this.includes = includes;
     this.excludes = excludes;
     this.taskFactory = taskFactory;
     this.detector = detector;
-    this.fileSystem = fileSystem;
+    this.watcherFactory = watcherFactory;
   }
 
   /** Connects to the server and starts a sync session. */
@@ -64,7 +63,8 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session");
 
-    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, fileSystem);
+    FileWatcher watcher = watcherFactory.newWatcher(localRoot.toAbsolutePath());
+    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, watcher);
 
     // 1. see what our current state is
     try {

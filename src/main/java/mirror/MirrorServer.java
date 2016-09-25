@@ -1,6 +1,5 @@
 package mirror;
 
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -11,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.grpc.BindableService;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
@@ -36,8 +36,8 @@ public class MirrorServer extends MirrorImplBase {
    * Currently grpc-java doesn't return compressed responses, even if the client
    * has sent a compressed payload. This turns on gzip compression for all responses.
    */
-  public static ServerServiceDefinition createWithCompressionEnabled() {
-    return ServerInterceptors.intercept(new MirrorServer(), new ServerInterceptor() {
+  public static ServerServiceDefinition withCompressionEnabled(BindableService service) {
+    return ServerInterceptors.intercept(service, new ServerInterceptor() {
       @Override
       public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         call.setCompression("gzip");
@@ -48,7 +48,12 @@ public class MirrorServer extends MirrorImplBase {
 
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
   private final Map<Integer, MirrorSession> sessions = new HashMap<>();
+  private final FileWatcherFactory watcherFactory;
   private int nextSessionId = 1;
+
+  public MirrorServer(FileWatcherFactory watcherFactory) {
+    this.watcherFactory = watcherFactory;
+  }
 
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
@@ -58,7 +63,8 @@ public class MirrorServer extends MirrorImplBase {
     PathRules excludes = new PathRules(request.getExcludesList());
 
     log.info("Starting new session " + sessionId + " for + " + root);
-    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, FileSystems.getDefault());
+    FileWatcher watcher = watcherFactory.newWatcher(root);
+    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, watcher);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {
