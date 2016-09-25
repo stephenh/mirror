@@ -1,18 +1,20 @@
 package mirror;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.jar.Manifest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.rvesse.airline.Cli;
+import com.github.rvesse.airline.annotations.Cli;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.builder.CliBuilder;
 import com.github.rvesse.airline.help.Help;
 
 import io.grpc.Channel;
@@ -20,10 +22,18 @@ import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
+import mirror.Mirror.MirrorClientArgs;
+import mirror.Mirror.MirrorServerArgs;
 import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
+@Cli(
+  name = "mirror",
+  description = "two-way, real-time sync of files across machines",
+  commands = { MirrorClientArgs.class, MirrorServerArgs.class },
+  defaultCommand = Help.class)
+// @Version(sources = { "/META-INF/MANIFEST.MF" }, suppressOnError = false)
 public class Mirror {
 
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
@@ -35,11 +45,8 @@ public class Mirror {
   }
 
   public static void main(String[] args) throws Exception {
-    CliBuilder<Runnable> b = Cli.<Runnable> builder("mirror").withDescription("two-way, real-time sync of files across machines");
-    b.withCommand(MirrorClientArgs.class);
-    b.withCommand(MirrorServerArgs.class);
-    b.withDefaultCommand(Help.class);
-    b.build().parse(args).run();
+    com.github.rvesse.airline.Cli<Runnable> cli = new com.github.rvesse.airline.Cli<>(Mirror.class);
+    cli.parse(args).run();
   }
 
   public static abstract class BaseArgs implements Runnable {
