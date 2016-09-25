@@ -59,7 +59,7 @@ Install
 =======
 
 * Optional: Install [watchman](https://facebook.github.io/watchman/)
-  * `mirror` will use the Java `WatchService` API if you don't have watchman installed, and it will basically work, but the JDK-provided `WatchService` implementations are not that great: the Linux implementation is buggy [see JDK-8145981](https://bugs.openjdk.java.net/browse/JDK-8145981), and the Mac implementation uses polling.
+  * `mirror` will use the built-in Java `WatchService` API if you don't have watchman installed, and it will basically work, but the JDK-provided `WatchService` implementations are not that great: the Linux implementation is buggy (see [JDK-8145981](https://bugs.openjdk.java.net/browse/JDK-8145981)), and the Mac implementation uses polling.
 * Download the latest [mirror](http://repo.joist.ws/mirror) and [mirror-all.jar](http://repo.joist.ws/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
   * `wget http://repo.joist.ws/mirror-all.jar ~/`
   * `wget http://repo.joist.ws/mirror ~/`
@@ -138,7 +138,7 @@ If you're running most build commands on your desktop, but the IDE on your lapto
 Since these files are cached and so don't change, and aren't created very often (only when dependencies are updated), I currently sync these jar caches as needed with a shell script:
 
 ```bash
-rsync -azP user@your-desktop.com:.ivy2/sbt ~/.ivy2/sbt/
+rsync -azP user@your-desktop.com:.ivy2/sbt/ ~/.ivy2/sbt/
 rsync -azP user@your-desktop.com:.gradle/caches/ ~/.gradle/caches/
 ```
 
