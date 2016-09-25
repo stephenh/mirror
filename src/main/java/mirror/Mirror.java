@@ -22,8 +22,8 @@ import io.grpc.internal.ServerImpl;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
-import mirror.Mirror.MirrorClientArgs;
-import mirror.Mirror.MirrorServerArgs;
+import mirror.Mirror.MirrorClientCommand;
+import mirror.Mirror.MirrorServerCommand;
 import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
@@ -31,7 +31,7 @@ import mirror.tasks.ThreadBasedTaskFactory;
 @Cli(
   name = "mirror",
   description = "two-way, real-time sync of files across machines",
-  commands = { MirrorClientArgs.class, MirrorServerArgs.class },
+  commands = { MirrorClientCommand.class, MirrorServerCommand.class },
   defaultCommand = Help.class)
 // @Version(sources = { "/META-INF/MANIFEST.MF" }, suppressOnError = false)
 public class Mirror {
@@ -72,7 +72,7 @@ public class Mirror {
   }
 
   @Command(name = "server", description = "starts a server for the remote client to connect to")
-  public static class MirrorServerArgs extends BaseArgs {
+  public static class MirrorServerCommand extends BaseArgs {
     @Option(name = { "-p", "--post" }, description = "port to listen on, default: " + defaultPort)
     public int port = defaultPort;
 
@@ -102,7 +102,7 @@ public class Mirror {
   }
 
   @Command(name = "client", description = "two-way real-time sync")
-  public static class MirrorClientArgs extends BaseArgs {
+  public static class MirrorClientCommand extends BaseArgs {
     @Option(name = { "-h", "--host" }, description = "host name of remote server to connect to")
     public String host;
 
