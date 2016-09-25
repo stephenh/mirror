@@ -3,11 +3,12 @@
 SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN=mirror.Mirror
 JAR=mirror-all.jar
+OPTS="-Xmx1G -XX:+HeapDumpOnOutOfMemoryError"
 
 if [ -e ${SCRIPT_DIRECTORY}/${JAR} ]; then
-  java -Xmx1G -cp ${SCRIPT_DIRECTORY}/${JAR} $MAIN "$@"
+  java $OPTS -cp ${SCRIPT_DIRECTORY}/${JAR} $MAIN "$@"
 elif [ -e ${SCRIPT_DIRECTORY}/build/libs/${JAR} ]; then
-  java -Xmx1G -cp ${SCRIPT_DIRECTORY}/build/libs/${JAR} $MAIN "$@"
+  java $OPTS -cp ${SCRIPT_DIRECTORY}/build/libs/${JAR} $MAIN "$@"
 else
   echo "${JAR} not found in ${SCRIPT_DIRECTORY}"
   exit 1
