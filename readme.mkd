@@ -177,9 +177,5 @@ Todo
   * Or else just suggest users use git-svn for all svn repos
 * Support `.git/info/exclude`?
   * Not sure how often this is used
-* Integrate with [watchman](https://facebook.github.io/watchman/)
-  * This is potentially more reliable than the JDK file watcher API
-  * Should be easy, by just providing a new [FileWatcher](https://github.com/stephenh/mirror/blob/master/src/main/java/mirror/FileWatcher.java) implementation
-  * I've not had any issues with the JDK file watcher yet, so currently low priority
 
 
