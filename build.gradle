@@ -16,6 +16,8 @@ repositories {
   maven { url "http://repo.joist.ws" }
 }
 
+version = 'git describe --tags --dirty'.execute().text.trim()
+
 dependencies {
   compile "io.grpc:grpc-netty:${grpcVersion}"
   compile "io.grpc:grpc-protobuf:${grpcVersion}"
@@ -48,6 +50,16 @@ protobuf {
       grpc {}
     }
   }
+}
+
+jar {
+   manifest {
+       attributes 'Mirror-Version': version
+   }
+}
+
+shadowJar {
+  version = null
 }
 
 eclipse {

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.jar.Manifest;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,16 +25,15 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
 import mirror.Mirror.MirrorClientCommand;
 import mirror.Mirror.MirrorServerCommand;
+import mirror.Mirror.VersionCommand;
 import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
-@Cli(
-  name = "mirror",
-  description = "two-way, real-time sync of files across machines",
-  commands = { MirrorClientCommand.class, MirrorServerCommand.class },
-  defaultCommand = Help.class)
-// @Version(sources = { "/META-INF/MANIFEST.MF" }, suppressOnError = false)
+@Cli(name = "mirror", description = "two-way, real-time sync of files across machines", commands = {
+  MirrorClientCommand.class,
+  MirrorServerCommand.class,
+  VersionCommand.class }, defaultCommand = Help.class)
 public class Mirror {
 
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
@@ -47,6 +47,14 @@ public class Mirror {
   public static void main(String[] args) throws Exception {
     com.github.rvesse.airline.Cli<Runnable> cli = new com.github.rvesse.airline.Cli<>(Mirror.class);
     cli.parse(args).run();
+  }
+
+  @Command(name = "version")
+  public static class VersionCommand implements Runnable {
+    @Override
+    public void run() {
+      System.out.println(getVersion());
+    }
   }
 
   public static abstract class BaseCommand implements Runnable {
@@ -209,6 +217,20 @@ public class Mirror {
       "*.iws",
       ".classpath",
       ".project");
+  }
+
+  private static String getVersion() {
+    String version = null;
+    URL url = Mirror.class.getResource("/META-INF/MANIFEST.MF");
+    try {
+      try (InputStream in = url.openStream()) {
+        Manifest m = new Manifest(in);
+        version = m.getMainAttributes().getValue("Mirror-Version");
+      }
+    } catch (Exception e) {
+      log.error("Error loading manifest", e);
+    }
+    return StringUtils.defaultIfEmpty(version, "unspecified");
   }
 
 }
