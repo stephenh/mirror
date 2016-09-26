@@ -3,7 +3,7 @@
 SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN=mirror.Mirror
 JAR=mirror-all.jar
-OPTS="-Xmx1G -XX:+HeapDumpOnOutOfMemoryError"
+OPTS="-Xmx2G -XX:+HeapDumpOnOutOfMemoryError"
 
 if [ -e ${SCRIPT_DIRECTORY}/${JAR} ]; then
   java $OPTS -cp ${SCRIPT_DIRECTORY}/${JAR} $MAIN "$@"
