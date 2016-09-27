@@ -1,5 +1,8 @@
 package mirror;
 
+import static org.apache.commons.lang3.StringUtils.chomp;
+import static org.apache.commons.lang3.StringUtils.substringAfterLast;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -17,6 +20,8 @@ import com.github.rvesse.airline.annotations.Cli;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.help.Help;
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 
 import io.grpc.Channel;
 import io.grpc.internal.ServerImpl;
@@ -53,7 +58,28 @@ public class Mirror {
   public static class VersionCommand implements Runnable {
     @Override
     public void run() {
-      System.out.println(getVersion());
+      String currentVersion = getVersion();
+      System.out.println("Current Version: " + currentVersion);
+      System.out.println();
+      try {
+        String latestVersion = chomp(Resources.asCharSource(new URL("http://repo.joist.ws/mirror-version"), Charsets.UTF_8).read());
+        System.out.println("Latest Version: " + latestVersion);
+        System.out.println();
+        if (!currentVersion.equals(latestVersion)) {
+          System.out.println("Comparison: https://github.com/stephenh/mirror/compare/" + toRef(currentVersion) + "..." + toRef(latestVersion));
+          System.out.println();
+        }
+      } catch (Exception e) {
+        log.error("Could not find latest version", e);
+      }
+    }
+
+    private String toRef(String version) {
+      if (version.contains("-g")) {
+        return substringAfterLast(version, "-g").replace("-dirty", "");
+      } else {
+        return version;
+      }
     }
   }
 
