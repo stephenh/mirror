@@ -62,14 +62,14 @@ public class UpdateTreeDiff {
 
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
-        results.sendToRemote.add(local);
+        results.sendToRemote.add(node.setPath(local));
       }
       node.setRemote(local);
     } else if (node.isRemoteNewer()) {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !node.isSameType() && !local.getDelete() && !remote.getDelete()) {
         Update delete = Update.newBuilder(local).setDelete(true).build();
-        results.saveLocally.add(delete);
+        results.saveLocally.add(node.setPath(delete));
         node.setLocal(delete);
       }
       // during the initial sync, we don't have any remote data in the UpdateTree (only metadata is sent),
@@ -78,7 +78,7 @@ public class UpdateTreeDiff {
       boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
-          results.saveLocally.add(remote);
+          results.saveLocally.add(node.setPath(remote));
         }
         // we're done with the data, so don't keep it in memory
         node.clearData();

@@ -124,6 +124,9 @@ public class WatchmanFileWatcher implements FileWatcher {
   @SuppressWarnings("unchecked")
   private void putFiles(Map<String, Object> response) {
     List<Map<String, Object>> files = (List<Map<String, Object>>) response.get("files");
+    if (files == null) {
+      throw new RuntimeException("Invalid response " + response);
+    }
     files.forEach(this::putFile);
   }
 

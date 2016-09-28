@@ -159,7 +159,6 @@ public class UpdateTree {
   /** Either a directory or file within the tree. */
   public class Node {
     private final Node parent;
-    private final String path;
     private final String name;
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
@@ -170,10 +169,9 @@ public class UpdateTree {
     private Update remote;
     private Boolean shouldIgnore;
 
-    private Node(Node parent, String path) {
+    private Node(Node parent, String name) {
       this.parent = parent;
-      this.path = path;
-      this.name = Paths.get(path).getFileName().toString();
+      this.name = name;
     }
 
     boolean isSameType() {
@@ -185,10 +183,7 @@ public class UpdateTree {
     }
 
     void setRemote(Update remote) {
-      if (!path.equals(remote.getPath())) {
-        throw new IllegalStateException("Path is not correct: " + path + " vs. " + remote.getPath());
-      }
-      this.remote = remote;
+      this.remote = clearPath(remote);
       updateParentIgnoreRulesIfNeeded();
       markDirty();
     }
@@ -198,22 +193,29 @@ public class UpdateTree {
     }
 
     void setLocal(Update local) {
-      if (!path.equals(local.getPath())) {
-        throw new IllegalStateException("Path is not correct: " + path + " vs. " + local.getPath());
-      }
       // The best we can do for guessing the mod time of deletions
       // is to take the old, known mod time and just tick 1
       if (local != null && this.local != null && local.getDelete() && local.getModTime() == 0L) {
         int tick = this.local.getDelete() ? 0 : 1;
         local = Update.newBuilder(local).setModTime(this.local.getModTime() + tick).build();
       }
-      this.local = local;
+      this.local = clearPath(local);
       // If we're no longer a directory, or we got deleted, clear our children
       if (!UpdateTree.isDirectory(local) || local.getDelete()) {
         children.clear();
       }
       updateParentIgnoreRulesIfNeeded();
       markDirty();
+    }
+
+    /** Clear the path data so we don't have it in RAM. */
+    Update clearPath(Update u) {
+      return Update.newBuilder(u).clearPath().build();
+    }
+
+    /** Set the path back for sending to remote or file system. */
+    Update setPath(Update u) {
+      return Update.newBuilder(u).setPath(getPath()).build();
     }
 
     boolean isRemoteNewer() {
@@ -236,7 +238,15 @@ public class UpdateTree {
     }
 
     String getPath() {
-      return path;
+      StringBuilder sb = new StringBuilder();
+      Node current = parent;
+      while (current != null && current != root) {
+        sb.insert(0, "/");
+        sb.insert(0, current.name);
+        current = current.parent;
+      }
+      sb.append(name);
+      return sb.toString();
     }
 
     /** @return the node for {@code name}, and will create it if necessary */
@@ -246,7 +256,7 @@ public class UpdateTree {
           return child;
         }
       }
-      Node child = new Node(this, (root == this) ? name : getPath() + "/" + name);
+      Node child = new Node(this, name);
       children.add(child);
       return child;
     }
@@ -268,12 +278,14 @@ public class UpdateTree {
       if (shouldIgnore != null) {
         return shouldIgnore;
       }
+      // temporarily calc our path
+      String path = getPath();
       boolean gitIgnored = parents().anyMatch(node -> {
         if (node.shouldIgnore()) {
           return true;
         } else if (node.ignoreRules.hasAnyRules()) {
           // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
-          String relative = path.substring(node.path.length());
+          String relative = path.substring(node.getPath().length());
           return node.ignoreRules.matches(relative, isDirectory());
         } else {
           return false;
