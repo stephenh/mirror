@@ -97,6 +97,9 @@ public class WatchmanChannelImpl implements Watchman {
     if (map.containsKey("error")) {
       throw new RuntimeException("watchman error: " + map.get("error"));
     }
+    if (map.containsKey("warning")) {
+      log.warn((String) map.get("warning"));
+    }
     return map;
   }
 
