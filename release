@@ -1,6 +1,6 @@
 #!/bin/bash
 
-gradle shadowJar && cp build/libs/mirror-all.jar ~/ && scp build/libs/mirror-all.jar ld1:~/ && scp build/libs/mirror-all.jar joist.ws:/var/www/joist.repo/
+./gradlew shadowJar && cp build/libs/mirror-all.jar ~/ && scp build/libs/mirror-all.jar ld1:~/ && scp build/libs/mirror-all.jar joist.ws:/var/www/joist.repo/
 
 version=$(git describe --tags --dirty)
 echo $version > .version
