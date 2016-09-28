@@ -80,13 +80,13 @@ public class UpdateTreeTest {
     root.addLocal(Update.newBuilder().setPath("bar/sub").setDirectory(true).build());
     root.addLocal(Update.newBuilder().setPath("bar").build());
     assertThat(root.getChildren().get(0).getLocal().getDirectory(), is(false));
-    assertThat(root.getChildren().get(0).getChildren().size(), is(0));
+    assertThat(root.getChildren().get(0).getChildren(), is(nullValue()));
   }
 
   @Test
   public void addingTheRootDoesNotDuplicateIt() {
     root.addLocal(Update.newBuilder().setPath("").setModTime(1L).build());
-    assertThat(root.getChildren().size(), is(0));
+    assertThat(root.getChildren(), is(nullValue()));
   }
 
   @Test
@@ -114,7 +114,7 @@ public class UpdateTreeTest {
     root.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
     assertThat(root.getChildren().get(0).getLocal().getDelete(), is(true));
-    assertThat(root.getChildren().get(0).getChildren().size(), is(0));
+    assertThat(root.getChildren().get(0).getChildren(), is(nullValue()));
   }
 
   @Test

@@ -160,7 +160,7 @@ public class UpdateTree {
   public class Node {
     private final Node parent;
     private final String name;
-    private final List<Node> children = new ArrayList<>();
+    private List<Node> children;
     // should contain .gitignore + svn:ignore + custom excludes/includes
     private PathRules ignoreRules;
     private boolean hasDirtyDecendent;
@@ -202,7 +202,7 @@ public class UpdateTree {
       this.local = clearPath(local);
       // If we're no longer a directory, or we got deleted, clear our children
       if (!UpdateTree.isDirectory(local) || local.getDelete()) {
-        children.clear();
+        children = null;
       }
       updateParentIgnoreRulesIfNeeded();
       markDirty();
@@ -251,6 +251,9 @@ public class UpdateTree {
 
     /** @return the node for {@code name}, and will create it if necessary */
     Node getChild(String name) {
+      if (children == null) {
+        children = new ArrayList<>();
+      }
       for (Node child : children) {
         if (child.getName().equals(name)) {
           return child;
@@ -342,7 +345,7 @@ public class UpdateTree {
     while (!queue.isEmpty()) {
       Node node = queue.remove();
       boolean cont = visitor.test(node);
-      if (cont) {
+      if (cont && node.children != null) {
         queue.addAll(node.children);
       }
     }
