@@ -86,7 +86,7 @@ public class SyncLogic implements TaskLogic {
       if (isStaleLocalUpdate(u)) {
         return;
       }
-      tree.addLocal(readLatestTimeAndSymlink(u));
+      tree.addLocal(ensureSettledAndReadModTime(u));
     } else {
       tree.addRemote(u);
     }
@@ -125,17 +125,36 @@ public class SyncLogic implements TaskLogic {
    * 
    * The FileWatcher is fast enough that it could actually read a "too new" mod time
    * in between a) and b).
+   *
+   * Also, without ensureSettled, even with watchman, we can see:
+   * 
+   * 1. .classpath file changes
+   * 2. FS emits an inotify event
+   * 3. FileWatcher reads the event, sends to queue
+   * 4. SyncLogic does a diff, sends to SaveToRemote
+   * 5. SaveToRemote reads the file and gets 0 bytes
+   * 6. There are no more FS events, but we've now sent a 0 byte file to the remote
+   *
+   * This also handles getting 100s of inotify events when a 100mb+ file is written,
+   * because the writes get flushed every ~100ms. (This happened in WatchService;
+   * I'm not sure about watchman.)
+   * 
+   * If we block for a little bit here, we may still get a delouge of inotify events,
+   * but they should all have the same mod time, and so effectively be no-ops and
+   * not cause any new diff results to be emitted.
    */
-  private Update readLatestTimeAndSymlink(Update local) {
+  private Update ensureSettledAndReadModTime(Update local) throws InterruptedException {
     if (!local.getDelete()) {
       try {
         Path path = Paths.get(local.getPath());
+        Utils.ensureSettled(fileAccess, path);
         local = Update.newBuilder(local).setModTime(fileAccess.getModifiedTime(path)).build();
         if (!local.getSymlink().isEmpty()) {
           local = Update.newBuilder(local).setSymlink(fileAccess.readSymlink(path).toString()).build();
         }
       } catch (IOException e) {
         // ignore as the path was probably deleted
+        log.info("Exception in readLatestTimeAndSymlink: " + e.getMessage());
       }
     }
     return local;
