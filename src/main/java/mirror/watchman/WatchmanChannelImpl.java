@@ -78,7 +78,7 @@ public class WatchmanChannelImpl implements Watchman {
   }
 
   public Map<String, Object> query(Object... query) throws IOException {
-    log.debug("Sending query: %s", query);
+    log.debug("Sending query: {}", query);
     serializer.serializeToStream(Arrays.asList(query), input);
     return read();
   }
@@ -91,7 +91,7 @@ public class WatchmanChannelImpl implements Watchman {
       throw new IOException("Unrecognized response");
     }
     if (log.isTraceEnabled()) {
-      log.trace("Got response: %s", response);
+      log.trace("Got response: {}", response);
     }
     Map<String, Object> map = (Map<String, Object>) response;
     if (map.containsKey("error")) {
