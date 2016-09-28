@@ -230,7 +230,7 @@ public class Mirror {
       // data-templates output
       "**/src/main/codegen",
       // play generated urls
-      "**/target/t/scala-2.10/routes/main",
+      "**/target/scala-2.10/routes/main",
       // sync the MP-level config directory
       "*/config",
       // but not svn directories within it
