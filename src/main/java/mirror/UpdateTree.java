@@ -162,7 +162,7 @@ public class UpdateTree {
     private final String name;
     private final List<Node> children = new ArrayList<>();
     // should contain .gitignore + svn:ignore + custom excludes/includes
-    private final PathRules ignoreRules = new PathRules();
+    private PathRules ignoreRules;
     private boolean hasDirtyDecendent;
     private boolean isDirty;
     private Update local;
@@ -283,7 +283,7 @@ public class UpdateTree {
       boolean gitIgnored = parents().anyMatch(node -> {
         if (node.shouldIgnore()) {
           return true;
-        } else if (node.ignoreRules.hasAnyRules()) {
+        } else if (node.ignoreRules != null && node.ignoreRules.hasAnyRules()) {
           // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
           String relative = path.substring(node.getPath().length());
           return node.ignoreRules.matches(relative, isDirectory());
@@ -315,6 +315,9 @@ public class UpdateTree {
     }
 
     void setIgnoreRules(String ignoreData) {
+      if (ignoreRules == null) {
+        ignoreRules = new PathRules();
+      }
       ignoreRules.setRules(ignoreData);
       visit(this, n -> {
         n.shouldIgnore = null;
