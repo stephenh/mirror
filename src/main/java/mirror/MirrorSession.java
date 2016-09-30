@@ -1,10 +1,13 @@
 package mirror;
 
+import static mirror.Utils.resetIfInterrupted;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +42,7 @@ public class MirrorSession {
   private final FileWatcher fileWatcher;
   private final UpdateTree tree;
   private final SyncLogic syncLogic;
+  private final CountDownLatch ready = new CountDownLatch(1);
   private volatile SaveToRemote saveToRemote;
   private volatile SessionWatcher sessionWatcher;
   private volatile StreamObserver<Update> outgoingChanges;
@@ -79,6 +83,9 @@ public class MirrorSession {
   }
 
   public void addRemoteUpdate(Update update) {
+    // sessionWatcher might still null if the MirrorClient code is
+    // still initializing the session and we preemptively get remote updates
+    resetIfInterrupted(() -> ready.await());
     sessionWatcher.updateReceived(update);
     if (!update.getPath().equals(SessionWatcher.heartbeatPath)) {
       queues.incomingQueue.add(update);
@@ -130,6 +137,8 @@ public class MirrorSession {
 
     sessionWatcher = new SessionWatcher(this, clock, taskPool, outgoingChanges);
     start(sessionWatcher);
+
+    ready.countDown();
   }
 
   public void stop() {
