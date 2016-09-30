@@ -168,7 +168,8 @@ public class WatchmanFileWatcher implements FileWatcher {
         Path path = root.resolve(ub.getPath());
         ub.setIgnoreString(FileUtils.readFileToString(path.toFile()));
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        // ignore as the file probably disappeared
+        log.debug("Exception reading .gitignore, assumed stale", e);
       }
     }
   }
@@ -195,7 +196,8 @@ public class WatchmanFileWatcher implements FileWatcher {
       // sure which modtime watchman sends back, but this is safest).
       ub.setModTime(Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis());
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      // ignore as the file probably disappeared
+      log.debug("Exception reading symlink, assumed stale", e);
     }
   }
 
