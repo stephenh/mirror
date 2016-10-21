@@ -9,6 +9,8 @@ import java.nio.channels.Channels;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +69,7 @@ public class WatchmanChannelImpl implements Watchman {
   private static final Logger log = LoggerFactory.getLogger(WatchmanChannelImpl.class);
   private final BserSerializer serializer = new BserSerializer();
   private final BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
+  private final Set<String> shownWarnings = new ConcurrentSkipListSet<>();
   private final ByteChannel channel;
   private final InputStream output;
   private final OutputStream input;
@@ -98,7 +101,15 @@ public class WatchmanChannelImpl implements Watchman {
       throw new RuntimeException("watchman error: " + map.get("error"));
     }
     if (map.containsKey("warning")) {
-      log.warn((String) map.get("warning"));
+      // Currently watchman keeps sending the "overflow happened 1 time"
+      // on each PDU, until a watch-del command is issued (which is non-trivial
+      // for us to do, as we'd have to restart our watch/subscribe). For now
+      // we just show the warning only once and then suppress future warnings.
+      String warning = (String) map.get("warning");
+      if (!shownWarnings.contains(warning)) {
+        log.warn(warning);
+        shownWarnings.add(warning);
+      }
     }
     return map;
   }
