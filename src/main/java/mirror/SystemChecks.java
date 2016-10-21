@@ -65,17 +65,28 @@ public class SystemChecks {
   }
 
   private static boolean checkMaxUserWatches() {
-    BufferedResult r = new Execute("cat").addEnvPaths().arg("/proc/sys/fs/inotify/max_user_watches").toBuffer();
+    BufferedResult r1 = new Execute("cat").addEnvPaths().arg("/proc/sys/fs/inotify/max_user_watches").toBuffer();
+    BufferedResult r2 = new Execute("cat").addEnvPaths().arg("/proc/sys/fs/inotify/max_queued_events").toBuffer();
     // only assume this will return 0 on linux, which is all we need to check
-    if (r.exitValue == 0) {
-      int maxUserWatches = Integer.parseInt(StringUtils.chomp(r.out));
-      if (maxUserWatches < 10_000) {
-        log.error("Your max_user_watches is {} and should probably be increased (each directory == 1 watch)", maxUserWatches);
-        log.info("  See https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers");
-        log.info("  E.g. run: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p");
-        log.info("  Or use --skip-limit-checks to ignore this");
-        return false;
+    if (r1.exitValue == 0) {
+      int maxUserWatches = Integer.parseInt(StringUtils.chomp(r1.out));
+      int maxQueuedEvents = Integer.parseInt(StringUtils.chomp(r2.out));
+      if (maxUserWatches >= 10_000 && maxQueuedEvents >= 20_000) {
+        return true;
       }
+      log.error("Your system inotify limits look too low (they are probably the default values)");
+      if (maxUserWatches < 10_000) {
+        log.info("  Your max_user_watches is {} and should probably be increased (each directory == 1 watch)", maxUserWatches);
+        log.info("  E.g.: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p");
+        log.info("");
+      }
+      if (maxQueuedEvents < 20_000) {
+        log.info("  Your max_queued_events is {} and should probably be increased", maxQueuedEvents);
+        log.info("  E.g.: echo fs.inotify.max_queued_events=50000 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p");
+        log.info("");
+      }
+      log.info("  See https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers");
+      log.info("  Or use --skip-limit-checks to ignore this");
     }
     return true;
   }
