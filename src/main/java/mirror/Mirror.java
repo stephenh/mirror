@@ -209,6 +209,10 @@ public class Mirror {
     excludes.addRule("*___jb_old___");
     // Ignore all hidden files, e.g. especially .git/.svn directories
     excludes.addRule(".*");
+    // It's unlikely we want to copy around huge binary files by default
+    excludes.addRule("*.gz");
+    excludes.addRule("*.tar");
+    excludes.addRule("*.zip");
     // Since we exclude hidden files, re-include .gitignore so the remote-side knows what to ignore
     includes.addRule(".gitignore");
   }
