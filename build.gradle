@@ -6,7 +6,7 @@ plugins {
   id 'com.github.johnrengelman.shadow' version '1.2.3'
 }
 
-def grpcVersion = '1.0.0'
+def grpcVersion = '1.0.3'
 // This version must match the protobuf-java version that grpc transitively pulls in
 def protobufVersion = '3.0.0'
 
