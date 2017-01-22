@@ -2,6 +2,7 @@ package mirror;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.jooq.lambda.Seq.seq;
 
 import org.jooq.lambda.Seq;
@@ -171,7 +172,7 @@ public class UpdateTreeDiffTest {
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
     assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
     assertThat(tree.getChildren().get(0).getLocal().getSymlink(), is("bar"));
-    assertThat(tree.getChildren().get(0).getChildren().size(), is(0));
+    assertThat(tree.getChildren().get(0).getChildren(), is(nullValue()));
     // and when we diff again
     diff();
     // then we don't re-delete it
@@ -468,7 +469,7 @@ public class UpdateTreeDiffTest {
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
-    assertThat(tree.find("foo").getChildren().size(), is(0));
+    assertThat(tree.find("foo").getChildren(), is(nullValue()));
   }
 
   @Test
@@ -493,7 +494,7 @@ public class UpdateTreeDiffTest {
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
-    assertThat(tree.find("foo").getChildren().size(), is(0));
+    assertThat(tree.find("foo").getChildren(), is(nullValue()));
 
     // and when the deletes are echoed by the file system we don't resend the delete
     tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setDelete(true).build());
