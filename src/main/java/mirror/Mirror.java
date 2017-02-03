@@ -161,7 +161,11 @@ public class Mirror {
     @Override
     protected void runIfChecksOkay() {
       try {
-        Channel c = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).maxMessageSize(maxMessageSize).build();
+        Channel c = NettyChannelBuilder //
+          .forAddress(host, port)
+          .negotiationType(NegotiationType.PLAINTEXT)
+          .maxInboundMessageSize(maxMessageSize)
+          .build();
         MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
 
         PathRules includes = new PathRules();
