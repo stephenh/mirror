@@ -61,10 +61,11 @@ public class MirrorServer extends MirrorImplBase {
     Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
     PathRules includes = new PathRules(request.getIncludesList());
     PathRules excludes = new PathRules(request.getExcludesList());
+    List<String> debugPrefixes = request.getDebugPrefixesList();
 
     log.info("Starting new session " + sessionId + " for + " + root);
     FileWatcher watcher = watcherFactory.newWatcher(root);
-    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, watcher);
+    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, debugPrefixes, watcher);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

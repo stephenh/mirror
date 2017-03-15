@@ -47,8 +47,8 @@ public class MirrorSession {
   private volatile SessionWatcher sessionWatcher;
   private volatile StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, FileWatcher fileWatcher) {
-    this(factory, Clock.systemUTC(), root, includes, excludes, new NativeFileAccess(root), fileWatcher);
+  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, List<String> debugPrefixes, FileWatcher fileWatcher) {
+    this(factory, Clock.systemUTC(), root, includes, excludes, debugPrefixes, new NativeFileAccess(root), fileWatcher);
   }
 
   public MirrorSession(
@@ -57,12 +57,13 @@ public class MirrorSession {
     Path root,
     PathRules includes,
     PathRules excludes,
+    List<String> debugPrefixes,
     FileAccess fileAccess,
     FileWatcher fileWatcher) {
     this.clock = clock;
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcher;
-    this.tree = UpdateTree.newRoot(includes, excludes);
+    this.tree = UpdateTree.newRoot(includes, excludes, debugPrefixes);
 
     // Run all our tasks in a pool so they are terminated together
     taskPool = taskFactory.newTaskPool();

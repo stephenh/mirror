@@ -37,6 +37,7 @@ public class UpdateTree {
   private final Node root;
   private final PathRules extraIncludes;
   private final PathRules extraExcludes;
+  private final List<String> debugPrefixes;
 
   public static NodeType getType(Update u) {
     return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
@@ -55,16 +56,17 @@ public class UpdateTree {
   }
 
   public static UpdateTree newRoot() {
-    return newRoot(new PathRules(), new PathRules());
+    return newRoot(new PathRules(), new PathRules(), new ArrayList<>());
   }
 
-  public static UpdateTree newRoot(PathRules extraIncludes, PathRules extraExcludes) {
-    return new UpdateTree(extraIncludes, extraExcludes);
+  public static UpdateTree newRoot(PathRules extraIncludes, PathRules extraExcludes, List<String> debugPrefixes) {
+    return new UpdateTree(extraIncludes, extraExcludes, debugPrefixes);
   }
 
-  private UpdateTree(PathRules extraIncludes, PathRules extraExcludes) {
+  private UpdateTree(PathRules extraIncludes, PathRules extraExcludes, List<String> debugPrefixes) {
     this.extraIncludes = extraIncludes;
     this.extraExcludes = extraExcludes;
+    this.debugPrefixes = debugPrefixes;
     this.root = new Node(null, "");
     this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
     this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());
@@ -145,6 +147,10 @@ public class UpdateTree {
       current = current.getChild(part.getFileName().toString());
     }
     return current;
+  }
+
+  boolean shouldDebug(String path) {
+    return debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
   }
 
   @VisibleForTesting
@@ -283,13 +289,22 @@ public class UpdateTree {
       }
       // temporarily calc our path
       String path = getPath();
+      boolean debug = shouldDebug(path);
       boolean gitIgnored = parents().anyMatch(node -> {
         if (node.shouldIgnore()) {
+          if (debug) {
+            System.out.println(path + " parent " + node + " shouldIgnore=true");
+          }
           return true;
         } else if (node.ignoreRules != null && node.ignoreRules.hasAnyRules()) {
           // if our path is dir1/dir2/foo.txt, strip off dir1/ for dir1's .gitignore, so we pass dir2/foo.txt
           String relative = path.substring(node.getPath().length());
-          return node.ignoreRules.matches(relative, isDirectory());
+          boolean matches = node.ignoreRules.matches(relative, isDirectory());
+          if (debug && matches) {
+            System.out.println(path + " rules for " + node + " " + node.ignoreRules.getLines().size() + " " + node.ignoreRules.toString());
+            System.out.println(path + " " + relative + " " + isDirectory());
+          }
+          return matches;
         } else {
           return false;
         }
@@ -298,6 +313,9 @@ public class UpdateTree {
       boolean extraIncluded = extraIncludes.matches(path, isDirectory());
       boolean extraExcluded = extraExcludes.matches(path, isDirectory());
       shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
+      if (debug) {
+        System.out.println(path + " gitIgnored=" + gitIgnored + ", extraIncluded=" + extraIncluded + ", extraExcluded=" + extraExcluded);
+      }
       return shouldIgnore;
     }
 

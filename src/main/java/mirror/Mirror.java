@@ -155,6 +155,9 @@ public class Mirror {
     @Option(name = { "-e", "--exclude" }, description = "pattern of files to skip, in addition to what is git ignored")
     public List<String> extraExcludes = new ArrayList<>();
 
+    @Option(name = { "-d", "--debug" }, description = "prefix of paths to print debug lines for")
+    public List<String> debugPrefixes = new ArrayList<>();
+
     @Option(name = { "-li", "--use-internal-patterns" }, description = "use hardcoded include/excludes that generally work well for internal repos")
     public boolean useInternalPatterns;
 
@@ -180,6 +183,7 @@ public class Mirror {
           Paths.get(remoteRoot),
           includes,
           excludes,
+          debugPrefixes,
           taskFactory,
           new ConnectionDetector.Impl(),
           watcherFactory);

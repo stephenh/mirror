@@ -18,6 +18,7 @@ message InitialSyncRequest {
   string remotePath = 1;
   repeated string includes = 3;
   repeated string excludes = 4;
+  repeated string debugPrefixes = 5;
   repeated Update state = 2;
 }
 

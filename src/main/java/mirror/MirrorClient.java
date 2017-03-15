@@ -28,6 +28,7 @@ public class MirrorClient {
   private final Path remoteRoot;
   private final PathRules includes;
   private final PathRules excludes;
+  private final List<String> debugPrefixes;
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileWatcherFactory watcherFactory;
@@ -39,6 +40,7 @@ public class MirrorClient {
     Path remoteRoot,
     PathRules includes,
     PathRules excludes,
+    List<String> debugPrefixes,
     TaskFactory taskFactory,
     ConnectionDetector detector,
     FileWatcherFactory watcherFactory) {
@@ -46,6 +48,7 @@ public class MirrorClient {
     this.remoteRoot = remoteRoot;
     this.includes = includes;
     this.excludes = excludes;
+    this.debugPrefixes = debugPrefixes;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.watcherFactory = watcherFactory;
@@ -64,7 +67,7 @@ public class MirrorClient {
     log.info("Connected, starting session");
 
     FileWatcher watcher = watcherFactory.newWatcher(localRoot.toAbsolutePath());
-    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, watcher);
+    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, debugPrefixes, watcher);
 
     // 1. see what our current state is
     try {
@@ -82,6 +85,7 @@ public class MirrorClient {
         .setRemotePath(remoteRoot.toString())
         .addAllIncludes(includes.getLines())
         .addAllExcludes(excludes.getLines())
+        .addAllDebugPrefixes(debugPrefixes)
         .addAllState(localState)
         .build();
       withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {

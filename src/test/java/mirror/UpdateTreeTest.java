@@ -201,21 +201,21 @@ public class UpdateTreeTest {
 
   @Test
   public void ignoreFilesInRootByExtraExcludes() {
-    root = UpdateTree.newRoot(new PathRules(), new PathRules("build"));
+    root = UpdateTree.newRoot(new PathRules(), new PathRules("build"), new ArrayList<>());
     root.addLocal(Update.newBuilder().setPath("build").setDirectory(true).build());
     assertThat(find("build").shouldIgnore(), is(true));
   }
 
   @Test
   public void ignoreFilesInChildByExtraExcludes() {
-    root = UpdateTree.newRoot(new PathRules(), new PathRules("build"));
+    root = UpdateTree.newRoot(new PathRules(), new PathRules("build"), new ArrayList<>());
     root.addLocal(Update.newBuilder().setPath("child/build").setDirectory(true).build());
     assertThat(find("child/build").shouldIgnore(), is(true));
   }
 
   @Test
   public void ignoreFilesInRootByExtraExcludesWithPath() {
-    root = UpdateTree.newRoot(new PathRules(), new PathRules("build/classes"));
+    root = UpdateTree.newRoot(new PathRules(), new PathRules("build/classes"), new ArrayList<>());
     root.addLocal(Update.newBuilder().setPath("build/classes/Foo.class").setDirectory(true).build());
     assertThat(find("build/classes/Foo.class").shouldIgnore(), is(true));
   }
@@ -224,7 +224,7 @@ public class UpdateTreeTest {
   public void ignoreFilesInChildByExtraExcludesWithPath() {
     // build/classes will not work since extra rules are always based on the root path,
     // but git supports **/build/classes as the syntax for "at any child node"
-    root = UpdateTree.newRoot(new PathRules(), new PathRules("**/build/classes"));
+    root = UpdateTree.newRoot(new PathRules(), new PathRules("**/build/classes"), new ArrayList<>());
     root.addLocal(Update.newBuilder().setPath("child/build/classes/Foo.class").setDirectory(true).build());
     assertThat(find("child/build/classes/Foo.class").shouldIgnore(), is(true));
   }

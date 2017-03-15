@@ -1,5 +1,6 @@
 package mirror;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.nullValue;
@@ -8,6 +9,7 @@ import static org.jooq.lambda.Seq.seq;
 import org.jooq.lambda.Seq;
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 
 import mirror.UpdateTree.Node;
@@ -332,7 +334,7 @@ public class UpdateTreeDiffTest {
     // given a local file
     PathRules e = new PathRules();
     PathRules i = new PathRules("*.txt");
-    tree = UpdateTree.newRoot(i, e);
+    tree = UpdateTree.newRoot(i, e, newArrayList());
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).build());
     tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());

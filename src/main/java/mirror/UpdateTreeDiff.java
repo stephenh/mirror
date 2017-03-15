@@ -3,6 +3,8 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.protobuf.TextFormat;
+
 import mirror.UpdateTree.Node;
 
 /**
@@ -62,6 +64,11 @@ public class UpdateTreeDiff {
 
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
+        if (tree.shouldDebug(node.getPath())) {
+          System.out.println(node.getPath() + " isLocalNewer");
+          System.out.println("  l: " + (node.getLocal() == null ? "null" : TextFormat.shortDebugString(node.getLocal())));
+          System.out.println("  r: " + (node.getRemote() == null ? "null" : TextFormat.shortDebugString(node.getRemote())));
+        }
         results.sendToRemote.add(node.setPath(local));
       }
       node.setRemote(local);
@@ -78,6 +85,11 @@ public class UpdateTreeDiff {
       boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
+          if (tree.shouldDebug(node.getPath())) {
+            System.out.println(node.getPath() + " isRemoteNewer");
+            System.out.println("  l: " + (node.getLocal() == null ? "null" : TextFormat.shortDebugString(node.getLocal())));
+            System.out.println("  r: " + (node.getRemote() == null ? "null" : TextFormat.shortDebugString(node.getRemote())));
+          }
           results.saveLocally.add(node.setPath(remote));
         }
         // we're done with the data, so don't keep it in memory

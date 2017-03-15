@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -476,6 +477,7 @@ public class IntegrationTest {
       root1.toPath(),
       includes,
       excludes,
+      new ArrayList<>(),
       taskFactory,
       new ConnectionDetector.Impl(),
       watcherFactory);
