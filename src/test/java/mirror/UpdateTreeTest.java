@@ -259,6 +259,15 @@ public class UpdateTreeTest {
     assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
   }
 
+  @Test
+  public void isNewerForCorruptModTimes() {
+    long now = System.currentTimeMillis();
+    long tooFarInTheFuture =  now * 2;
+    root.addLocal(Update.newBuilder().setPath("foo").setModTime(now).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setModTime(tooFarInTheFuture).build());
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+  }
+
   Node find(String path) {
     return root.find(path);
   }

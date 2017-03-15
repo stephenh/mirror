@@ -2,6 +2,7 @@ package mirror;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -34,6 +35,8 @@ import com.google.protobuf.ByteString;
 public class UpdateTree {
 
   public static final ByteString initialSyncMarker = ByteString.copyFrom("initialSyncMarker", Charsets.UTF_8);
+  private static final long oneHourInMillis = Duration.ofHours(1).toMillis();
+  private static final long oneMinuteInMillis = Duration.ofMinutes(1).toMillis();
   private final Node root;
   private final PathRules extraIncludes;
   private final PathRules extraExcludes;
@@ -234,7 +237,7 @@ public class UpdateTree {
 
     boolean isNewer(Update a, Update b) {
       return a != null
-        && (b == null || a.getModTime() > b.getModTime())
+        && (b == null || sanityCheckTimestamp(a.getModTime()) > sanityCheckTimestamp(b.getModTime()))
         && !(a.getDelete() && (b == null || b.getDelete())) // ignore no-op deletes
         && !(!a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
     }
@@ -353,6 +356,25 @@ public class UpdateTree {
 
     private Seq<Node> parents() {
       return Seq.iterate(parent, t -> t.parent).limitUntil(Objects::isNull);
+    }
+  }
+
+  /**
+   * Ensure {@code millis} is not ridiculously far in the future.
+   *
+   * If a timestamp that is in the future somehow gets into the system, e.g.
+   * Jan 3000, then no local change will ever be able to overwrite it.
+   *
+   * We detect this case as any timestamp that is more than an hour in the future,
+   * treat it as happening a minute in the past, so that any valid/just-happened
+   * writes have a chance to win.
+   */
+  private long sanityCheckTimestamp(long millis) {
+    long now = System.currentTimeMillis();
+    if (millis > now + oneHourInMillis) {
+      return now - oneMinuteInMillis;
+    } else {
+      return millis;
     }
   }
 
