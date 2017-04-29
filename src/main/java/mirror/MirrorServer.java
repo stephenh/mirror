@@ -1,6 +1,5 @@
 package mirror;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -58,14 +57,17 @@ public class MirrorServer extends MirrorImplBase {
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     int sessionId = nextSessionId++;
-    Path root = Paths.get(request.getRemotePath()).toAbsolutePath();
-    PathRules includes = new PathRules(request.getIncludesList());
-    PathRules excludes = new PathRules(request.getExcludesList());
-    List<String> debugPrefixes = request.getDebugPrefixesList();
 
-    log.info("Starting new session " + sessionId + " for + " + root);
-    FileWatcher watcher = watcherFactory.newWatcher(root);
-    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), root, includes, excludes, debugPrefixes, watcher);
+    MirrorPaths paths = new MirrorPaths(
+       Paths.get(request.getRemotePath()).toAbsolutePath(),
+       null,
+       new PathRules(request.getIncludesList()),
+       new PathRules(request.getExcludesList()),
+       request.getDebugPrefixesList());
+
+    log.info("Starting new session " + sessionId + " for + " + paths.root);
+    FileWatcher watcher = watcherFactory.newWatcher(paths.root);
+    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), paths, watcher);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

@@ -29,10 +29,12 @@ public class MirrorSessionTest {
   private final MirrorSession session = new MirrorSession(
     taskFactory,
     clock,
-    root,
-    new PathRules(),
-    new PathRules(),
-    new ArrayList<>(),
+    new MirrorPaths(
+      root,
+      null,
+      new PathRules(),
+      new PathRules(),
+      new ArrayList<>()),
     fileAccess,
     fileWatcher);
 

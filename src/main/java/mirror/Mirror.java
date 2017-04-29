@@ -176,11 +176,12 @@ public class Mirror {
         FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
 
         MirrorClient client = new MirrorClient(//
-          Paths.get(localRoot),
-          Paths.get(remoteRoot),
-          includes,
-          excludes,
-          debugPrefixes,
+          new MirrorPaths(
+            Paths.get(localRoot),
+            Paths.get(remoteRoot),
+            includes,
+            excludes,
+            debugPrefixes),
           taskFactory,
           new ConnectionDetector.Impl(),
           watcherFactory);

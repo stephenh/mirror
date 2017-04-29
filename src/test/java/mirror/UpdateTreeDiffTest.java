@@ -9,7 +9,6 @@ import static org.jooq.lambda.Seq.seq;
 import org.jooq.lambda.Seq;
 import org.junit.Test;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 
 import mirror.UpdateTree.Node;

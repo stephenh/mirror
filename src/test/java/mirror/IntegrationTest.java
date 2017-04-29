@@ -473,11 +473,12 @@ public class IntegrationTest {
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
     client = new MirrorClient(// 
-      root2.toPath(),
-      root1.toPath(),
-      includes,
-      excludes,
-      new ArrayList<>(),
+      new MirrorPaths(
+        root2.toPath(),
+        root1.toPath(),
+        includes,
+        excludes,
+        new ArrayList<>()),
       taskFactory,
       new ConnectionDetector.Impl(),
       watcherFactory);

@@ -3,7 +3,6 @@ package mirror;
 import static mirror.Utils.resetIfInterrupted;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,23 +46,20 @@ public class MirrorSession {
   private volatile SessionWatcher sessionWatcher;
   private volatile StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, Path root, PathRules includes, PathRules excludes, List<String> debugPrefixes, FileWatcher fileWatcher) {
-    this(factory, Clock.systemUTC(), root, includes, excludes, debugPrefixes, new NativeFileAccess(root), fileWatcher);
+  public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcher fileWatcher) {
+    this(factory, Clock.systemUTC(), paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcher);
   }
 
   public MirrorSession(
     TaskFactory taskFactory,
     Clock clock,
-    Path root,
-    PathRules includes,
-    PathRules excludes,
-    List<String> debugPrefixes,
+    MirrorPaths paths,
     FileAccess fileAccess,
     FileWatcher fileWatcher) {
     this.clock = clock;
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcher;
-    this.tree = UpdateTree.newRoot(includes, excludes, debugPrefixes);
+    this.tree = UpdateTree.newRoot(paths.includes, paths.excludes, paths.debugPrefixes);
 
     // Run all our tasks in a pool so they are terminated together
     taskPool = taskFactory.newTaskPool();

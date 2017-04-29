@@ -2,7 +2,6 @@ package mirror;
 
 import static mirror.Utils.withTimeout;
 
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -24,11 +23,7 @@ public class MirrorClient {
 
   private static final Logger log = LoggerFactory.getLogger(MirrorClient.class);
 
-  private final Path localRoot;
-  private final Path remoteRoot;
-  private final PathRules includes;
-  private final PathRules excludes;
-  private final List<String> debugPrefixes;
+  private final MirrorPaths paths;
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileWatcherFactory watcherFactory;
@@ -36,19 +31,11 @@ public class MirrorClient {
   private volatile MirrorSession session;
 
   public MirrorClient(
-    Path localRoot,
-    Path remoteRoot,
-    PathRules includes,
-    PathRules excludes,
-    List<String> debugPrefixes,
+    MirrorPaths paths,
     TaskFactory taskFactory,
     ConnectionDetector detector,
     FileWatcherFactory watcherFactory) {
-    this.localRoot = localRoot;
-    this.remoteRoot = remoteRoot;
-    this.includes = includes;
-    this.excludes = excludes;
-    this.debugPrefixes = debugPrefixes;
+    this.paths = paths;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.watcherFactory = watcherFactory;
@@ -66,8 +53,8 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session, version " + Mirror.getVersion());
 
-    FileWatcher watcher = watcherFactory.newWatcher(localRoot.toAbsolutePath());
-    session = new MirrorSession(taskFactory, localRoot.toAbsolutePath(), includes, excludes, debugPrefixes, watcher);
+    FileWatcher watcher = watcherFactory.newWatcher(paths.root.toAbsolutePath());
+    session = new MirrorSession(taskFactory, paths, watcher);
 
     // 1. see what our current state is
     try {
@@ -82,10 +69,10 @@ public class MirrorClient {
       // one of our RPC methods is streaming, then this one is as well
       InitialSyncRequest req = InitialSyncRequest //
         .newBuilder()
-        .setRemotePath(remoteRoot.toString())
-        .addAllIncludes(includes.getLines())
-        .addAllExcludes(excludes.getLines())
-        .addAllDebugPrefixes(debugPrefixes)
+        .setRemotePath(paths.remoteRoot.toString())
+        .addAllIncludes(paths.includes.getLines())
+        .addAllExcludes(paths.excludes.getLines())
+        .addAllDebugPrefixes(paths.debugPrefixes)
         .addAllState(localState)
         .build();
       withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {
