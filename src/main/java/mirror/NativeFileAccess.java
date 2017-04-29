@@ -110,8 +110,8 @@ public class NativeFileAccess implements FileAccess {
   public void createSymlink(Path relative, Path target) throws IOException {
     Path path = resolve(relative);
     path.getParent().toFile().mkdirs();
-    if (path.toFile().exists()) {
-      path.toFile().delete();
+    if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+      Files.delete(path);
     }
     Files.createSymbolicLink(path, target);
   }
