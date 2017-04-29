@@ -124,7 +124,7 @@ public class Mirror {
 
       try {
         rpc.start();
-        log.info("Listening on " + port);
+        log.info("Listening on " + port + ", version " + Mirror.getVersion());
         rpc.awaitTermination();
       } catch (IOException e) {
         e.printStackTrace();
@@ -257,7 +257,7 @@ public class Mirror {
       ".project");
   }
 
-  private static String getVersion() {
+  public static String getVersion() {
     String version = null;
     URL url = Mirror.class.getResource("/META-INF/MANIFEST.MF");
     try {
