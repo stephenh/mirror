@@ -3,8 +3,6 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.protobuf.TextFormat;
-
 import mirror.UpdateTree.Node;
 
 /**
@@ -66,8 +64,8 @@ public class UpdateTreeDiff {
       if (!node.shouldIgnore()) {
         if (tree.shouldDebug(node.getPath())) {
           System.out.println(node.getPath() + " isLocalNewer");
-          System.out.println("  l: " + (node.getLocal() == null ? "null" : TextFormat.shortDebugString(node.getLocal())));
-          System.out.println("  r: " + (node.getRemote() == null ? "null" : TextFormat.shortDebugString(node.getRemote())));
+          System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
+          System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
         }
         results.sendToRemote.add(node.setPath(local));
       }
@@ -87,8 +85,8 @@ public class UpdateTreeDiff {
         if (!node.shouldIgnore()) {
           if (tree.shouldDebug(node.getPath())) {
             System.out.println(node.getPath() + " isRemoteNewer");
-            System.out.println("  l: " + (node.getLocal() == null ? "null" : TextFormat.shortDebugString(node.getLocal())));
-            System.out.println("  r: " + (node.getRemote() == null ? "null" : TextFormat.shortDebugString(node.getRemote())));
+            System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
+            System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
           }
           results.saveLocally.add(node.setPath(remote));
         }

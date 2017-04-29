@@ -17,6 +17,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.TextFormat;
 
 /**
  * A tree of file+directory metadata ({@link Update}s).
@@ -56,6 +57,15 @@ public class UpdateTree {
 
   public static boolean isSymlink(Update u) {
     return !u.getSymlink().isEmpty();
+  }
+
+  public static String toDebugString(Update u) {
+    if (u == null) {
+      return null;
+    } else {
+      ByteString truncated = u.getData() == null ? null : ByteString.copyFromUtf8(u.getData().toString());
+      return TextFormat.shortDebugString(Update.newBuilder(u).setData(truncated).build());
+    }
   }
 
   public static UpdateTree newRoot() {
