@@ -60,14 +60,11 @@ public class Mirror {
     public void run() {
       String currentVersion = getVersion();
       System.out.println("Current Version: " + currentVersion);
-      System.out.println();
       try {
         String latestVersion = chomp(Resources.asCharSource(new URL("http://repo.joist.ws/mirror-version"), Charsets.UTF_8).read());
         System.out.println("Latest Version: " + latestVersion);
-        System.out.println();
         if (!currentVersion.equals(latestVersion)) {
           System.out.println("Comparison: https://github.com/stephenh/mirror/compare/" + toRef(currentVersion) + "..." + toRef(latestVersion));
-          System.out.println();
         }
       } catch (Exception e) {
         log.error("Could not find latest version", e);
