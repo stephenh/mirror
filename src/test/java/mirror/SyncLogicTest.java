@@ -33,8 +33,7 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes locally
-    Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
     // when we notice
     poll();
     // then we sent it to the remote
@@ -93,8 +92,7 @@ public class SyncLogicTest {
     // given we have an existing local file
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
     // and it changes remotely
-    Update u = Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).setModTime(10L).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data2)).setModTime(10L).build());
     // when we notice
     poll();
     // then we've saved it locally
@@ -184,8 +182,7 @@ public class SyncLogicTest {
     // given we create a new symlink locally
     fileAccess.createSymlink(fooDotTxt, Paths.get("bar"));
     // when we notice
-    Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).setSymlink("bar").build());
     poll();
     // then we sent it to the remote
     assertThat(outgoing.values.size(), is(1));
@@ -218,8 +215,7 @@ public class SyncLogicTest {
   @Test
   public void skipFileBeingQueuedButThenDeleted() throws Exception {
     // given we detected a local file
-    Update u = Update.newBuilder().setPath("foo.txt").setLocal(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setLocal(true).build());
     // but it does not exist on disk anymore
     assertThat(fileAccess.exists(fooDotTxt), is(false));
     // when we notice
@@ -265,8 +261,7 @@ public class SyncLogicTest {
     // that also exists on the remote
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     // and it is deleted locally
-    Update u = Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build();
-    changes.add(u);
+    changes.add(Update.newBuilder().setPath("foo.txt").setDelete(true).setLocal(true).build());
     // but our delete is stale (it's since been recreated)
     // fileAccess.delete(fooDotTxt);
     // when we notice
