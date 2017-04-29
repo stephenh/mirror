@@ -233,7 +233,7 @@ public class UpdateTree {
     }
 
     /** Set the path back for sending to remote or file system. */
-    Update setPath(Update u) {
+    Update restorePath(Update u) {
       return Update.newBuilder(u).setPath(getPath()).build();
     }
 

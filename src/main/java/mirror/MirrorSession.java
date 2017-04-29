@@ -107,7 +107,7 @@ public class MirrorSession {
     List<Update> seedRemote = new ArrayList<>();
     tree.visit(n -> {
       if (n.getLocal() != null && !n.shouldIgnore()) {
-        seedRemote.add(n.setPath(n.getLocal()));
+        seedRemote.add(n.restorePath(n.getLocal()));
       }
     });
     return seedRemote;
