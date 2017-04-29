@@ -230,7 +230,7 @@ public class Mirror {
     excludes.addRules("tmp", "temp", "target", "build", "bin");
     // these are resources in the build/ directory that are still useful to have
     // on the laptop, e.g. for the IDE
-    includes.setRules(
+    includes.addRules(
       // include generated source code
       "src_managed",
       "**/src/mainGeneratedRest",
