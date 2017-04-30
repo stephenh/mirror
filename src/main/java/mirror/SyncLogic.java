@@ -92,8 +92,7 @@ public class SyncLogic implements TaskLogic {
     }
   }
 
-  @VisibleForTesting
-  void diff() throws InterruptedException {
+  private void diff() throws InterruptedException {
     DiffResults r = new UpdateTreeDiff(tree).diff();
     for (Update u : r.saveLocally) {
       queues.saveToLocal.put(u);
