@@ -172,8 +172,8 @@ public class UpdateTreeDiffTest {
     assertSaveLocally("foo", "foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
     assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    assertThat(tree.getChildren().get(0).getLocal().getSymlink(), is("bar"));
-    assertThat(tree.getChildren().get(0).getChildren(), is(nullValue()));
+    assertThat(tree.find("foo").getLocal().getSymlink(), is("bar"));
+    assertThat(tree.find("foo/bar.txt").getLocal().getDelete(), is(true));
     // and when we diff again
     diff();
     // then we don't re-delete it
@@ -462,7 +462,7 @@ public class UpdateTreeDiffTest {
 
     // then we only need to send the root delete to the remote
     diff();
-    assertSendToRemote("foo");
+    assertSendToRemote("foo", "foo/bar", "foo/bar/zaz.txt");
     assertThat(results.sendToRemote.get(0).getDelete(), is(true));
     assertThat(results.sendToRemote.get(0).getLocal(), is(false));
     assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be false?
@@ -470,7 +470,8 @@ public class UpdateTreeDiffTest {
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
-    assertThat(tree.find("foo").getChildren(), is(nullValue()));
+    assertThat(tree.find("foo").getChildren().size(), is(1));
+    assertThat(tree.find("foo/bar").getChildren().size(), is(1));
   }
 
   @Test
@@ -495,7 +496,8 @@ public class UpdateTreeDiffTest {
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
-    assertThat(tree.find("foo").getChildren(), is(nullValue()));
+    assertThat(tree.find("foo").getChildren().size(), is(1));
+    assertThat(tree.find("foo/bar").getChildren().size(), is(1));
 
     // and when the deletes are echoed by the file system we don't resend the delete
     tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setDelete(true).build());

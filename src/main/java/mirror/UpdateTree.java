@@ -216,12 +216,17 @@ public class UpdateTree {
       // is to take the old, known mod time and just tick 1
       if (local != null && this.local != null && local.getDelete() && local.getModTime() == 0L) {
         int tick = this.local.getDelete() ? 0 : 1;
-        local = Update.newBuilder(local).setModTime(this.local.getModTime() + tick).build();
+        local = local.toBuilder().setModTime(this.local.getModTime() + tick).build();
       }
+      boolean wasDirectory = this.local != null && this.local.getDirectory();
       this.local = clearPath(local);
-      // If we're no longer a directory, or we got deleted, clear our children
-      if (!UpdateTree.isDirectory(local) || local.getDelete()) {
-        children = null;
+      // If we're no longer a directory, or we got deleted, ensure our children they are deleted.
+      // Technically both Java's WatchService and watchman will send delete events for our children,
+      // so this is just a safe guard (although watchman sends parent deletes first).
+      if (((wasDirectory && !UpdateTree.isDirectory(local)) || local.getDelete()) && children != null) {
+        children.stream().filter(c -> c.getLocal() != null && !c.getLocal().getDelete()).forEach(c -> {
+          c.setLocal(c.getLocal().toBuilder().setDelete(true).build());
+        });
       }
       updateParentIgnoreRulesIfNeeded();
       markDirty();

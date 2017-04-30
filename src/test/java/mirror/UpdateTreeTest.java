@@ -78,9 +78,11 @@ public class UpdateTreeTest {
   public void changeDirectoryToAFile() {
     root.addLocal(Update.newBuilder().setPath("bar").setDirectory(true).build());
     root.addLocal(Update.newBuilder().setPath("bar/sub").setDirectory(true).build());
+    root.addLocal(Update.newBuilder().setPath("bar/sub/grand").setDirectory(true).build());
     root.addLocal(Update.newBuilder().setPath("bar").build());
-    assertThat(root.getChildren().get(0).getLocal().getDirectory(), is(false));
-    assertThat(root.getChildren().get(0).getChildren(), is(nullValue()));
+    assertThat(root.find("bar").getLocal().getDirectory(), is(false));
+    assertThat(root.find("bar/sub").getLocal().getDelete(), is(true));
+    assertThat(root.find("bar/sub/grand").getLocal().getDelete(), is(true));
   }
 
   @Test
@@ -108,13 +110,13 @@ public class UpdateTreeTest {
   }
 
   @Test
-  public void deleteDirectoryMarksTheNodeAsDeletedAndRemovesAnyChildren() {
+  public void deleteDirectoryMarksTheNodeAsDeletedAndChildren() {
     root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).build());
     root.addLocal(Update.newBuilder().setPath("foo/bar.txt").build());
     root.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
-    assertThat(root.getChildren().get(0).getLocal().getDelete(), is(true));
-    assertThat(root.getChildren().get(0).getChildren(), is(nullValue()));
+    assertThat(root.find("foo").getLocal().getDelete(), is(true));
+    assertThat(root.find("foo/bar.txt").getLocal().getDelete(), is(true));
   }
 
   @Test
