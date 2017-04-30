@@ -25,7 +25,9 @@ import com.google.protobuf.TextFormat;
 
 import jnr.posix.FileStat;
 import mirror.FileWatcher;
+import mirror.LoggingConfig;
 import mirror.Update;
+import mirror.UpdateTree;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
@@ -42,17 +44,19 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   /** Main method for doing manual debugging/observation of behavior. */
   public static void main(String[] args) throws Exception {
-    // LoggingConfig.initWithTracing();
+    LoggingConfig.init();
     TaskFactory f = new ThreadBasedTaskFactory();
-    Path testDirectory = Paths.get("/home/stephen/linkedin");
+    Path testDirectory = Paths.get("/home/stephen/dir1");
     WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), testDirectory);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
     log.info("Starting performInitialScan");
     List<Update> initialScan = w.performInitialScan(queue);
-    log.info("Done " + initialScan.size());
+    initialScan.forEach(node -> {
+      log.info("Initial: " + UpdateTree.toDebugString(node));
+    });
     f.runTask(w);
     while (true) {
-      queue.take();
+      log.info("Update: " + UpdateTree.toDebugString(queue.take()));
     }
   }
 
