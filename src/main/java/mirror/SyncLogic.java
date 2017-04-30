@@ -74,11 +74,11 @@ public class SyncLogic implements TaskLogic {
 
   @VisibleForTesting
   void poll() throws IOException, InterruptedException {
-    Update u = queues.incomingQueue.poll();
-    if (u != null) {
+    Update u;
+    while ((u = queues.incomingQueue.poll()) != null) {
       handleUpdate(u);
-      diff();
     }
+    diff();
   }
 
   private void handleUpdate(Update u) throws IOException, InterruptedException {
