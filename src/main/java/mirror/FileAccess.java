@@ -27,11 +27,11 @@ public interface FileAccess {
 
   void setModifiedTime(Path relativePath, long time) throws IOException;
 
-  boolean exists(Path relativePath) throws IOException;
+  boolean exists(Path relativePath);
 
-  boolean isSymlink(Path relativePath) throws IOException;
+  boolean isSymlink(Path relativePath);
 
-  boolean isDirectory(Path relativePath) throws IOException;
+  boolean isDirectory(Path relativePath);
 
   Path readSymlink(Path readSymlink) throws IOException;
 

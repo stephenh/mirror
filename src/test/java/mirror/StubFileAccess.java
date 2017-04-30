@@ -101,7 +101,7 @@ public class StubFileAccess implements FileAccess {
   }
 
   @Override
-  public boolean isDirectory(Path relativePath) throws IOException {
+  public boolean isDirectory(Path relativePath) {
     return fileData.get(relativePath) == directoryMarker;
   }
 

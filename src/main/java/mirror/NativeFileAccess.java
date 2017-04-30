@@ -117,7 +117,7 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public boolean isSymlink(Path relativePath) throws IOException {
+  public boolean isSymlink(Path relativePath) {
     return Files.isSymbolicLink(resolve(relativePath));
   }
 
@@ -141,7 +141,7 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public boolean exists(Path relativePath) throws IOException {
+  public boolean exists(Path relativePath) {
     return resolve(relativePath).toFile().exists();
   }
 
@@ -165,7 +165,7 @@ public class NativeFileAccess implements FileAccess {
   }
 
   @Override
-  public boolean isDirectory(Path relativePath) throws IOException {
+  public boolean isDirectory(Path relativePath) {
     return resolve(relativePath).toFile().isDirectory();
   }
 
