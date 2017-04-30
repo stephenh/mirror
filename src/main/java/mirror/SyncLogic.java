@@ -49,16 +49,13 @@ public class SyncLogic implements TaskLogic {
 
   @Override
   public Duration runOneLoop() throws InterruptedException {
-    try {
-      List<Update> batch = getNextBatchOrBlock();
-      logLocalUpdates(batch);
-      for (Update u : batch) {
-        handleUpdate(u);
-      }
-      diff();
-    } catch (IOException | RuntimeException e) {
-      log.error("Exception", e);
+    List<Update> batch = getNextBatchOrBlock();
+    logLocalUpdates(batch);
+    for (Update u : batch) {
+      handleUpdate(u);
     }
+    diff();
+    // Return no duration so we immediately loop and call getNextBatchOrBlock
     return null;
   }
 
@@ -81,7 +78,7 @@ public class SyncLogic implements TaskLogic {
     diff();
   }
 
-  private void handleUpdate(Update u) throws IOException, InterruptedException {
+  private void handleUpdate(Update u) throws InterruptedException {
     if (u.getLocal()) {
       if (isStaleLocalUpdate(u)) {
         return;
@@ -110,7 +107,7 @@ public class SyncLogic implements TaskLogic {
    * putting the update in the queue, and us picking it up, but that should
    * be rarer.)
    */
-  private boolean isStaleLocalUpdate(Update local) throws IOException {
+  private boolean isStaleLocalUpdate(Update local) {
     Path path = Paths.get(local.getPath());
     boolean stillDeleted = local.getDelete() && !fileAccess.exists(path);
     boolean stillExists = !local.getDelete() && fileAccess.exists(path);
