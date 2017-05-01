@@ -162,6 +162,14 @@ public class UpdateTree {
     return current;
   }
 
+  boolean shouldDebug(Node node) {
+    // avoid calcing the path if we have no prefixes anyway
+    if (debugPrefixes.isEmpty()) {
+      return false;
+    }
+    return shouldDebug(node.getPath());
+  }
+
   boolean shouldDebug(String path) {
     return debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
   }

@@ -62,7 +62,7 @@ public class UpdateTreeDiff {
 
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
-        if (tree.shouldDebug(node.getPath())) {
+        if (tree.shouldDebug(node)) {
           System.out.println(node.getPath() + " isLocalNewer");
           System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
           System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
@@ -83,7 +83,7 @@ public class UpdateTreeDiff {
       boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
-          if (tree.shouldDebug(node.getPath())) {
+          if (tree.shouldDebug(node)) {
             System.out.println(node.getPath() + " isRemoteNewer");
             System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
             System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
