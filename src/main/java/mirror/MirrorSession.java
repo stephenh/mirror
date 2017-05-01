@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
@@ -74,7 +75,11 @@ public class MirrorSession {
 
     taskPool.addShutdownCallback(() -> {
       if (outgoingChanges != null) {
-        outgoingChanges.onCompleted();
+        try {
+          outgoingChanges.onCompleted();
+        } catch (StatusRuntimeException e) {
+          // already disconnected/cancelled
+        }
       }
     });
   }
