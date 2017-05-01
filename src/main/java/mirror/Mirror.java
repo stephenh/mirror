@@ -231,19 +231,18 @@ public class Mirror {
     includes.addRules(
       // include generated source code
       "src_managed",
+      "**/build/generated",
+      "**/src/main/codegen",
+      // pegasus/data-templates output
       "**/src/mainGeneratedRest",
       "**/src/mainGeneratedDataTemplate",
-      "testGeneratedRest",
-      "testGeneratedDataTemplate",
-      "**/build/*/classes/mainGeneratedInternalUrns/",
-      "**/build/*/resources/mainGeneratedInternalUrns/",
-      // data-templates output
-      "**/src/main/codegen",
+      "**/src/mainGeneratedInternalUrns/",
+      "**/src/testGeneratedRest",
+      "**/src/testGeneratedDataTemplate",
       // play generated urls
       "**/target/scala-2.10/routes/main",
-      // sync the MP-level config directory
+      // sync the MP-level config directory, but not the svn directory within it
       "*/config",
-      // but not svn directories within it
       "!*/config/**/.svn",
       // include the binaries the laptop-side IDE will want
       "*-SNAPSHOT.jar",
