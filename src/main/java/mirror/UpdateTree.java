@@ -12,6 +12,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.jooq.lambda.Seq;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
@@ -36,6 +38,7 @@ import com.google.protobuf.TextFormat;
 public class UpdateTree {
 
   public static final ByteString initialSyncMarker = ByteString.copyFrom("initialSyncMarker", Charsets.UTF_8);
+  private static final Logger log = LoggerFactory.getLogger(UpdateTree.class);
   private static final long oneHourInMillis = Duration.ofHours(1).toMillis();
   private static final long oneMinuteInMillis = Duration.ofMinutes(1).toMillis();
   private final Node root;
@@ -319,7 +322,7 @@ public class UpdateTree {
       boolean gitIgnored = parents().anyMatch(node -> {
         if (node.shouldIgnore()) {
           if (debug) {
-            System.out.println(path + " parent " + node + " shouldIgnore=true");
+            log.info(path + " parent " + node + " shouldIgnore=true");
           }
           return true;
         } else if (node.ignoreRules != null && node.ignoreRules.hasAnyRules()) {
@@ -327,8 +330,8 @@ public class UpdateTree {
           String relative = path.substring(node.getPath().length());
           boolean matches = node.ignoreRules.matches(relative, isDirectory());
           if (debug && matches) {
-            System.out.println(path + " rules for " + node + " " + node.ignoreRules.getLines().size() + " " + node.ignoreRules.toString());
-            System.out.println(path + " " + relative + " " + isDirectory());
+            log.info(path + " rules for " + node + " " + node.ignoreRules.getLines().size() + " " + node.ignoreRules.toString());
+            log.info(path + " " + relative + " " + isDirectory());
           }
           return matches;
         } else {
@@ -340,7 +343,7 @@ public class UpdateTree {
       boolean extraExcluded = extraExcludes.matches(path, isDirectory());
       shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
       if (debug) {
-        System.out.println(path + " gitIgnored=" + gitIgnored + ", extraIncluded=" + extraIncluded + ", extraExcluded=" + extraExcluded);
+        log.info(path + " gitIgnored=" + gitIgnored + ", extraIncluded=" + extraIncluded + ", extraExcluded=" + extraExcluded);
       }
       return shouldIgnore;
     }

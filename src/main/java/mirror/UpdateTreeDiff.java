@@ -3,6 +3,9 @@ package mirror;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import mirror.UpdateTree.Node;
 
 /**
@@ -32,6 +35,8 @@ import mirror.UpdateTree.Node;
  * - do nothing because the remote hasn't sent their copy yet
  */
 public class UpdateTreeDiff {
+
+  private static final Logger log = LoggerFactory.getLogger(UpdateTree.class);
 
   public static class DiffResults {
     public final List<Update> sendToRemote = new ArrayList<>();
@@ -63,9 +68,9 @@ public class UpdateTreeDiff {
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
         if (tree.shouldDebug(node)) {
-          System.out.println(node.getPath() + " isLocalNewer");
-          System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
-          System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
+          log.info(node.getPath() + " isLocalNewer");
+          log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
+          log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));
         }
         results.sendToRemote.add(node.restorePath(local));
       }
@@ -84,9 +89,9 @@ public class UpdateTreeDiff {
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
           if (tree.shouldDebug(node)) {
-            System.out.println(node.getPath() + " isRemoteNewer");
-            System.out.println("  l: " + UpdateTree.toDebugString(node.getLocal()));
-            System.out.println("  r: " + UpdateTree.toDebugString(node.getRemote()));
+            log.info(node.getPath() + " isRemoteNewer");
+            log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
+            log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));
           }
           results.saveLocally.add(node.restorePath(remote));
         }
