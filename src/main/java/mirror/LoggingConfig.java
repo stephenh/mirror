@@ -10,6 +10,7 @@ import ch.qos.logback.classic.jul.LevelChangePropagator;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.FileAppender;
+import io.grpc.internal.ManagedChannelImpl;
 
 /**
  * Initialies a minimal/readable logback config.
@@ -50,6 +51,8 @@ public class LoggingConfig {
     logger.setLevel(Level.INFO);
 
     getLogger("io.grpc").setLevel(Level.INFO);
+    // silence a noisy DNS warning when we cannot resolve the other host
+    getLogger(ManagedChannelImpl.class.getName()).setLevel(Level.ERROR);
     getLogger("mirror").setLevel(Level.INFO);
   }
 
