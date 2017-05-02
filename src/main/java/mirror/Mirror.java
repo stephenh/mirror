@@ -111,7 +111,7 @@ public class Mirror {
     protected void runIfChecksOkay() {
       TaskFactory taskFactory = new ThreadBasedTaskFactory();
       FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
-      MirrorServer server = new MirrorServer(watcherFactory);
+      MirrorServer server = new MirrorServer(taskFactory, watcherFactory);
 
       ServerImpl rpc = NettyServerBuilder
         .forPort(port)

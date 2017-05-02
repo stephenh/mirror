@@ -25,6 +25,10 @@ import mirror.tasks.ThreadBasedTaskFactory;
 
 public class IntegrationTest {
 
+  static {
+    LoggingConfig.init();
+  }
+
   private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
   private static final File integrationTestDir = new File("./build/IntergrationTest");
   private static final File root1 = new File(integrationTestDir, "root1");
@@ -35,7 +39,6 @@ public class IntegrationTest {
 
   @Before
   public void clearFiles() throws Exception {
-    LoggingConfig.init();
     FileUtils.deleteDirectory(integrationTestDir);
     integrationTestDir.mkdirs();
     root1.mkdirs();
@@ -460,10 +463,10 @@ public class IntegrationTest {
   private void startMirror() throws Exception {
     // server
     int port = nextPort++;
-    TaskFactory taskFactory = new ThreadBasedTaskFactory();
-    FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
+    TaskFactory serverTaskFactory = new ThreadBasedTaskFactory();
+    FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(serverTaskFactory);
     // rpc = NettyServerBuilder.forPort(port).addService(MirrorServer.createWithCompressionEnabled()).build();
-    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer(watcherFactory)).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer(serverTaskFactory, watcherFactory)).build();
     rpc.start();
     log.info("started server");
     // client
@@ -472,14 +475,10 @@ public class IntegrationTest {
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
     MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
+    TaskFactory clientTaskFactory = new ThreadBasedTaskFactory();
     client = new MirrorClient(// 
-      new MirrorPaths(
-        root2.toPath(),
-        root1.toPath(),
-        includes,
-        excludes,
-        new ArrayList<>()),
-      taskFactory,
+      new MirrorPaths(root2.toPath(), root1.toPath(), includes, excludes, new ArrayList<>()),
+      clientTaskFactory,
       new ConnectionDetector.Impl(),
       watcherFactory);
     client.startSession(stub);

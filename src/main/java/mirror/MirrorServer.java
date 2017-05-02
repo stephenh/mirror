@@ -20,7 +20,7 @@ import io.grpc.ServerServiceDefinition;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
-import mirror.tasks.ThreadBasedTaskFactory;
+import mirror.tasks.TaskFactory;
 
 /**
  * Listens for incoming clients and sets up {@link MirrorSession}s.
@@ -47,10 +47,12 @@ public class MirrorServer extends MirrorImplBase {
 
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
   private final Map<Integer, MirrorSession> sessions = new HashMap<>();
+  private final TaskFactory taskFactory;
   private final FileWatcherFactory watcherFactory;
   private int nextSessionId = 1;
 
-  public MirrorServer(FileWatcherFactory watcherFactory) {
+  public MirrorServer(TaskFactory taskFactory, FileWatcherFactory watcherFactory) {
+    this.taskFactory = taskFactory;
     this.watcherFactory = watcherFactory;
   }
 
@@ -67,7 +69,7 @@ public class MirrorServer extends MirrorImplBase {
 
     log.info("Starting new session " + sessionId + " for + " + paths.root);
     FileWatcher watcher = watcherFactory.newWatcher(paths.root);
-    MirrorSession session = new MirrorSession(new ThreadBasedTaskFactory(), paths, watcher);
+    MirrorSession session = new MirrorSession(taskFactory, paths, watcher);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

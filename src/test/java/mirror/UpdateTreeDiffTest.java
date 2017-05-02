@@ -3,7 +3,6 @@ package mirror;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.nullValue;
 import static org.jooq.lambda.Seq.seq;
 
 import org.jooq.lambda.Seq;
