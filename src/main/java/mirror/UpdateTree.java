@@ -11,6 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Seq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class UpdateTree {
     if (u == null) {
       return null;
     } else {
-      ByteString truncated = u.getData() == null ? null : ByteString.copyFromUtf8(u.getData().toString());
+      ByteString truncated = ByteString.copyFromUtf8(StringUtils.abbreviate(u.getData().toString(Charsets.UTF_8), 50));
       return TextFormat.shortDebugString(Update.newBuilder(u).setData(truncated).build());
     }
   }

@@ -13,7 +13,7 @@ import ch.qos.logback.core.FileAppender;
 import io.grpc.internal.ManagedChannelImpl;
 
 /**
- * Initialies a minimal/readable logback config.
+ * Initializes a minimal/readable logback config.
  *
  * We use logback because it supports MDC.
  */
