@@ -91,7 +91,7 @@ Extra includes and excludes patterns can be passed when starting the client, and
 Git Usage Note
 ==============
 
-In general, `mirror` will work best if you have just one machine (probably the desktop) have the git (or svn/other SCM) working copy, and have the laptop just get all of it's files via `mirror` from the desktop, and not also use `git` directly.
+In general, `mirror` will work best if you have just one machine (either the desktop or laptop) have the git (or svn/other SCM) working copy (or working copies if you're syncing a directory like `~/code` with multiple repositories), and have the non-git machine just get all of it's files via `mirror` from git-using machine, and not by also having it's own `git` working copy.
 
 The reason is that if you had `git` working copies on both the laptop and desktop, you could run into:
 
