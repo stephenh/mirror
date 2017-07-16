@@ -16,36 +16,12 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
-
-import jnr.posix.FileStat;
-import jnr.posix.POSIX;
-import jnr.posix.POSIXFactory;
 
 public class NativeFileAccess implements FileAccess {
 
   private static final Logger log = LoggerFactory.getLogger(NativeFileAccess.class);
-  private static final POSIX posix = POSIXFactory.getNativePOSIX();
-
-  @VisibleForTesting
-  public static void setModifiedTimeForSymlink(Path absolutePath, long millis) throws IOException {
-    long[] modTime = millisToTimeStructArray(millis);
-    int r = posix.lutimes(absolutePath.toString(), modTime, modTime);
-    if (r != 0) {
-      throw new IOException("lutimes failed with code " + r);
-    }
-  }
-
-  public static void setReadOnly(Path absolutePath) {
-    posix.chmod(absolutePath.toFile().toString(), Integer.parseInt("0444", 8));
-  }
-
-  public static void setWritable(Path absolutePath) {
-    FileStat s = posix.stat(absolutePath.toFile().toString());
-    posix.chmod(absolutePath.toFile().toString(), s.mode() | Integer.parseInt("0700", 8));
-  }
 
   public static void main(String[] args) throws Exception {
     Path root = Paths.get("/home/stephen/dir1");
@@ -74,7 +50,7 @@ public class NativeFileAccess implements FileAccess {
     } catch (AccessDeniedException ade) {
       // sometimes code generators mark files as read-only; for now just assume
       // our "newer always wins" logic is correct, and try to write it anyway
-      setWritable(path);
+      NativeFileAccessUtils.setWritable(path);
       doWrite(data, path);
     }
   }
@@ -93,7 +69,7 @@ public class NativeFileAccess implements FileAccess {
 
   @Override
   public void setModifiedTime(Path relative, long millis) throws IOException {
-    setModifiedTimeForSymlink(resolve(relative).toAbsolutePath(), millis);
+    NativeFileAccessUtils.setModifiedTimeForSymlink(resolve(relative).toAbsolutePath(), millis);
   }
 
   @Override
@@ -149,11 +125,6 @@ public class NativeFileAccess implements FileAccess {
     return rootDirectory.resolve(relativePath);
   }
 
-  /** @return millis has an array of seconds + microseconds, as expected by the POSIX APIs. */
-  private static long[] millisToTimeStructArray(long millis) {
-    return new long[] { millis / 1000, (millis % 1000) * 1000 };
-  }
-
   @Override
   public long getFileSize(Path relativePath) throws IOException {
     return resolve(relativePath).toFile().length();
@@ -197,6 +168,16 @@ public class NativeFileAccess implements FileAccess {
         throw new IOException("Could not create directory " + path);
       }
     }
+  }
+
+  @Override
+  public boolean isExecutable(Path relativePath) throws IOException {
+    return NativeFileAccessUtils.isExecutable(resolve(relativePath));
+  }
+
+  @Override
+  public void setExecutable(Path relativePath) throws IOException {
+    NativeFileAccessUtils.setExecutable(resolve(relativePath));
   }
 
 }

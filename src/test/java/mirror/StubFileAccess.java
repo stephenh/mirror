@@ -15,6 +15,7 @@ public class StubFileAccess implements FileAccess {
 
   private static final byte[] directoryMarker = new byte[] { 0 };
   private Map<Path, byte[]> fileData = new HashMap<>();
+  private Map<Path, Boolean> executable = new HashMap<>();
   private Map<Path, Long> fileTimes = new HashMap<>();
   private List<Path> deleted = new ArrayList<>();
   private Map<Path, Path> symlinks = new HashMap<>();
@@ -103,6 +104,16 @@ public class StubFileAccess implements FileAccess {
   @Override
   public boolean isDirectory(Path relativePath) {
     return fileData.get(relativePath) == directoryMarker;
+  }
+
+  @Override
+  public boolean isExecutable(Path relativePath) {
+    return Boolean.TRUE.equals(executable.get(relativePath));
+  }
+
+  @Override
+  public void setExecutable(Path relativePath) {
+    executable.put(relativePath, true);
   }
 
 }

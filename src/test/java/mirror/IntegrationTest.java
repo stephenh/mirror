@@ -117,6 +117,19 @@ public class IntegrationTest {
   }
 
   @Test
+  public void testCreateExecutableFile() throws Exception {
+    // given a file that is executable
+    FileUtils.writeStringToFile(new File(root1, "foo.sh"), "abc");
+    NativeFileAccessUtils.setExecutable(root1.toPath().resolve("foo.sh"));
+    startMirror();
+    sleep();
+    // then it's copied remotely
+    assertThat(FileUtils.readFileToString(new File(root2, "foo.sh")), is("abc"));
+    // and made executable
+    assertThat(NativeFileAccessUtils.isExecutable(root2.toPath().resolve("foo.sh")), is(true));
+  }
+
+  @Test
   public void testTwoWay() throws Exception {
     startMirror();
     // given a root1 change
@@ -380,7 +393,7 @@ public class IntegrationTest {
   public void testSymlinkThatIsNowARealPath() throws Exception {
     // given that root2 thought src was a symlink
     Files.createSymbolicLink(root2.toPath().resolve("src"), Paths.get("target"));
-    NativeFileAccess.setModifiedTimeForSymlink(root2.toPath().resolve("src"), 1000);
+    NativeFileAccessUtils.setModifiedTimeForSymlink(root2.toPath().resolve("src"), 1000);
     // but now on root1 it's actually a real directory
     new File(root1, "src").mkdir();
     FileUtils.writeStringToFile(new File(root1, "src/foo.txt"), "foo");
@@ -444,7 +457,7 @@ public class IntegrationTest {
     new File(root1, "foo.txt").setLastModified(2000);
     new File(root2, "foo.txt").setLastModified(1000);
     // but root2's file is read only (e.g. due to overzealous code generators marking it read-only)
-    NativeFileAccess.setReadOnly(new File(root2, "foo.txt").toPath());
+    NativeFileAccessUtils.setReadOnly(new File(root2, "foo.txt").toPath());
     // when mirror is started
     startMirror();
     sleep();

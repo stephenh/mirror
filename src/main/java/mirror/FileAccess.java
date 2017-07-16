@@ -33,6 +33,10 @@ public interface FileAccess {
 
   boolean isDirectory(Path relativePath);
 
+  boolean isExecutable(Path relativePath) throws IOException;
+
+  void setExecutable(Path relativePath) throws IOException;
+
   Path readSymlink(Path readSymlink) throws IOException;
 
   void createSymlink(Path relativePath, Path target) throws IOException;

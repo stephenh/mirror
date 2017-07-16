@@ -144,6 +144,7 @@ public class WatchmanFileWatcher implements FileWatcher {
         .setDelete(!(boolean) file.get("exists"))
         .setModTime(mtime)
         .setDirectory(isFileStatType(mode, FileStat.S_IFDIR))
+        .setExecutable(isExecutable(file.get("name"), mode))
         .setLocal(true);
       readSymlinkTargetIfNeeded(ub, mode);
       setIgnoreStringIfNeeded(ub);
@@ -209,4 +210,7 @@ public class WatchmanFileWatcher implements FileWatcher {
     return (mode & FileStat.S_IFMT) == mask;
   }
 
+  private static boolean isExecutable(Object name, int mode) {
+    return (mode & FileStat.S_IXUGO) != 0;
+  }
 }

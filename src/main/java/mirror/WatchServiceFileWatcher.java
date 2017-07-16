@@ -319,7 +319,14 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
   }
 
   private void putFile(BlockingQueue<Update> queue, Path file, long modTime) throws IOException {
-    Update.Builder b = Update.newBuilder().setPath(toRelativePath(file)).setDirectory(false).setLocal(true).setModTime(modTime);
+    String relativePath = toRelativePath(file);
+    Update.Builder b = Update
+      .newBuilder() //
+      .setPath(relativePath)
+      .setDirectory(false)
+      .setLocal(true)
+      .setModTime(modTime)
+      .setExecutable(fileAccess.isExecutable(Paths.get(relativePath)));
     // In theory we should read this in the debouncer, but performInitialScan
     // does not go through that codepath
     if (file.getFileName().toString().equals(".gitignore")) {

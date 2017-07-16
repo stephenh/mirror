@@ -94,6 +94,9 @@ public class SaveToLocal implements TaskLogic {
     Path path = Paths.get(remote.getPath());
     ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
     fileAccess.write(path, data);
+    if (remote.getExecutable()) {
+      fileAccess.setExecutable(path);
+    }
     fileAccess.setModifiedTime(path, remote.getModTime());
   }
 

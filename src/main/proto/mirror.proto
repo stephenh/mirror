@@ -57,6 +57,8 @@ message Update {
   // If this is a .gitignore file, we ship the ignore contents
   // along with the Update to use during tree diffing
   string ignoreString = 9;
+
+  bool executable = 10;
 }
 
 message PingRequest {
