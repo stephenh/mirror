@@ -213,19 +213,20 @@ public class Mirror {
     // IntelliJ safe write files
     excludes.addRule("*___jb_bak___");
     excludes.addRule("*___jb_old___");
-    // Ignore all hidden files, e.g. especially .git/.svn directories
-    excludes.addRule(".*");
+    // vim safe write files
+    excludes.addRule("*~");
+    // Ignore .git/.svn directories
+    excludes.addRule(".git/");
+    excludes.addRule(".svn/");
     // It's unlikely we want to copy around huge binary files by default
     excludes.addRule("*.gz");
     excludes.addRule("*.tar");
     excludes.addRule("*.zip");
-    // Since we exclude hidden files, re-include .gitignore so the remote-side knows what to ignore
-    includes.addRule(".gitignore");
   }
 
   private static void addInternalDefaults(PathRules includes, PathRules excludes) {
     // Maybe most of these could be dropped if svn:ignore was supported?
-    excludes.addRules("tmp", "temp", "target", "build", "bin");
+    excludes.addRules("tmp", "temp", "target", "build");
     // these are resources in the build/ directory that are still useful to have
     // on the laptop, e.g. for the IDE
     includes.addRules(
