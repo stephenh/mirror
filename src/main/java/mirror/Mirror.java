@@ -218,6 +218,7 @@ public class Mirror {
     // Ignore .git/.svn directories
     excludes.addRule(".git/");
     excludes.addRule(".svn/");
+    excludes.addRule(".watchman-cookie*");
     // It's unlikely we want to copy around huge binary files by default
     excludes.addRule("*.gz");
     excludes.addRule("*.tar");
