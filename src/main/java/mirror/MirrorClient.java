@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import io.grpc.StatusException;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
@@ -30,11 +32,7 @@ public class MirrorClient {
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
 
-  public MirrorClient(
-    MirrorPaths paths,
-    TaskFactory taskFactory,
-    ConnectionDetector detector,
-    FileWatcherFactory watcherFactory) {
+  public MirrorClient(MirrorPaths paths, TaskFactory taskFactory, ConnectionDetector detector, FileWatcherFactory watcherFactory) {
     this.paths = paths;
     this.taskFactory = taskFactory;
     this.detector = detector;
@@ -67,7 +65,7 @@ public class MirrorClient {
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
-      InitialSyncRequest req = InitialSyncRequest //
+      InitialSyncRequest req = InitialSyncRequest 
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
         .addAllIncludes(paths.includes.getLines())
@@ -84,12 +82,21 @@ public class MirrorClient {
 
         @Override
         public void onError(Throwable t) {
-          log.error("Error from incoming server stream", t);
+          if (t instanceof StatusRuntimeException) {
+            log.info("Connection status " + ((StatusRuntimeException) t).getStatus());
+          } else if (t instanceof StatusException) {
+            log.info("Connection status " + ((StatusException) t).getStatus());
+          } else {
+            log.error("Error from incoming client stream", t);
+          }
           session.stop();
         }
 
         @Override
         public void onCompleted() {
+          // Purposefully don't stop the session because our IntegrationTests
+          // our 1st SyncLogic loop may not have even started/completed yet
+          // session.stop();
         }
       });
 

@@ -17,6 +17,8 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.ServerServiceDefinition;
+import io.grpc.StatusException;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
@@ -122,13 +124,19 @@ public class MirrorServer extends MirrorImplBase {
 
       @Override
       public void onError(Throwable t) {
-        log.error("Error from incoming client stream", t);
+        if (t instanceof StatusRuntimeException) {
+          log.info("Connection status " + ((StatusRuntimeException) t).getStatus());
+        } else if (t instanceof StatusException) {
+          log.info("Connection status " + ((StatusException) t).getStatus());
+        } else{
+          log.error("Error from incoming client stream", t);
+        }
         stopSession();
       }
 
       @Override
       public void onCompleted() {
-        log.info("onCompleted called on the server incoming stream");
+        log.info("Connection completed");
         stopSession();
       }
 
