@@ -15,6 +15,7 @@ service Mirror {
 
 // Message for the client's initial state.
 message InitialSyncRequest {
+  string clientId = 6;
   string remotePath = 1;
   repeated string includes = 3;
   repeated string excludes = 4;
@@ -24,7 +25,7 @@ message InitialSyncRequest {
 
 // Message for the server to return it's initial state.
 message InitialSyncResponse {
-  int32 sessionId = 1;
+  string sessionId = 1;
   repeated Update state = 2;
 }
 

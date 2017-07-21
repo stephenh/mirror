@@ -48,10 +48,9 @@ public class MirrorServer extends MirrorImplBase {
   }
 
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);
-  private final Map<Integer, MirrorSession> sessions = new HashMap<>();
+  private final Map<String, MirrorSession> sessions = new HashMap<>();
   private final TaskFactory taskFactory;
   private final FileWatcherFactory watcherFactory;
-  private int nextSessionId = 1;
 
   public MirrorServer(TaskFactory taskFactory, FileWatcherFactory watcherFactory) {
     this.taskFactory = taskFactory;
@@ -60,7 +59,7 @@ public class MirrorServer extends MirrorImplBase {
 
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
-    int sessionId = nextSessionId++;
+    String sessionId = request.getRemotePath() + ":" + request.getClientId();
 
     MirrorPaths paths = new MirrorPaths(
        Paths.get(request.getRemotePath()).toAbsolutePath(),
@@ -69,7 +68,12 @@ public class MirrorServer extends MirrorImplBase {
        new PathRules(request.getExcludesList()),
        request.getDebugPrefixesList());
 
-    log.info("Starting new session " + sessionId + " for + " + paths.root);
+    if (sessions.get(sessionId) != null) {
+      log.info("Stopping prior session " + sessionId);
+      sessions.get(sessionId).stop();
+    }
+
+    log.info("Starting new session " + sessionId);
     FileWatcher watcher = watcherFactory.newWatcher(paths.root);
     MirrorSession session = new MirrorSession(taskFactory, paths, watcher);
 
@@ -103,7 +107,6 @@ public class MirrorServer extends MirrorImplBase {
     // this is kind of odd, but we don't know the right session for this
     // call until we get the first streaming update (grpc doesn't allow
     // a method call with both unary+streaming arguments).
-    final AtomicReference<Integer> sessionId = new AtomicReference<>();
     final AtomicReference<MirrorSession> session = new AtomicReference<>();
     final StreamObserver<Update> outgoingUpdates = new BlockingStreamObserver<Update>((CallStreamObserver<Update>) _outgoingUpdates);
     // make an observable for when the client sends in new updates
@@ -112,8 +115,7 @@ public class MirrorServer extends MirrorImplBase {
       public void onNext(Update value) {
         if (session.get() == null) {
           // this is the first update, which is a dummy value with our session id
-          sessionId.set(Integer.parseInt(value.getPath()));
-          MirrorSession ms = sessions.get(sessionId.get());
+          MirrorSession ms = sessions.get(value.getPath());
           session.set(ms);
           // look for file system updates to send back to the client
           ms.diffAndStartPolling(outgoingUpdates);

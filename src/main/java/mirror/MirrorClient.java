@@ -2,6 +2,7 @@ package mirror;
 
 import static mirror.Utils.withTimeout;
 
+import java.net.InetAddress;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -60,7 +61,7 @@ public class MirrorClient {
       log.info("Client has " + localState.size() + " paths");
 
       // 2. send it to the server, so they can send back any stale/missing paths we have
-      SettableFuture<Integer> sessionId = SettableFuture.create();
+      SettableFuture<String> sessionId = SettableFuture.create();
       SettableFuture<List<Update>> remoteState = SettableFuture.create();
 
       // Ideally this would be a blocking/sync call, but it looks like because
@@ -68,6 +69,7 @@ public class MirrorClient {
       InitialSyncRequest req = InitialSyncRequest 
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
+        .setClientId(InetAddress.getLocalHost().getHostName())
         .addAllIncludes(paths.includes.getLines())
         .addAllExcludes(paths.excludes.getLines())
         .addAllDebugPrefixes(paths.debugPrefixes)
@@ -136,7 +138,7 @@ public class MirrorClient {
       StreamObserver<Update> outgoingChanges = outgoingChangesRef.get();
 
       // send over the sessionId as a fake update
-      outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get().toString()).build());
+      outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get()).build());
 
       session.diffAndStartPolling(outgoingChanges);
 
