@@ -32,6 +32,7 @@ public class Utils {
       r.run();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
     }
   }
 
