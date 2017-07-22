@@ -17,18 +17,8 @@ public class Utils {
   private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
   @FunctionalInterface
-  public interface InterruptedSupplier<T> {
-    T get() throws InterruptedException;
-  }
-
-  @FunctionalInterface
   public interface InterruptedRunnable {
     void run() throws InterruptedException;
-  }
-
-  @FunctionalInterface
-  public interface InterruptedConsumer<T> {
-    void consume(T value) throws InterruptedException;
   }
 
   /** grpc-java doesn't support timeouts yet, so we have to set a per-call deadline. */

@@ -24,7 +24,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 
 import io.grpc.Channel;
-import io.grpc.internal.ServerImpl;
+import io.grpc.Server;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
@@ -113,7 +113,7 @@ public class Mirror {
       FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
       MirrorServer server = new MirrorServer(taskFactory, watcherFactory);
 
-      ServerImpl rpc = NettyServerBuilder
+      Server rpc = NettyServerBuilder
         .forPort(port)
         .maxMessageSize(maxMessageSize)
         .addService(MirrorServer.withCompressionEnabled(server))

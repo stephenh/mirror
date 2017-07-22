@@ -16,9 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.grpc.Channel;
+import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.internal.ServerImpl;
 import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
@@ -34,7 +34,7 @@ public class IntegrationTest {
   private static final File root1 = new File(integrationTestDir, "root1");
   private static final File root2 = new File(integrationTestDir, "root2");
   private static int nextPort = 10_000;
-  private ServerImpl rpc;
+  private Server rpc;
   private MirrorClient client;
 
   @Before
