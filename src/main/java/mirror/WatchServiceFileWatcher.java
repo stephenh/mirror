@@ -114,10 +114,10 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     LoggingConfig.init();
     TaskFactory f = new ThreadBasedTaskFactory();
     Path testDirectory = Paths.get("/home/stephen/dir1");
-    WatchServiceFileWatcher w = new WatchServiceFileWatcher(f, FileSystems.getDefault().newWatchService(), testDirectory);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
+    WatchServiceFileWatcher w = new WatchServiceFileWatcher(f, FileSystems.getDefault().newWatchService(), testDirectory, queue);
     log.info("Starting performInitialScan");
-    List<Update> initialScan = w.performInitialScan(queue);
+    List<Update> initialScan = w.performInitialScan();
     initialScan.forEach(node -> {
       log.info("Initial: " + UpdateTree.toDebugString(node));
     });
@@ -128,10 +128,11 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     }
   }
 
-  public WatchServiceFileWatcher(TaskFactory taskFactory, WatchService watchService, Path rootDirectory) {
+  public WatchServiceFileWatcher(TaskFactory taskFactory, WatchService watchService, Path rootDirectory, BlockingQueue<Update> queue) {
     this.taskFactory = taskFactory;
     this.watchService = watchService;
     this.rootDirectory = rootDirectory;
+    this.queue = queue;
     fileAccess = new NativeFileAccess(rootDirectory);
     debouncer = new Debouncer();
   }
@@ -142,8 +143,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
    *
    * This scan is performed on-thread and so this method blocks until complete.
    */
-  public List<Update> performInitialScan(BlockingQueue<Update> queue) throws IOException, InterruptedException {
-    this.queue = queue;
+  public List<Update> performInitialScan() throws IOException, InterruptedException {
     // use onChangedPath because it has some try/catch logic
     onChangedPath(queue, rootDirectory);
     List<Update> updates = new ArrayList<>(queue.size());

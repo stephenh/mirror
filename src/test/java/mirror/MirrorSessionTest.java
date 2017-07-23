@@ -23,24 +23,22 @@ public class MirrorSessionTest {
   private final Path root = Paths.get(".");
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final List<Update> fileUpdates = new ArrayList<>();
+  private final FileWatcherFactory fileWatcherFactory = Mockito.mock(FileWatcherFactory.class);
   private final FileWatcher fileWatcher = Mockito.mock(FileWatcher.class);
   private final StubClock clock = new StubClock();
   private final StubTaskFactory taskFactory = new StubTaskFactory();
-  private final MirrorSession session = new MirrorSession(
-    taskFactory,
-    clock,
-    new MirrorPaths(
-      root,
-      null,
-      new PathRules(),
-      new PathRules(),
-      new ArrayList<>()),
-    fileAccess,
-    fileWatcher);
+  private MirrorSession session;
 
   @Before
   public void before() throws Exception {
-    Mockito.when(fileWatcher.performInitialScan(Mockito.any())).thenReturn(fileUpdates);
+    Mockito.when(fileWatcherFactory.newWatcher(Mockito.any(), Mockito.any())).thenReturn(fileWatcher);
+    Mockito.when(fileWatcher.performInitialScan()).thenReturn(fileUpdates);
+    session = new MirrorSession(
+      taskFactory,
+      clock,
+      new MirrorPaths(root, null, new PathRules(), new PathRules(), new ArrayList<>()),
+      fileAccess,
+      fileWatcherFactory);
   }
 
   @Test

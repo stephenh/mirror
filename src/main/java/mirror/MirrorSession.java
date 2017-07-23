@@ -47,8 +47,8 @@ public class MirrorSession {
   private volatile SessionWatcher sessionWatcher;
   private volatile StreamObserver<Update> outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcher fileWatcher) {
-    this(factory, Clock.systemUTC(), paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcher);
+  public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcherFactory fileWatcherFactory) {
+    this(factory, Clock.systemUTC(), paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcherFactory);
   }
 
   public MirrorSession(
@@ -56,10 +56,10 @@ public class MirrorSession {
     Clock clock,
     MirrorPaths paths,
     FileAccess fileAccess,
-    FileWatcher fileWatcher) {
+    FileWatcherFactory fileWatcherFactory) {
     this.clock = clock;
     this.fileAccess = fileAccess;
-    this.fileWatcher = fileWatcher;
+    this.fileWatcher = fileWatcherFactory.newWatcher(paths.root.toAbsolutePath(), queues.incomingQueue);
     this.tree = UpdateTree.newRoot(paths.includes, paths.excludes, paths.debugPrefixes);
 
     // Run all our tasks in a pool so they are terminated together
@@ -99,7 +99,7 @@ public class MirrorSession {
   }
 
   public List<Update> calcInitialState() throws IOException, InterruptedException {
-    List<Update> initialUpdates = fileWatcher.performInitialScan(queues.incomingQueue);
+    List<Update> initialUpdates = fileWatcher.performInitialScan();
 
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending

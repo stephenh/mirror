@@ -33,8 +33,8 @@ public class Digest {
     BlockingQueue<Update> queue = new ArrayBlockingQueue<>(1_000_000);
     WatchService watchService = FileSystems.getDefault().newWatchService();
     final Stopwatch s = Stopwatch.createStarted();
-    FileWatcher r = new WatchServiceFileWatcher(taskFactory, watchService, root);
-    List<Update> initial = r.performInitialScan(queue);
+    FileWatcher r = new WatchServiceFileWatcher(taskFactory, watchService, root, queue);
+    List<Update> initial = r.performInitialScan();
     s.stop();
 
     System.out.println("scan took " + s.elapsed(TimeUnit.MILLISECONDS) + " millis");

@@ -2,7 +2,6 @@ package mirror;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 
 import mirror.tasks.TaskLogic;
 
@@ -14,6 +13,6 @@ public interface FileWatcher extends TaskLogic {
    *
    * This scan is performed on-thread and so this method blocks until complete.
    */
-  List<Update> performInitialScan(BlockingQueue<Update> queue) throws IOException, InterruptedException;
+  List<Update> performInitialScan() throws IOException, InterruptedException;
 
 }

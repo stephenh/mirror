@@ -49,8 +49,8 @@ public class WatchmanFileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), dir.toPath().toAbsolutePath());
-    watcher.performInitialScan(queue);
+    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), dir.toPath().toAbsolutePath(), queue);
+    watcher.performInitialScan();
     taskFactory.runTask(watcher);
     sleep();
   }

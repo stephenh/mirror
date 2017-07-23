@@ -48,8 +48,8 @@ public class WatchServiceFileWatcherTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), dir.toPath());
-    watcher.performInitialScan(queue);
+    watcher = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), dir.toPath(), queue);
+    watcher.performInitialScan();
     taskFactory.runTask(watcher);
   }
 

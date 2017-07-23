@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,23 +27,23 @@ import mirror.watchman.WatchmanFileWatcher;
  */
 public interface FileWatcherFactory {
 
-  FileWatcher newWatcher(Path root);
+  FileWatcher newWatcher(Path root, BlockingQueue<Update> incomingQueue);
 
   /**
    * @return the default factory that will try to create a watchman-based impl if possible, otherwise a Java WatchService-based impl.
    */
   static FileWatcherFactory newFactory(TaskFactory taskFactory) {
     Logger log = LoggerFactory.getLogger(FileWatcherFactory.class);
-    return root -> {
+    return (root, queue) -> {
       Optional<Watchman> wm = WatchmanChannelImpl.createIfAvailable();
       if (wm.isPresent()) {
-        return new WatchmanFileWatcher(wm.get(), root);
+        return new WatchmanFileWatcher(wm.get(), root, queue);
       } else {
         log.info("Watchman not found, using WatchService instead");
         log.info("  Note that WatchService is buggy on Linux, and uses polling on Mac.");
         log.info("  While mirror will work with WatchService, especially to test, you should eventually install watchman.");
         try {
-          return new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), root);
+          return new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), root, queue);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

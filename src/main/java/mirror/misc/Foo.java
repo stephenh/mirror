@@ -20,7 +20,6 @@ public class Foo {
   public static void main(String[] args) throws Exception {
     Path root = Paths.get("/home/stephen/dir1");
     TaskFactory taskFactory = new ThreadBasedTaskFactory();
-    FileWatcher f = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), root);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<Update>(1000) {
       @Override
       public void put(Update u) throws InterruptedException {
@@ -28,7 +27,8 @@ public class Foo {
         super.put(u);
       }
     };
-    f.performInitialScan(queue);
+    FileWatcher f = new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), root, queue);
+    f.performInitialScan();
     System.in.read();
   }
 }

@@ -74,8 +74,7 @@ public class MirrorServer extends MirrorImplBase {
     }
 
     log.info("Starting new session " + sessionId);
-    FileWatcher watcher = watcherFactory.newWatcher(paths.root);
-    MirrorSession session = new MirrorSession(taskFactory, paths, watcher);
+    MirrorSession session = new MirrorSession(taskFactory, paths, watcherFactory);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {

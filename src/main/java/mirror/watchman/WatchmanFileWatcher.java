@@ -47,10 +47,10 @@ public class WatchmanFileWatcher implements FileWatcher {
     LoggingConfig.init();
     TaskFactory f = new ThreadBasedTaskFactory();
     Path testDirectory = Paths.get("/home/stephen/dir1");
-    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), testDirectory);
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
+    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), testDirectory, queue);
     log.info("Starting performInitialScan");
-    List<Update> initialScan = w.performInitialScan(queue);
+    List<Update> initialScan = w.performInitialScan();
     initialScan.forEach(node -> {
       log.info("Initial: " + UpdateTree.toDebugString(node));
     });
@@ -60,9 +60,11 @@ public class WatchmanFileWatcher implements FileWatcher {
     }
   }
 
-  public WatchmanFileWatcher(Watchman wm, Path root) {
+  public WatchmanFileWatcher(Watchman wm, Path root, BlockingQueue<Update> queue) {
     this.wm = wm;
     this.root = root;
+    this.queue = queue;
+
   }
 
   @Override
@@ -109,9 +111,7 @@ public class WatchmanFileWatcher implements FileWatcher {
   }
 
   @Override
-  public List<Update> performInitialScan(BlockingQueue<Update> queue) throws IOException, InterruptedException {
-    this.queue = queue;
-
+  public List<Update> performInitialScan() throws IOException, InterruptedException {
     // This will be a no-op after the first execution, as we don't currently
     // clean up on our watches.
     wm.query("watch", root.toString());

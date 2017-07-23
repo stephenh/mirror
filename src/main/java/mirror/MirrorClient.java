@@ -52,8 +52,7 @@ public class MirrorClient {
     detector.blockUntilConnected(stub);
     log.info("Connected, starting session, version " + Mirror.getVersion());
 
-    FileWatcher watcher = watcherFactory.newWatcher(paths.root.toAbsolutePath());
-    session = new MirrorSession(taskFactory, paths, watcher);
+    session = new MirrorSession(taskFactory, paths, watcherFactory);
 
     // 1. see what our current state is
     try {
