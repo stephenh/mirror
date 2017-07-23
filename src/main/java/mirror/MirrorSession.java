@@ -123,7 +123,7 @@ public class MirrorSession {
       // if a file, mark it has an initial sync, so we know not to save it
       // it until we get the real update with the data filled in
       if (UpdateTree.isFile(u)) {
-        u = Update.newBuilder(u).setData(UpdateTree.initialSyncMarker).build();
+        u = u.toBuilder().setData(UpdateTree.initialSyncMarker).build();
       }
       tree.addRemote(u);
     });

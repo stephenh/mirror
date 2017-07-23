@@ -246,12 +246,12 @@ public class UpdateTree {
 
     /** Clear the path data so we don't have it in RAM. */
     Update clearPath(Update u) {
-      return Update.newBuilder(u).clearPath().build();
+      return u.toBuilder().clearPath().build();
     }
 
     /** Set the path back for sending to remote or file system. */
     Update restorePath(Update u) {
-      return Update.newBuilder(u).setPath(getPath()).build();
+      return u.toBuilder().setPath(getPath()).build();
     }
 
     boolean isRemoteNewer() {

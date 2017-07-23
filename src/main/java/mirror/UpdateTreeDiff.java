@@ -74,7 +74,7 @@ public class UpdateTreeDiff {
     } else if (node.isRemoteNewer()) {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !node.isSameType() && !local.getDelete() && !remote.getDelete()) {
-        Update delete = Update.newBuilder(local).setDelete(true).build();
+        Update delete = local.toBuilder().setDelete(true).build();
         results.saveLocally.add(node.restorePath(delete));
         node.setLocal(delete);
       }
