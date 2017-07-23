@@ -67,11 +67,7 @@ public class UpdateTreeDiff {
 
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
-        if (tree.shouldDebug(node)) {
-          log.info(node.getPath() + " isLocalNewer");
-          log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
-          log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));
-        }
+        debugIfEnabled(node, "isLocalNewer");
         results.sendToRemote.add(node.restorePath(local));
       }
       node.setRemote(local);
@@ -88,17 +84,21 @@ public class UpdateTreeDiff {
       boolean skipBecauseNoData = UpdateTree.isFile(remote) && !remote.getDelete() && remote.getData().equals(UpdateTree.initialSyncMarker);
       if (!skipBecauseNoData) {
         if (!node.shouldIgnore()) {
-          if (tree.shouldDebug(node)) {
-            log.info(node.getPath() + " isRemoteNewer");
-            log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
-            log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));
-          }
+          debugIfEnabled(node, "isRemoteNewer");
           results.saveLocally.add(node.restorePath(remote));
         }
         // we're done with the data, so don't keep it in memory
         node.clearData();
         node.setLocal(remote);
       }
+    }
+  }
+
+  private void debugIfEnabled(Node node, String operation) {
+    if (tree.shouldDebug(node)) {
+      log.info(node.getPath() + " " + operation);
+      log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
+      log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));
     }
   }
 
