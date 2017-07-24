@@ -28,6 +28,11 @@ import mirror.tasks.TaskLogic;
  * We poll for changes, either the remote host or our local disk, and
  * either persist it locally or send it out remotely, while also considering
  * whether we've since had a newer/conflicting change.
+ *
+ * This task/thread is the only task/thread that owns the UpdateTree instance,
+ * and receives Updates from the incomingQueue (either local or remote), diffs,
+ * and then writes the resulting Updates out to the saveToLocal or saveToRemote
+ * queues.
  */
 public class SyncLogic implements TaskLogic {
 

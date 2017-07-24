@@ -103,7 +103,7 @@ public class MirrorClient {
 
       log.info("Server has " + remoteState.get().size() + " paths");
       session.addInitialRemoteUpdates(remoteState.get());
-      log.debug("Tree populated");
+      log.info("Tree populated");
 
       AtomicReference<StreamObserver<Update>> outgoingChangesRef = new AtomicReference<>();
       ClientResponseObserver<Update, Update> incomingChanges = new ClientResponseObserver<Update, Update>() {
