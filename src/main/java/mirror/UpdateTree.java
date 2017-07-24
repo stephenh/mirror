@@ -115,8 +115,13 @@ public class UpdateTree {
     }
   }
 
+  /** Invokes {@link visitor} at each node in the tree, including the root, descending until {@code visitor} returns false. */
+  public void visit(Predicate<Node> visitor) {
+    visit(root, visitor);
+  }
+
   /** Invokes {@link visitor} at each node in the tree, including the root. */
-  public void visit(Consumer<Node> visitor) {
+  public void visitAll(Consumer<Node> visitor) {
     visit(root, n -> {
       visitor.accept(n);
       return true;
@@ -143,7 +148,7 @@ public class UpdateTree {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    visit(node -> sb.append(node.getPath() //
+    visitAll(node -> sb.append(node.getPath() //
       + " local="
       + node.local.getModTime()
       + " remote="

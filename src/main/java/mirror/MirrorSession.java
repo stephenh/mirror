@@ -113,7 +113,9 @@ public class MirrorSession {
     tree.visit(n -> {
       if (n.getLocal() != null && !n.shouldIgnore()) {
         seedRemote.add(n.restorePath(n.getLocal()));
+        return true;
       }
+      return false;
     });
     return seedRemote;
   }
