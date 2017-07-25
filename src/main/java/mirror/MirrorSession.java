@@ -90,12 +90,13 @@ public class MirrorSession {
 
     // only sync non-ignored files
     List<Update> seedRemote = new ArrayList<>();
-    tree.visit(n -> {
+    // Make sure to visitAll as otherwise our extra-included files (e.g. snapshot
+    // jars inside an otherwise-ignored directory) won't get sent and the remote
+    // side will think we don't have any of them.
+    tree.visitAll(n -> {
       if (n.getLocal() != null && !n.shouldIgnore()) {
         seedRemote.add(n.restorePath(n.getLocal()));
-        return true;
       }
-      return false;
     });
     return seedRemote;
   }

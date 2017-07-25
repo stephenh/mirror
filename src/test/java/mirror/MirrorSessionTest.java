@@ -31,7 +31,7 @@ public class MirrorSessionTest {
     Mockito.when(fileWatcher.performInitialScan()).thenReturn(fileUpdates);
     session = new MirrorSession(
       taskFactory,
-      new MirrorPaths(root, null, new PathRules(), new PathRules(), new ArrayList<>()),
+      new MirrorPaths(root, null, new PathRules("*.jar"), new PathRules(), new ArrayList<>()),
       fileAccess,
       fileWatcherFactory);
   }
@@ -57,6 +57,21 @@ public class MirrorSessionTest {
     assertThat(updates.get(0).getPath(), is(""));
     assertThat(updates.get(1).getPath(), is("foo.log"));
     assertThat(updates.get(2).getPath(), is(".gitignore"));
+  }
+
+  @Test
+  public void shouldReturnExtraIncludedFilesFromCalcInitialState() throws Exception {
+    fileUpdates.add(Update.newBuilder().setPath("foo.txt").build());
+    fileUpdates.add(Update.newBuilder().setPath("build/foo.log").build());
+    fileUpdates.add(Update.newBuilder().setPath("build/foo.jar").build());
+    fileUpdates.add(Update.newBuilder().setPath(".gitignore").setIgnoreString("build/").build());
+
+    List<Update> updates = session.calcInitialState();
+    assertThat(updates.size(), is(4));
+    assertThat(updates.get(0).getPath(), is(""));
+    assertThat(updates.get(1).getPath(), is("foo.txt"));
+    assertThat(updates.get(2).getPath(), is(".gitignore"));
+    assertThat(updates.get(3).getPath(), is("build/foo.jar"));
   }
 
   @Test
