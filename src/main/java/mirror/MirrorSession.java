@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.grpc.StatusRuntimeException;
-import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.TaskLogic;
 import mirror.tasks.TaskPool;
@@ -45,7 +44,7 @@ public class MirrorSession {
   private final CountDownLatch ready = new CountDownLatch(1);
   private volatile SaveToRemote saveToRemote;
   private volatile SessionWatcher sessionWatcher;
-  private volatile StreamObserver<Update> outgoingChanges;
+  private volatile OutgoingConnection outgoingChanges;
 
   public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcherFactory fileWatcherFactory) {
     this(factory, Clock.systemUTC(), paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcherFactory);
@@ -76,7 +75,7 @@ public class MirrorSession {
     taskPool.addShutdownCallback(() -> {
       if (outgoingChanges != null) {
         try {
-          outgoingChanges.onCompleted();
+          outgoingChanges.closeConnection();
         } catch (StatusRuntimeException e) {
           // already disconnected/cancelled
         }
@@ -131,7 +130,7 @@ public class MirrorSession {
     });
   }
 
-  public void diffAndStartPolling(StreamObserver<Update> outgoingChanges) {
+  public void diffAndStartPolling(OutgoingConnection outgoingChanges) {
     this.outgoingChanges = outgoingChanges;
 
     start(syncLogic);

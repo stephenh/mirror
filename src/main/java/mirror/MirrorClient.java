@@ -139,7 +139,7 @@ public class MirrorClient {
       // send over the sessionId as a fake update
       outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get()).build());
 
-      session.diffAndStartPolling(outgoingChanges);
+      session.diffAndStartPolling(new OutgoingConnectionImpl(outgoingChanges));
 
       // Automatically re-connect when we're disconnected
       session.addStoppedCallback(() -> {

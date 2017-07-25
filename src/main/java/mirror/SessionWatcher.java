@@ -7,7 +7,6 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskLogic;
 import mirror.tasks.TaskPool;
 
@@ -25,15 +24,15 @@ public class SessionWatcher implements TaskLogic {
   private final MirrorSession session;
   private final Clock clock;
   private final TaskPool taskPool;
-  private final StreamObserver<Update> outgoingUpdates;
+  private final OutgoingConnection outgoing;
   private final TaskLogic heartbeat = new HeartbeatSender();
   private volatile Instant lastReceived = null;
 
-  public SessionWatcher(MirrorSession session, Clock clock, TaskPool taskPool, StreamObserver<Update> outgoingUpdates) {
+  public SessionWatcher(MirrorSession session, Clock clock, TaskPool taskPool, OutgoingConnection outgoing) {
     this.session = session;
     this.clock = clock;
     this.taskPool = taskPool;
-    this.outgoingUpdates = outgoingUpdates;
+    this.outgoing = outgoing;
   }
 
   public void updateReceived(Update update) {
@@ -70,7 +69,7 @@ public class SessionWatcher implements TaskLogic {
   public class HeartbeatSender implements TaskLogic {
     @Override
     public Duration runOneLoop() throws InterruptedException {
-      outgoingUpdates.onNext(Update.newBuilder().setPath(heartbeatPath).build());
+      outgoing.send(Update.newBuilder().setPath(heartbeatPath).build());
       return timeout.dividedBy(2);
     }
   }

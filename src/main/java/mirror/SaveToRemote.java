@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import io.grpc.stub.StreamObserver;
 import mirror.tasks.TaskLogic;
 
 public class SaveToRemote implements TaskLogic {
@@ -21,9 +20,9 @@ public class SaveToRemote implements TaskLogic {
   private static final Logger log = LoggerFactory.getLogger(SaveToRemote.class);
   private final FileAccess fileAccess;
   private final BlockingQueue<Update> results;
-  private final StreamObserver<Update> outgoingChanges;
+  private final OutgoingConnection outgoingChanges;
 
-  public SaveToRemote(Queues queues, FileAccess fileAccess, StreamObserver<Update> outgoingChanges) {
+  public SaveToRemote(Queues queues, FileAccess fileAccess, OutgoingConnection outgoingChanges) {
     this.fileAccess = fileAccess;
     this.results = queues.saveToRemote;
     this.outgoingChanges = outgoingChanges;
@@ -55,7 +54,7 @@ public class SaveToRemote implements TaskLogic {
       }
       String maybeDelete = update.getDelete() ? "(delete) " : "";
       log.info("Sending " + maybeDelete + abbreviatePath(update.getPath()));
-      outgoingChanges.onNext(b.build());
+      outgoingChanges.send(b.build());
     } catch (IOException e) {
       // TODO Should we error here, so that the session is restarted?
       log.error("Could not read " + debugString(update), e);

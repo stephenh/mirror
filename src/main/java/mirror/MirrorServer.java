@@ -107,7 +107,7 @@ public class MirrorServer extends MirrorImplBase {
     // call until we get the first streaming update (grpc doesn't allow
     // a method call with both unary+streaming arguments).
     final AtomicReference<MirrorSession> session = new AtomicReference<>();
-    final StreamObserver<Update> outgoingUpdates = new BlockingStreamObserver<Update>((CallStreamObserver<Update>) _outgoingUpdates);
+    final StreamObserver<Update> outgoingChanges = new BlockingStreamObserver<Update>((CallStreamObserver<Update>) _outgoingUpdates);
     // make an observable for when the client sends in new updates
     return new StreamObserver<Update>() {
       @Override
@@ -117,7 +117,7 @@ public class MirrorServer extends MirrorImplBase {
           MirrorSession ms = sessions.get(value.getPath());
           session.set(ms);
           // look for file system updates to send back to the client
-          ms.diffAndStartPolling(outgoingUpdates);
+          ms.diffAndStartPolling(new OutgoingConnectionImpl(outgoingChanges));
         } else {
           session.get().addRemoteUpdate(value);
         }

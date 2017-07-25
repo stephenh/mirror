@@ -68,7 +68,7 @@ public class MirrorSessionTest {
   public void shouldTimeoutAfterTwoMinutes() throws Exception {
     // TODO
     session.calcInitialState();
-    session.diffAndStartPolling(new StreamObserver<Update>() {
+    session.diffAndStartPolling(new OutgoingConnectionImpl(new StreamObserver<Update>() {
       @Override
       public void onNext(Update value) {
       }
@@ -80,7 +80,7 @@ public class MirrorSessionTest {
       @Override
       public void onCompleted() {
       }
-    });
+    }));
   }
 
   private static class StubClock extends Clock {

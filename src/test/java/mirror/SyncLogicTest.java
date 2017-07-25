@@ -339,7 +339,7 @@ public class SyncLogicTest {
   private void poll() throws Exception {
     l.poll();
     new SaveToLocal(queues, fileAccess).drain();
-    new SaveToRemote(queues, fileAccess, outgoing).drain();
+    new SaveToRemote(queues, fileAccess, new OutgoingConnectionImpl(outgoing)).drain();
   }
 
 }
