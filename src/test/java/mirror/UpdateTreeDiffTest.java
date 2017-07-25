@@ -511,6 +511,37 @@ public class UpdateTreeDiffTest {
     assertNoResults();
   }
 
+
+  @Test
+  public void clearDataOfStaleRemoteFile() {
+    // given a remote file that thought it was newer
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
+    // and a local file that is actually newer
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(3L).build());
+    diff();
+    // then we ignore the remove change
+    assertNoSaveLocally();
+    // and clear it's data from the UpdateTree
+    Node foo = tree.getChildren().get(0);
+    assertThat(foo.getName(), is("foo.txt"));
+    assertThat(foo.getRemote().getData().size(), is(0));
+  }
+
+  @Test
+  public void clearDataErronouslySentRemoteFile() {
+    // given a remote file that thought it was newer
+    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
+    // and a local file that was already the same
+    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
+    diff();
+    // then we ignore the remove change
+    assertNoSaveLocally();
+    // and clear it's data from the UpdateTree
+    Node foo = tree.getChildren().get(0);
+    assertThat(foo.getName(), is("foo.txt"));
+    assertThat(foo.getRemote().getData().size(), is(0));
+  }
+
   private void diff() {
     results = new UpdateTreeDiff(tree).diff();
   }

@@ -91,6 +91,11 @@ public class UpdateTreeDiff {
         node.clearData();
         node.setLocal(remote);
       }
+    } else {
+      // should rarely/never happen (although it did happen when a bug existed), but
+      // if the remote side sends over data that exactly matches what we already have,
+      // we won't save but, which is fine, but make sure we free it from memory
+      node.clearData();
     }
   }
 

@@ -310,7 +310,9 @@ public class UpdateTree {
     }
 
     void clearData() {
-      remote = Update.newBuilder(remote).setData(ByteString.EMPTY).build();
+      if (remote != null) {
+        remote = remote.toBuilder().setData(ByteString.EMPTY).build();
+      }
     }
 
     boolean isDirectory() {
