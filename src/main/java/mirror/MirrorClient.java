@@ -14,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.SettableFuture;
 
 import io.grpc.ManagedChannel;
-import io.grpc.StatusException;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
@@ -94,13 +92,7 @@ public class MirrorClient {
 
         @Override
         public void onError(Throwable t) {
-          if (t instanceof StatusRuntimeException) {
-            log.info("Connection status " + ((StatusRuntimeException) t).getStatus());
-          } else if (t instanceof StatusException) {
-            log.info("Connection status " + ((StatusException) t).getStatus());
-          } else {
-            log.error("Error from incoming client stream", t);
-          }
+          Utils.logConnectionError(log, t);
           session.stop();
         }
 
@@ -125,7 +117,7 @@ public class MirrorClient {
 
         @Override
         public void onError(Throwable t) {
-          log.error("Error from incoming server stream", t);
+          Utils.logConnectionError(log, t);
           session.stop();
         }
 

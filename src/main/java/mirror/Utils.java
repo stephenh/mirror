@@ -8,8 +8,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.MoreObjects;
 import com.google.protobuf.TextFormat;
 
+import io.grpc.Status;
+import io.grpc.StatusException;
+import io.grpc.StatusRuntimeException;
 import mirror.MirrorGrpc.MirrorStub;
 
 public class Utils {
@@ -25,6 +29,26 @@ public class Utils {
   public static MirrorStub withTimeout(MirrorStub s) {
     // over VPN, ~100k files can take 30 seconds.
     return s.withDeadlineAfter(3, TimeUnit.MINUTES);
+  }
+
+  public static void logConnectionError(Logger log, Throwable t) {
+    if (t instanceof StatusRuntimeException) {
+      log.info("Connection status: " + niceToString(((StatusRuntimeException) t).getStatus()));
+    } else if (t instanceof StatusException) {
+      log.info("Connection status: " + niceToString(((StatusException) t).getStatus()));
+    } else {
+      log.error("Error from stream: " + t.getMessage(), t);
+    }
+  }
+
+  private static String niceToString(Status status) {
+    // the default Status.toString has a stack trace in it, which is ugly
+    return MoreObjects
+      .toStringHelper(status)
+      .add("code", status.getCode().name())
+      .add("description", status.getDescription())
+      .add("cause", status.getCause() != null ? status.getCause().getMessage() : null)
+      .toString();
   }
 
   public static void resetIfInterrupted(InterruptedRunnable r) {

@@ -17,8 +17,6 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.ServerServiceDefinition;
-import io.grpc.StatusException;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
@@ -62,11 +60,11 @@ public class MirrorServer extends MirrorImplBase {
     String sessionId = request.getRemotePath() + ":" + request.getClientId();
 
     MirrorPaths paths = new MirrorPaths(
-       Paths.get(request.getRemotePath()).toAbsolutePath(),
-       null,
-       new PathRules(request.getIncludesList()),
-       new PathRules(request.getExcludesList()),
-       request.getDebugPrefixesList());
+      Paths.get(request.getRemotePath()).toAbsolutePath(),
+      null,
+      new PathRules(request.getIncludesList()),
+      new PathRules(request.getExcludesList()),
+      request.getDebugPrefixesList());
 
     if (sessions.get(sessionId) != null) {
       log.info("Stopping prior session " + sessionId);
@@ -125,13 +123,7 @@ public class MirrorServer extends MirrorImplBase {
 
       @Override
       public void onError(Throwable t) {
-        if (t instanceof StatusRuntimeException) {
-          log.info("Connection status " + ((StatusRuntimeException) t).getStatus());
-        } else if (t instanceof StatusException) {
-          log.info("Connection status " + ((StatusException) t).getStatus());
-        } else{
-          log.error("Error from incoming client stream", t);
-        }
+        Utils.logConnectionError(log, t);
         stopSession();
       }
 
