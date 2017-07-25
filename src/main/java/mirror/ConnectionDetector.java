@@ -21,17 +21,10 @@ public interface ConnectionDetector {
 
   void blockUntilConnected(MirrorStub stub);
 
-  boolean isAvailable(MirrorStub stub);
-
   /** A stub/noop detector for unit tests. */
   public static class Noop implements ConnectionDetector {
     @Override
     public void blockUntilConnected(MirrorStub stub) {
-    }
-
-    @Override
-    public boolean isAvailable(MirrorStub stub) {
-      return true;
     }
   }
 
@@ -48,8 +41,7 @@ public interface ConnectionDetector {
       }
     }
 
-    @Override
-    public boolean isAvailable(MirrorStub stub) {
+    private boolean isAvailable(MirrorStub stub) {
       AtomicBoolean available = new AtomicBoolean(false);
       CountDownLatch done = new CountDownLatch(1);
       // System.out.println("PING");
