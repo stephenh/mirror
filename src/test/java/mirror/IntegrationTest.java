@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.Channel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
@@ -486,13 +485,13 @@ public class IntegrationTest {
     PathRules includes = new PathRules("includedDirectory");
     PathRules excludes = new PathRules("target/");
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
-    Channel c = InProcessChannelBuilder.forName("mirror" + port).build();
-    MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
+    ChannelFactory cf = () -> InProcessChannelBuilder.forName("mirror" + port).build();
+    MirrorStub stub = MirrorGrpc.newStub(cf.newChannel()).withCompression("gzip");
     TaskFactory clientTaskFactory = new ThreadBasedTaskFactory();
     client = new MirrorClient(// 
       new MirrorPaths(root2.toPath(), root1.toPath(), includes, excludes, new ArrayList<>()),
       clientTaskFactory,
-      new ConnectionDetector.Impl(),
+      new ConnectionDetector.Impl(cf),
       watcherFactory);
     client.startSession(stub);
     log.info("started client");

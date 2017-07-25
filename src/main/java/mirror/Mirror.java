@@ -23,7 +23,6 @@ import com.github.rvesse.airline.help.Help;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 
-import io.grpc.Channel;
 import io.grpc.Server;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
@@ -161,12 +160,14 @@ public class Mirror {
     @Override
     protected void runIfChecksOkay() {
       try {
-        Channel c = NettyChannelBuilder //
+        ChannelFactory cf = () -> NettyChannelBuilder //
           .forAddress(host, port)
           .negotiationType(NegotiationType.PLAINTEXT)
           .maxInboundMessageSize(maxMessageSize)
           .build();
-        MirrorStub stub = MirrorGrpc.newStub(c).withCompression("gzip");
+        // Make an initial channel; in theory can eventually use a single channel the whole
+        // time once ConnectionDetector can observe state changes, see https://github.com/grpc/grpc-java/issues/2292
+        MirrorStub stub = MirrorGrpc.newStub(cf.newChannel()).withCompression("gzip");
 
         PathRules includes = new PathRules();
         PathRules excludes = new PathRules();
@@ -183,7 +184,7 @@ public class Mirror {
             excludes,
             debugPrefixes),
           taskFactory,
-          new ConnectionDetector.Impl(),
+          new ConnectionDetector.Impl(cf),
           watcherFactory);
         client.startSession(stub);
         // dumb way of waiting until they hit control-c

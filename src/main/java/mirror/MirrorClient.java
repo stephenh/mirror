@@ -49,7 +49,7 @@ public class MirrorClient {
   }
 
   private void startSession(MirrorStub stub, CountDownLatch onFailure) {
-    detector.blockUntilConnected(stub);
+    detector.blockUntilConnected();
     log.info("Connected, starting session, version " + Mirror.getVersion());
 
     session = new MirrorSession(taskFactory, paths, watcherFactory);
