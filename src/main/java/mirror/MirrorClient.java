@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import io.grpc.ManagedChannel;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCallStreamObserver;
@@ -30,29 +31,39 @@ public class MirrorClient {
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileWatcherFactory watcherFactory;
+  private final ChannelFactory channelFactory;
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
 
-  public MirrorClient(MirrorPaths paths, TaskFactory taskFactory, ConnectionDetector detector, FileWatcherFactory watcherFactory) {
+  public MirrorClient(
+    MirrorPaths paths,
+    TaskFactory taskFactory,
+    ConnectionDetector detector,
+    FileWatcherFactory watcherFactory,
+    ChannelFactory channelFactory) {
     this.paths = paths;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.watcherFactory = watcherFactory;
+    this.channelFactory = channelFactory;
   }
 
   /** Connects to the server and starts a sync session. */
-  public void startSession(MirrorStub stub) throws InterruptedException {
+  public void startSession() throws InterruptedException {
     CountDownLatch started = new CountDownLatch(1);
-    sessionStarter = new SessionStarter(stub, started);
+    sessionStarter = new SessionStarter(channelFactory, started);
     taskFactory.runTask(sessionStarter);
     started.await();
   }
 
-  private void startSession(MirrorStub stub, CountDownLatch onFailure) {
+  private void startSession(ChannelFactory channelFactory, CountDownLatch onFailure) {
     detector.blockUntilConnected();
     log.info("Connected, starting session, version " + Mirror.getVersion());
 
+    ManagedChannel channel = channelFactory.newChannel();
+    MirrorStub stub = MirrorGrpc.newStub(channel).withCompression("gzip");
     session = new MirrorSession(taskFactory, paths, watcherFactory);
+    session.addStoppedCallback(channel::shutdownNow);
 
     // 1. see what our current state is
     try {
@@ -65,7 +76,7 @@ public class MirrorClient {
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
-      InitialSyncRequest req = InitialSyncRequest 
+      InitialSyncRequest req = InitialSyncRequest
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
         .setClientId(InetAddress.getLocalHost().getHostName())
@@ -160,18 +171,18 @@ public class MirrorClient {
   }
 
   private class SessionStarter implements TaskLogic {
-    private final MirrorStub stub;
+    private final ChannelFactory channelFactory;
     private final CountDownLatch started;
 
-    private SessionStarter(MirrorStub stub, CountDownLatch started) {
-      this.stub = stub;
+    private SessionStarter(ChannelFactory channelFactory, CountDownLatch started) {
+      this.channelFactory = channelFactory;
       this.started = started;
     }
 
     @Override
     public Duration runOneLoop() throws InterruptedException {
       CountDownLatch onFailure = new CountDownLatch(1);
-      startSession(stub, onFailure);
+      startSession(channelFactory, onFailure);
       started.countDown();
       onFailure.await();
       return null;

@@ -31,7 +31,6 @@ import io.grpc.netty.NettyServerBuilder;
 import mirror.Mirror.MirrorClientCommand;
 import mirror.Mirror.MirrorServerCommand;
 import mirror.Mirror.VersionCommand;
-import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
@@ -120,7 +119,7 @@ public class Mirror {
         .maxMessageSize(maxMessageSize)
         .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
         .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
-        .permitKeepAliveTime(keepAliveInSeconds,  TimeUnit.SECONDS)
+        .permitKeepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
         .permitKeepAliveWithoutCalls(true)
         .addService(MirrorServer.withCompressionEnabled(server))
         .build();
@@ -167,16 +166,13 @@ public class Mirror {
     @Override
     protected void runIfChecksOkay() {
       try {
-        ChannelFactory cf = () -> NettyChannelBuilder //
+        ChannelFactory channelFactory = () -> NettyChannelBuilder //
           .forAddress(host, port)
           .negotiationType(NegotiationType.PLAINTEXT)
           .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
           .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
           .maxInboundMessageSize(maxMessageSize)
           .build();
-        // Make an initial channel; in theory can eventually use a single channel the whole
-        // time once ConnectionDetector can observe state changes, see https://github.com/grpc/grpc-java/issues/2292
-        MirrorStub stub = MirrorGrpc.newStub(cf.newChannel()).withCompression("gzip");
 
         PathRules includes = new PathRules();
         PathRules excludes = new PathRules();
@@ -186,16 +182,12 @@ public class Mirror {
         FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
 
         MirrorClient client = new MirrorClient(//
-          new MirrorPaths(
-            Paths.get(localRoot),
-            Paths.get(remoteRoot),
-            includes,
-            excludes,
-            debugPrefixes),
+          new MirrorPaths(Paths.get(localRoot), Paths.get(remoteRoot), includes, excludes, debugPrefixes),
           taskFactory,
-          new ConnectionDetector.Impl(cf),
-          watcherFactory);
-        client.startSession(stub);
+          new ConnectionDetector.Impl(channelFactory),
+          watcherFactory,
+          channelFactory);
+        client.startSession();
         // dumb way of waiting until they hit control-c
         CountDownLatch cl = new CountDownLatch(1);
         cl.await();

@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import mirror.MirrorGrpc.MirrorStub;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
@@ -486,14 +485,14 @@ public class IntegrationTest {
     PathRules excludes = new PathRules("target/");
     // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     ChannelFactory cf = () -> InProcessChannelBuilder.forName("mirror" + port).build();
-    MirrorStub stub = MirrorGrpc.newStub(cf.newChannel()).withCompression("gzip");
     TaskFactory clientTaskFactory = new ThreadBasedTaskFactory();
     client = new MirrorClient(// 
       new MirrorPaths(root2.toPath(), root1.toPath(), includes, excludes, new ArrayList<>()),
       clientTaskFactory,
       new ConnectionDetector.Impl(cf),
-      watcherFactory);
-    client.startSession(stub);
+      watcherFactory,
+      cf);
+    client.startSession();
     log.info("started client");
   }
 
