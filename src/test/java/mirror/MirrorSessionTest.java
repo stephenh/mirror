@@ -5,9 +5,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +22,6 @@ public class MirrorSessionTest {
   private final List<Update> fileUpdates = new ArrayList<>();
   private final FileWatcherFactory fileWatcherFactory = Mockito.mock(FileWatcherFactory.class);
   private final FileWatcher fileWatcher = Mockito.mock(FileWatcher.class);
-  private final StubClock clock = new StubClock();
   private final StubTaskFactory taskFactory = new StubTaskFactory();
   private MirrorSession session;
 
@@ -35,7 +31,6 @@ public class MirrorSessionTest {
     Mockito.when(fileWatcher.performInitialScan()).thenReturn(fileUpdates);
     session = new MirrorSession(
       taskFactory,
-      clock,
       new MirrorPaths(root, null, new PathRules(), new PathRules(), new ArrayList<>()),
       fileAccess,
       fileWatcherFactory);
@@ -83,22 +78,4 @@ public class MirrorSessionTest {
     }));
   }
 
-  private static class StubClock extends Clock {
-    private volatile Instant now;
-
-    @Override
-    public ZoneId getZone() {
-      return null;
-    }
-
-    @Override
-    public Clock withZone(ZoneId zone) {
-      return null;
-    }
-
-    @Override
-    public Instant instant() {
-      return now;
-    }
-  }
 }

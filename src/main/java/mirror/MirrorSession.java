@@ -1,12 +1,8 @@
 package mirror;
 
-import static mirror.Utils.resetIfInterrupted;
-
 import java.io.IOException;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +28,6 @@ import mirror.tasks.TaskPool;
 public class MirrorSession {
 
   private final Logger log = LoggerFactory.getLogger(MirrorSession.class);
-  private final Clock clock;
   private final TaskPool taskPool;
   private final FileAccess fileAccess;
   private final Queues queues = new Queues();
@@ -41,22 +36,14 @@ public class MirrorSession {
   private final FileWatcher fileWatcher;
   private final UpdateTree tree;
   private final SyncLogic syncLogic;
-  private final CountDownLatch ready = new CountDownLatch(1);
   private volatile SaveToRemote saveToRemote;
-  private volatile SessionWatcher sessionWatcher;
   private volatile OutgoingConnection outgoingChanges;
 
   public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcherFactory fileWatcherFactory) {
-    this(factory, Clock.systemUTC(), paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcherFactory);
+    this(factory, paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcherFactory);
   }
 
-  public MirrorSession(
-    TaskFactory taskFactory,
-    Clock clock,
-    MirrorPaths paths,
-    FileAccess fileAccess,
-    FileWatcherFactory fileWatcherFactory) {
-    this.clock = clock;
+  public MirrorSession(TaskFactory taskFactory, MirrorPaths paths, FileAccess fileAccess, FileWatcherFactory fileWatcherFactory) {
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcherFactory.newWatcher(paths.root.toAbsolutePath(), queues.incomingQueue);
     this.tree = UpdateTree.newRoot(paths.includes, paths.excludes, paths.debugPrefixes);
@@ -84,13 +71,7 @@ public class MirrorSession {
   }
 
   public void addRemoteUpdate(Update update) {
-    // sessionWatcher might still null if the MirrorClient code is
-    // still initializing the session and we preemptively get remote updates
-    resetIfInterrupted(() -> ready.await());
-    sessionWatcher.updateReceived(update);
-    if (!update.getPath().equals(SessionWatcher.heartbeatPath)) {
-      queues.incomingQueue.add(update);
-    }
+    queues.incomingQueue.add(update);
   }
 
   public void addStoppedCallback(Runnable callback) {
@@ -137,11 +118,6 @@ public class MirrorSession {
 
     saveToRemote = new SaveToRemote(queues, fileAccess, outgoingChanges);
     start(saveToRemote);
-
-    sessionWatcher = new SessionWatcher(this, clock, taskPool, outgoingChanges);
-    start(sessionWatcher);
-
-    ready.countDown();
   }
 
   public void stop() {

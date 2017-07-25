@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.jar.Manifest;
 
 import org.apache.commons.lang3.StringUtils;
@@ -43,6 +44,8 @@ public class Mirror {
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
   private static final int maxMessageSize = 1073741824; // 1gb
   private static final int defaultPort = 49172;
+  private static final int keepAliveInSeconds = 10;
+  private static final int keepAliveTimeoutInSeconds = 5;
 
   static {
     LoggingConfig.init();
@@ -115,6 +118,10 @@ public class Mirror {
       Server rpc = NettyServerBuilder
         .forPort(port)
         .maxMessageSize(maxMessageSize)
+        .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
+        .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
+        .permitKeepAliveTime(keepAliveInSeconds,  TimeUnit.SECONDS)
+        .permitKeepAliveWithoutCalls(true)
         .addService(MirrorServer.withCompressionEnabled(server))
         .build();
 
@@ -163,6 +170,8 @@ public class Mirror {
         ChannelFactory cf = () -> NettyChannelBuilder //
           .forAddress(host, port)
           .negotiationType(NegotiationType.PLAINTEXT)
+          .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
+          .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
           .maxInboundMessageSize(maxMessageSize)
           .build();
         // Make an initial channel; in theory can eventually use a single channel the whole
