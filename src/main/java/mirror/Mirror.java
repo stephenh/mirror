@@ -43,7 +43,7 @@ public class Mirror {
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
   private static final int maxMessageSize = 1073741824; // 1gb
   private static final int defaultPort = 49172;
-  private static final int keepAliveInSeconds = 10;
+  private static final int keepAliveInSeconds = 20;
   private static final int keepAliveTimeoutInSeconds = 5;
 
   static {
@@ -119,7 +119,8 @@ public class Mirror {
         .maxMessageSize(maxMessageSize)
         .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
         .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
-        .permitKeepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
+        // add in /2 to whatever the client is sending to account for latency
+        .permitKeepAliveTime(keepAliveInSeconds / 2, TimeUnit.SECONDS)
         .permitKeepAliveWithoutCalls(true)
         .addService(MirrorServer.withCompressionEnabled(server))
         .build();
