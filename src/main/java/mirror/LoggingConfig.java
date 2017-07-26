@@ -1,6 +1,7 @@
 package mirror;
 
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -28,6 +29,10 @@ public class LoggingConfig {
     }
     started = true;
 
+    // setup java.util.logging (which grpc-java uses) to go to slf4j
+    SLF4JBridgeHandler.removeHandlersForRootLogger();
+    SLF4JBridgeHandler.install();
+
     LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
     LevelChangePropagator p = new LevelChangePropagator();
@@ -45,10 +50,10 @@ public class LoggingConfig {
     console.setEncoder(encoder);
     console.start();
 
-    Logger logger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    logger.detachAndStopAllAppenders();
-    logger.addAppender(console);
-    logger.setLevel(Level.INFO);
+    Logger root = getLogger(Logger.ROOT_LOGGER_NAME);
+    root.detachAndStopAllAppenders();
+    root.addAppender(console);
+    root.setLevel(Level.INFO);
 
     getLogger("io.grpc").setLevel(Level.INFO);
     // silence a noisy DNS warning when we cannot resolve the other host
