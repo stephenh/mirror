@@ -10,8 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mirror.tasks.TaskFactory;
-import mirror.watchman.Watchman;
 import mirror.watchman.WatchmanChannelImpl;
+import mirror.watchman.WatchmanFactory;
 import mirror.watchman.WatchmanFileWatcher;
 
 /**
@@ -35,7 +35,7 @@ public interface FileWatcherFactory {
   static FileWatcherFactory newFactory(TaskFactory taskFactory) {
     Logger log = LoggerFactory.getLogger(FileWatcherFactory.class);
     return (root, queue) -> {
-      Optional<Watchman> wm = WatchmanChannelImpl.createIfAvailable();
+      Optional<WatchmanFactory> wm = WatchmanChannelImpl.createIfAvailable();
       if (wm.isPresent()) {
         return new WatchmanFileWatcher(wm.get(), root, queue);
       } else {

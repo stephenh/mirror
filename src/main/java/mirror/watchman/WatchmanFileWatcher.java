@@ -37,8 +37,9 @@ import mirror.tasks.ThreadBasedTaskFactory;
 public class WatchmanFileWatcher implements FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(WatchmanFileWatcher.class);
-  private final Watchman wm;
+  private final WatchmanFactory factory;
   private final Path root;
+  private volatile Watchman wm;
   private volatile BlockingQueue<Update> queue;
   private volatile String initialScanClock;
 
@@ -60,8 +61,8 @@ public class WatchmanFileWatcher implements FileWatcher {
     }
   }
 
-  public WatchmanFileWatcher(Watchman wm, Path root, BlockingQueue<Update> queue) {
-    this.wm = wm;
+  public WatchmanFileWatcher(WatchmanFactory factory, Path root, BlockingQueue<Update> queue) {
+    this.factory = factory;
     this.root = root;
     this.queue = queue;
 
@@ -70,7 +71,7 @@ public class WatchmanFileWatcher implements FileWatcher {
   @Override
   public void onStart() {
     try {
-      // Start the watchman subscription, and pass since because we don't
+      // Start the watchman subscription, and pass "since" because we don't
       // need to be re-sent everything that we already saw in performInitialScan.
       //
       // Note that once we do this, our wm instance is basically dedicated
@@ -78,10 +79,7 @@ public class WatchmanFileWatcher implements FileWatcher {
       // calls on Watchman.read to keep getting the latest updates, which
       // means we can't really send any other commands without having the
       // response of our new command and subscription responses mixed up.
-      Map<String, Object> params = new HashMap<>();
-      params.put("since", initialScanClock);
-      params.put("fields", newArrayList("name", "exists", "mode", "mtime"));
-      wm.query("subscribe", root.toString(), "mirror", params);
+      startSubscription();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -102,6 +100,17 @@ public class WatchmanFileWatcher implements FileWatcher {
     try {
       // Keep blocking until we get more push notifications
       putFiles(wm.read());
+    } catch (WatchmanOverflowException e) {
+      try {
+        wm.close();
+        // try resetting the overflow
+        wm = factory.newWatchman();
+        wm.query("watch-del", root.toString());
+        startWatchAndInitialFind();
+        startSubscription();
+      } catch (Exception e2) {
+        log.error("Could not reset watchman", e2);
+      }
     } catch (BserEofException e) {
       // shutting down
     } catch (IOException e) {
@@ -112,14 +121,8 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   @Override
   public List<Update> performInitialScan() throws IOException, InterruptedException {
-    // This will be a no-op after the first execution, as we don't currently
-    // clean up on our watches.
-    wm.query("watch", root.toString());
-
-    Map<String, Object> r = wm.query("find", root.toString());
-    initialScanClock = (String) r.get("clock");
-    putFiles(r);
-
+    wm = factory.newWatchman();
+    startWatchAndInitialFind();
     List<Update> updates = new ArrayList<>(queue.size());
     queue.drainTo(updates);
     return updates;
@@ -155,6 +158,21 @@ public class WatchmanFileWatcher implements FileWatcher {
       }
       queue.put(u);
     });
+  }
+
+  private void startWatchAndInitialFind() throws IOException {
+    // This will be a no-op after the first execution, as we don't currently clean up on our watches.
+    wm.query("watch", root.toString());
+    Map<String, Object> r = wm.query("find", root.toString());
+    initialScanClock = (String) r.get("clock");
+    putFiles(r);
+  }
+
+  private void startSubscription() throws IOException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("since", initialScanClock);
+    params.put("fields", newArrayList("name", "exists", "mode", "mtime"));
+    wm.query("subscribe", root.toString(), "mirror", params);
   }
 
   // The modtime from watchman is the pre-deletion modtime; to be

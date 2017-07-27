@@ -32,29 +32,30 @@ import joist.util.Execute.BufferedResult;
 public class WatchmanChannelImpl implements Watchman {
 
   public static void main(String[] args) throws Exception {
-    Optional<Watchman> wc = createIfAvailable();
-    System.out.println(wc.get());
-    System.out.println(wc.get().query("watch-list"));
-    System.out.println(wc.get().query("find", "/home/stephen/dir1"));
+    Optional<WatchmanFactory> wc = createIfAvailable();
+    Watchman wm = wc.get().newWatchman();
+    System.out.println(wm);
+    System.out.println(wm.query("watch-list"));
+    System.out.println(wm.query("find", "/home/stephen/dir1"));
   }
 
-  public static Optional<Watchman> createIfAvailable() {
-    BufferedResult r;
-    try {
-      r = new Execute("watchman").addEnvPaths().arg("get-sockname").toBuffer();
+  public static Optional<WatchmanFactory> createIfAvailable() {
+    WatchmanFactory factory = () -> {
+      BufferedResult r = new Execute("watchman").addEnvPaths().arg("get-sockname").toBuffer();
       if (r.exitValue != 0) {
-        return Optional.empty();
+        throw new RuntimeException("Non-zero exit value from watchman");
       }
-    } catch (RuntimeException e) {
-      return Optional.empty(); // watchman not found on the path
-    }
-    Map<String, String> map = parseToMap(r);
-    String socketPath = (String) map.get("sockname");
-    UnixSocketAddress address = new UnixSocketAddress(new File(socketPath));
-    try {
+      Map<String, String> map = parseToMap(r);
+      String socketPath = (String) map.get("sockname");
+      UnixSocketAddress address = new UnixSocketAddress(new File(socketPath));
       UnixSocketChannel channel = UnixSocketChannel.open(address);
-      return Optional.of(new WatchmanChannelImpl(channel));
-    } catch (IOException e) {
+      return new WatchmanChannelImpl(channel);
+    };
+    // probe an initial watchman instance, if it works, return the factory
+    try {
+      factory.newWatchman().close();
+      return Optional.of(factory);
+    } catch (Exception e) {
       log.error("Error creating watchman channel, skipping watchman", e);
       return Optional.empty();
     }
@@ -98,6 +99,9 @@ public class WatchmanChannelImpl implements Watchman {
     }
     Map<String, Object> map = (Map<String, Object>) response;
     if (map.containsKey("error")) {
+      if (((String) map.get("error")).contains("IN_Q_OVERFLOW")) {
+        throw new WatchmanOverflowException();
+      }
       throw new RuntimeException("watchman error: " + map.get("error"));
     }
     if (map.containsKey("warning")) {
