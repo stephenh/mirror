@@ -58,6 +58,8 @@ public class LoggingConfig {
     getLogger("io.grpc").setLevel(Level.INFO);
     // silence a noisy DNS warning when we cannot resolve the other host
     getLogger(ManagedChannelImpl.class.getName()).setLevel(Level.ERROR);
+    // silence "ConnectivityStateManager is already disabled" warning
+    getLogger("io.grpc.internal.ChannelExecutor").setLevel(Level.ERROR);
     getLogger("mirror").setLevel(Level.INFO);
   }
 
