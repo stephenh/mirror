@@ -3,6 +3,7 @@ package mirror;
 import static mirror.Utils.abbreviatePath;
 import static mirror.Utils.debugString;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -55,8 +56,10 @@ public class SaveToRemote implements TaskLogic {
       String maybeDelete = update.getDelete() ? "(delete) " : "";
       log.info("Sending " + maybeDelete + abbreviatePath(update.getPath()));
       outgoingChanges.send(b.build());
+    } catch (FileNotFoundException e) {
+      // the file was very transient, which is fine, just drop it.
     } catch (IOException e) {
-      // TODO Should we error here, so that the session is restarted?
+      // should we error here, so that the session is restarted?
       log.error("Could not read " + debugString(update), e);
     }
   }
