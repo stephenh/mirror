@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./gradlew shadowJar \
+./gradlew --include-build ~/other/grpc-java shadowJar \
   && cp build/libs/mirror-all.jar ~/ \
   && scp build/libs/mirror-all.jar ld1:~/ \
   && scp build/libs/mirror-all.jar sh10:~/ \
