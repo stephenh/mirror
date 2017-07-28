@@ -69,8 +69,7 @@ public class MirrorClient {
       log.info("Client has " + localState.size() + " paths");
 
       // 2. send it to the server, so they can send back any stale/missing paths we have
-      SettableFuture<String> sessionId = SettableFuture.create();
-      SettableFuture<List<Update>> remoteState = SettableFuture.create();
+      SettableFuture<InitialSyncResponse> responseFuture = SettableFuture.create();
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
@@ -86,8 +85,7 @@ public class MirrorClient {
       withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {
         @Override
         public void onNext(InitialSyncResponse value) {
-          sessionId.set(value.getSessionId());
-          remoteState.set(value.getStateList());
+          responseFuture.set(value);
         }
 
         @Override
@@ -104,8 +102,17 @@ public class MirrorClient {
         }
       });
 
-      log.info("Server has " + remoteState.get().size() + " paths");
-      session.addInitialRemoteUpdates(remoteState.get());
+      InitialSyncResponse response = responseFuture.get();
+      if (response.getErrorMessage() != null && !response.getErrorMessage().isEmpty()) {
+        log.error(response.getErrorMessage());
+        session.stop();
+        return;
+      }
+
+      String sessionId = response.getSessionId();
+      List<Update> remoteState = response.getStateList();
+      log.info("Server has " + remoteState.size() + " paths");
+      session.addInitialRemoteUpdates(remoteState);
       log.info("Tree populated");
 
       AtomicReference<StreamObserver<Update>> outgoingChangesRef = new AtomicReference<>();
@@ -140,7 +147,7 @@ public class MirrorClient {
       StreamObserver<Update> outgoingChanges = outgoingChangesRef.get();
 
       // send over the sessionId as a fake update
-      outgoingChanges.onNext(Update.newBuilder().setPath(sessionId.get()).build());
+      outgoingChanges.onNext(Update.newBuilder().setPath(sessionId).build());
 
       session.diffAndStartPolling(new OutgoingConnectionImpl(outgoingChanges));
 

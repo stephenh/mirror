@@ -26,6 +26,7 @@ message InitialSyncRequest {
 // Message for the server to return it's initial state.
 message InitialSyncResponse {
   string sessionId = 1;
+  string errorMessage = 3;
   repeated Update state = 2;
 }
 

@@ -146,10 +146,10 @@ public class Mirror {
     @Option(name = { "-p", "--post" }, description = "port remote server to connect to, default: " + defaultPort)
     public int port = defaultPort;
 
-    @Option(name = { "-l", "--local-root" }, description = "path on the local side to sync, e.g. ~/code")
+    @Option(name = { "-l", "--local-root" }, description = "path on the local side to sync, e.g. ./code; either absolute or relative to the directory mirror client was invoked in")
     public String localRoot;
 
-    @Option(name = { "-r", "--remote-root" }, description = "path on the remote side to sync, e.g. ~/code")
+    @Option(name = { "-r", "--remote-root" }, description = "path on the remote side to sync, e.g. ./code; either absolute or relative to the directory mirror server was invoked in")
     public String remoteRoot;
 
     @Option(name = { "-i", "--include" }, description = "pattern of files to sync, even if they are git ignored")

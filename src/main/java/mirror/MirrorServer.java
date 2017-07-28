@@ -1,5 +1,6 @@
 package mirror;
 
+import java.io.File;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -58,6 +59,14 @@ public class MirrorServer extends MirrorImplBase {
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
     String sessionId = request.getRemotePath() + ":" + request.getClientId();
+
+    if (!new File(request.getRemotePath()).exists()) {
+      String errorMessage = "Path " + request.getRemotePath() + " does not exist on the server";
+      log.error(errorMessage + " for " + request.getClientId());
+      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
+      responseObserver.onCompleted();
+      return;
+    }
 
     MirrorPaths paths = new MirrorPaths(
       Paths.get(request.getRemotePath()).toAbsolutePath(),

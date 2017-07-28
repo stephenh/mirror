@@ -75,6 +75,7 @@ Install
   * `./mirror server`
 * Start the client-side from the laptop's home directory
   * `./mirror client -h your-desktop.com -l ./code/ -r ./code/`
+  * *Note:* Be careful using the tilda (e.g. `~/code`), as your shell will resolve that, e.g. to `/Users/you/code`, and that resolved path on the client might be not valid on the server
 
 This will sync the `$HOME/code` directory on your two machines.
 
