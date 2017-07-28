@@ -492,6 +492,10 @@ public class UpdateTreeDiffTest {
     assertSaveLocally("foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
 
+    // and we preemptively consider the local children deleted
+    assertThat(tree.find("foo/bar").getLocal().getDelete(), is(true));
+    assertThat(tree.find("foo/bar/zaz.txt").getLocal().getDelete(), is(true));
+
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
@@ -510,7 +514,6 @@ public class UpdateTreeDiffTest {
     diff();
     assertNoResults();
   }
-
 
   @Test
   public void clearDataOfStaleRemoteFile() {
