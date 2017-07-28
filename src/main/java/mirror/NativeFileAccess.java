@@ -165,7 +165,7 @@ public class NativeFileAccess implements FileAccess {
         current = current.getParent();
       }
       if (!foundOldSymlink) {
-        throw new IOException("Could not create directory " + path);
+        throw new IOException("Could not create directory " + path + " (" + path.toFile() + " does not exist)");
       }
     }
   }
