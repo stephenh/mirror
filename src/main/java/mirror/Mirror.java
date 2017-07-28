@@ -252,9 +252,12 @@ public class Mirror {
       // include the binaries the laptop-side IDE will want
       "*-SNAPSHOT.jar",
       // include project files for the laptop-side IDE
-      "*.iml",
-      "*.ipr",
-      "*.iws",
+      "/*.iml",
+      "/*/*.iml",
+      "/*.ipr",
+      "/*/*.ipr",
+      "/*.iws",
+      "/*/*.iws",
       ".classpath",
       ".project");
   }
