@@ -461,7 +461,7 @@ public class UpdateTreeDiffTest {
 
     // then we only need to send the root delete to the remote
     diff();
-    assertSendToRemote("foo", "foo/bar", "foo/bar/zaz.txt");
+    assertSendToRemote("foo");
     assertThat(results.sendToRemote.get(0).getDelete(), is(true));
     assertThat(results.sendToRemote.get(0).getLocal(), is(false));
     assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be false?

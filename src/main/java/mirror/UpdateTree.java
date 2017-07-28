@@ -274,6 +274,10 @@ public class UpdateTree {
         && !(!a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
     }
 
+    boolean isParentDeleted() {
+      return parent.getLocal() != null && parent.getLocal().getDelete();
+    }
+
     String getName() {
       return name;
     }

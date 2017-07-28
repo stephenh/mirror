@@ -68,7 +68,11 @@ public class UpdateTreeDiff {
     if (node.isLocalNewer()) {
       if (!node.shouldIgnore()) {
         debugIfEnabled(node, "isLocalNewer");
-        results.sendToRemote.add(node.restorePath(local));
+        if (local.getDelete() && node.isParentDeleted()) {
+          // don't send repetitive deletes
+        } else {
+          results.sendToRemote.add(node.restorePath(local));
+        }
       }
       node.setRemote(local);
     } else if (node.isRemoteNewer()) {
