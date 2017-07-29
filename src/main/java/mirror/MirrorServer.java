@@ -10,14 +10,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.BindableService;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
-import io.grpc.ServerInterceptors;
-import io.grpc.ServerServiceDefinition;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import mirror.MirrorGrpc.MirrorImplBase;
@@ -36,14 +33,12 @@ public class MirrorServer extends MirrorImplBase {
    * Currently grpc-java doesn't return compressed responses, even if the client
    * has sent a compressed payload. This turns on gzip compression for all responses.
    */
-  public static ServerServiceDefinition withCompressionEnabled(BindableService service) {
-    return ServerInterceptors.intercept(service, new ServerInterceptor() {
-      @Override
-      public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        call.setCompression("gzip");
-        return next.startCall(call, headers);
-      }
-    });
+  public static class EnableCompressionInterceptor implements ServerInterceptor {
+    @Override
+    public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+      call.setCompression("gzip");
+      return next.startCall(call, headers);
+    }
   }
 
   private static final Logger log = LoggerFactory.getLogger(MirrorServer.class);

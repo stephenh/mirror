@@ -122,7 +122,8 @@ public class Mirror {
         // add in /2 to whatever the client is sending to account for latency
         .permitKeepAliveTime(keepAliveInSeconds / 2, TimeUnit.SECONDS)
         .permitKeepAliveWithoutCalls(true)
-        .addService(MirrorServer.withCompressionEnabled(server))
+        .intercept(new MirrorServer.EnableCompressionInterceptor())
+        .addService(server)
         .build();
 
       try {
