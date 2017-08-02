@@ -77,6 +77,7 @@ public class MirrorClient {
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
         .setClientId(InetAddress.getLocalHost().getHostName())
+        .setCurrentTime(System.currentTimeMillis())
         .addAllIncludes(paths.includes.getLines())
         .addAllExcludes(paths.excludes.getLines())
         .addAllDebugPrefixes(paths.debugPrefixes)

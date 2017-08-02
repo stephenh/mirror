@@ -63,6 +63,19 @@ public class MirrorServer extends MirrorImplBase {
       return;
     }
 
+    long ourTime = System.currentTimeMillis();
+    long clientTime = request.getCurrentTime();
+    long driftInMillis = Math.abs(ourTime - clientTime);
+    if (driftInMillis > 500) {
+      String errorMessage = "The client and server clocks are "
+        + driftInMillis
+        + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
+      log.error(errorMessage + " for " + request.getClientId());
+      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
+      responseObserver.onCompleted();
+      return;
+    }
+
     MirrorPaths paths = new MirrorPaths(
       Paths.get(request.getRemotePath()).toAbsolutePath(),
       null,
