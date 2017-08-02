@@ -223,10 +223,16 @@ public class Mirror {
     excludes.addRule(".git/");
     excludes.addRule(".svn/");
     excludes.addRule(".watchman-cookie*");
+    // Eclipse noise
+    excludes.addRule(".tmpBin");
     // It's unlikely we want to copy around huge binary files by default
     excludes.addRule("*.gz");
     excludes.addRule("*.tar");
     excludes.addRule("*.zip");
+    // Generally assume mirror users want to sync IDE files
+    includes.addRules(".classpath", ".project");
+    // Kind of verbose, but only include 1st/2nd level IDEA files because *.iml has other uses
+    includes.addRules("/*.iml", "/*/*.iml", "/*.ipr", "/*/*.ipr", "/*.iws", "/*/*.iws");
   }
 
   private static void addInternalDefaults(PathRules includes, PathRules excludes) {
@@ -251,16 +257,7 @@ public class Mirror {
       "*/config",
       "!*/config/**/.svn",
       // include the binaries the laptop-side IDE will want
-      "*-SNAPSHOT.jar",
-      // include project files for the laptop-side IDE
-      "/*.iml",
-      "/*/*.iml",
-      "/*.ipr",
-      "/*/*.ipr",
-      "/*.iws",
-      "/*/*.iws",
-      ".classpath",
-      ".project");
+      "*-SNAPSHOT.jar");
   }
 
   public static String getVersion() {
