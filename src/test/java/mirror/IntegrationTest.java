@@ -476,14 +476,14 @@ public class IntegrationTest {
     int port = nextPort++;
     TaskFactory serverTaskFactory = new ThreadBasedTaskFactory();
     FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(serverTaskFactory);
-    // rpc = NettyServerBuilder.forPort(port).addService(MirrorServer.createWithCompressionEnabled()).build();
+    // rpc = NettyServerBuilder.forPort(port).addService(new MirrorServer(serverTaskFactory, watcherFactory)).build();
     rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer(serverTaskFactory, watcherFactory)).build();
     rpc.start();
     log.info("started server");
     // client
     PathRules includes = new PathRules("includedDirectory");
     PathRules excludes = new PathRules("target/");
-    // Channel c = NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
+    // ChannelFactory cf = () -> NettyChannelBuilder.forAddress("localhost", port).negotiationType(NegotiationType.PLAINTEXT).build();
     ChannelFactory cf = () -> InProcessChannelBuilder.forName("mirror" + port).build();
     TaskFactory clientTaskFactory = new ThreadBasedTaskFactory();
     client = new MirrorClient(// 
