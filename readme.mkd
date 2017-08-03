@@ -157,6 +157,21 @@ mirror \
 
 But currently mirror only supports a single remote/local sync at a time.
 
+Secure Communication
+====================
+
+mirror currently uses plain text for its communication protocol, as the primary use case is syncing a desktop/laptop that are on an assumed-secure internal network or VPN connection.
+
+The underlying RPC framework, GRPC, supports TLS communication, but mirror currently does not leverage that.
+
+If you need secure communication, e.g. are syncing across the open Internet with sensitive data, you can use SSH tunneling, e.g.:
+
+* On your client, run `ssh -L 49172:localhost:49172 your-remote-host`
+* On your remote host, start the server as usual, `./mirror server`
+* On your client, run mirror with `./mirror client -h localhost ...`
+
+This will have the mirror client send traffic to the `localhost:49172` port, which SSH will securely tunnel to your remote host.
+
 Todo
 ====
 
