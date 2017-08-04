@@ -53,26 +53,7 @@ public class MirrorServer extends MirrorImplBase {
 
   @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
-    String sessionId = request.getRemotePath() + ":" + request.getClientId();
-
-    if (!new File(request.getRemotePath()).exists()) {
-      String errorMessage = "Path " + request.getRemotePath() + " does not exist on the server";
-      log.error(errorMessage + " for " + request.getClientId());
-      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
-      responseObserver.onCompleted();
-      return;
-    }
-
-    long ourTime = System.currentTimeMillis();
-    long clientTime = request.getCurrentTime();
-    long driftInMillis = Math.abs(ourTime - clientTime);
-    if (driftInMillis > 500) {
-      String errorMessage = "The client and server clocks are "
-        + driftInMillis
-        + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
-      log.error(errorMessage + " for " + request.getClientId());
-      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
-      responseObserver.onCompleted();
+    if (sendErrorIfRequestedPathDoesNotExist(request, responseObserver) || sendErrorIfClockDriftExists(request, responseObserver)) {
       return;
     }
 
@@ -83,6 +64,7 @@ public class MirrorServer extends MirrorImplBase {
       new PathRules(request.getExcludesList()),
       request.getDebugPrefixesList());
 
+    String sessionId = request.getRemotePath() + ":" + request.getClientId();
     if (sessions.get(sessionId) != null) {
       log.info("Stopping prior session " + sessionId);
       sessions.get(sessionId).stop();
@@ -164,4 +146,30 @@ public class MirrorServer extends MirrorImplBase {
     responseObserver.onCompleted();
   }
 
+  private boolean sendErrorIfRequestedPathDoesNotExist(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
+    if (!new File(request.getRemotePath()).exists()) {
+      String errorMessage = "Path " + request.getRemotePath() + " does not exist on the server";
+      log.error(errorMessage + " for " + request.getClientId());
+      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
+      responseObserver.onCompleted();
+      return true;
+    }
+    return false;
+  }
+
+  private boolean sendErrorIfClockDriftExists(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
+    long ourTime = System.currentTimeMillis();
+    long clientTime = request.getCurrentTime();
+    long driftInMillis = Math.abs(ourTime - clientTime);
+    if (driftInMillis > 500) {
+      String errorMessage = "The client and server clocks are "
+        + driftInMillis
+        + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
+      log.error(errorMessage + " for " + request.getClientId());
+      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
+      responseObserver.onCompleted();
+      return true;
+    }
+    return false;
+  }
 }
