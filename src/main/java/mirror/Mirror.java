@@ -111,8 +111,9 @@ public class Mirror {
     @Override
     protected void runIfChecksOkay() {
       TaskFactory taskFactory = new ThreadBasedTaskFactory();
+      FileAccessFactory accessFactory = new NativeFileAccessFactory();
       FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
-      MirrorServer server = new MirrorServer(taskFactory, watcherFactory);
+      MirrorServer server = new MirrorServer(taskFactory, accessFactory, watcherFactory);
 
       Server rpc = NettyServerBuilder
         .forPort(port)
@@ -188,6 +189,7 @@ public class Mirror {
           taskFactory,
           new ConnectionDetector.Impl(channelFactory),
           watcherFactory,
+          new NativeFileAccess(Paths.get(localRoot).toAbsolutePath()),
           channelFactory);
         client.startSession();
         // dumb way of waiting until they hit control-c

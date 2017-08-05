@@ -29,6 +29,7 @@ public class MirrorClient {
   private final TaskFactory taskFactory;
   private final ConnectionDetector detector;
   private final FileWatcherFactory watcherFactory;
+  private final FileAccess fileAccess;
   private final ChannelFactory channelFactory;
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
@@ -38,11 +39,13 @@ public class MirrorClient {
     TaskFactory taskFactory,
     ConnectionDetector detector,
     FileWatcherFactory watcherFactory,
+    FileAccess fileAccess,
     ChannelFactory channelFactory) {
     this.paths = paths;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.watcherFactory = watcherFactory;
+    this.fileAccess = fileAccess;
     this.channelFactory = channelFactory;
   }
 
@@ -60,7 +63,7 @@ public class MirrorClient {
 
     ManagedChannel channel = channelFactory.newChannel();
     MirrorStub stub = MirrorGrpc.newStub(channel).withCompression("gzip");
-    session = new MirrorSession(taskFactory, paths, watcherFactory);
+    session = new MirrorSession(taskFactory, paths, fileAccess, watcherFactory);
     session.addStoppedCallback(channel::shutdownNow);
 
     // 1. see what our current state is

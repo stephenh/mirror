@@ -39,10 +39,6 @@ public class MirrorSession {
   private volatile SaveToRemote saveToRemote;
   private volatile OutgoingConnection outgoingChanges;
 
-  public MirrorSession(TaskFactory factory, MirrorPaths paths, FileWatcherFactory fileWatcherFactory) {
-    this(factory, paths, new NativeFileAccess(paths.root.toAbsolutePath()), fileWatcherFactory);
-  }
-
   public MirrorSession(TaskFactory taskFactory, MirrorPaths paths, FileAccess fileAccess, FileWatcherFactory fileWatcherFactory) {
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcherFactory.newWatcher(paths.root.toAbsolutePath(), queues.incomingQueue);

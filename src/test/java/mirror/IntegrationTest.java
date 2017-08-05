@@ -476,8 +476,10 @@ public class IntegrationTest {
     int port = nextPort++;
     TaskFactory serverTaskFactory = new ThreadBasedTaskFactory();
     FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(serverTaskFactory);
-    // rpc = NettyServerBuilder.forPort(port).addService(new MirrorServer(serverTaskFactory, watcherFactory)).build();
-    rpc = InProcessServerBuilder.forName("mirror" + port).addService(new MirrorServer(serverTaskFactory, watcherFactory)).build();
+    FileAccessFactory accessFactory = new NativeFileAccessFactory();
+    MirrorServer server = new MirrorServer(serverTaskFactory, accessFactory, watcherFactory);
+    // rpc = NettyServerBuilder.forPort(port).addService(server).build();
+    rpc = InProcessServerBuilder.forName("mirror" + port).addService(server).build();
     rpc.start();
     log.info("started server");
     // client
@@ -491,6 +493,7 @@ public class IntegrationTest {
       clientTaskFactory,
       new ConnectionDetector.Impl(cf),
       watcherFactory,
+      new NativeFileAccess(root2.toPath().toAbsolutePath()),
       cf);
     client.startSession();
     log.info("started client");

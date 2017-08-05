@@ -45,9 +45,11 @@ public class MirrorServer extends MirrorImplBase {
   private final Map<String, MirrorSession> sessions = new HashMap<>();
   private final TaskFactory taskFactory;
   private final FileWatcherFactory watcherFactory;
+  private final FileAccessFactory fileAccessFactory;
 
-  public MirrorServer(TaskFactory taskFactory, FileWatcherFactory watcherFactory) {
+  public MirrorServer(TaskFactory taskFactory, FileAccessFactory fileAccessFactory, FileWatcherFactory watcherFactory) {
     this.taskFactory = taskFactory;
+    this.fileAccessFactory = fileAccessFactory;
     this.watcherFactory = watcherFactory;
   }
 
@@ -71,7 +73,7 @@ public class MirrorServer extends MirrorImplBase {
     }
 
     log.info("Starting new session " + sessionId);
-    MirrorSession session = new MirrorSession(taskFactory, paths, watcherFactory);
+    MirrorSession session = new MirrorSession(taskFactory, paths, fileAccessFactory.newFileAccess(paths.root.toAbsolutePath()), watcherFactory);
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {
