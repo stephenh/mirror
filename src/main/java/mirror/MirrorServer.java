@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,8 +91,16 @@ public class MirrorServer extends MirrorImplBase {
       session.addInitialRemoteUpdates(request.getStateList());
       log.info("Tree populated");
 
+      InitialSyncResponse.Builder response = InitialSyncResponse.newBuilder().setSessionId(sessionId).addAllState(serverState);
+
+      if (!StringUtils.isEmpty(request.getVersion()) && !request.getVersion().equals(Mirror.getVersion())) {
+        String warningMessage = String.format("Server version %s does not match client version %s", Mirror.getVersion(), request.getVersion());
+        log.warn(warningMessage + " for client " + request.getClientId());
+        response.addWarningMessages(warningMessage);
+      }
+
       // send back our state for the client to seed their own sync queue with our missing/stale paths
-      responseObserver.onNext(InitialSyncResponse.newBuilder().setSessionId(sessionId).addAllState(serverState).build());
+      responseObserver.onNext(response.build());
       responseObserver.onCompleted();
     } catch (Exception e) {
       log.error("Error in initialSync", e);

@@ -18,6 +18,7 @@ message InitialSyncRequest {
   string clientId = 6;
   string remotePath = 1;
   int64 currentTime = 7;
+  string version = 8;
   repeated string includes = 3;
   repeated string excludes = 4;
   repeated string debugPrefixes = 5;
@@ -28,6 +29,7 @@ message InitialSyncRequest {
 message InitialSyncResponse {
   string sessionId = 1;
   string errorMessage = 3;
+  repeated string warningMessages = 4;
   repeated Update state = 2;
 }
 

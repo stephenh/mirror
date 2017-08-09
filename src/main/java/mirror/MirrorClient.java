@@ -81,6 +81,7 @@ public class MirrorClient {
         .setRemotePath(paths.remoteRoot.toString())
         .setClientId(InetAddress.getLocalHost().getHostName())
         .setCurrentTime(System.currentTimeMillis())
+        .setVersion(Mirror.getVersion())
         .addAllIncludes(paths.includes.getLines())
         .addAllExcludes(paths.excludes.getLines())
         .addAllDebugPrefixes(paths.debugPrefixes)
@@ -111,6 +112,9 @@ public class MirrorClient {
         log.error(response.getErrorMessage());
         session.stop();
         return;
+      }
+      for (String warningMessage : response.getWarningMessagesList()) {
+        log.warn(warningMessage);
       }
 
       String sessionId = response.getSessionId();
