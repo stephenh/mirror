@@ -6,15 +6,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import org.junit.Test;
 
 import com.google.protobuf.ByteString;
-
-import io.grpc.stub.StreamObserver;
 
 public class SyncLogicTest {
 
@@ -308,32 +304,6 @@ public class SyncLogicTest {
     Update sent = outgoing.values.get(0);
     assertThat(sent.getSymlink(), is("bar2"));
     assertThat(sent.getModTime(), is(3L));
-  }
-
-  private static class StubObserver<T> implements StreamObserver<T> {
-    private final List<T> values = new ArrayList<>();
-    private boolean completed;
-
-    @Override
-    public void onNext(T value) {
-      if (completed) {
-        throw new IllegalStateException();
-      }
-      values.add(value);
-    }
-
-    @Override
-    public void onError(Throwable t) {
-      if (completed) {
-        throw new IllegalStateException();
-      }
-      completed = true;
-    }
-
-    @Override
-    public void onCompleted() {
-      completed = true;
-    }
   }
 
   private void poll() throws Exception {

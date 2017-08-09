@@ -1,6 +1,5 @@
 package mirror;
 
-import java.io.File;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +9,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
@@ -47,11 +48,17 @@ public class MirrorServer extends MirrorImplBase {
   private final TaskFactory taskFactory;
   private final FileWatcherFactory watcherFactory;
   private final FileAccessFactory fileAccessFactory;
+  private final FileAccess root;
 
   public MirrorServer(TaskFactory taskFactory, FileAccessFactory fileAccessFactory, FileWatcherFactory watcherFactory) {
+    this(taskFactory, fileAccessFactory, watcherFactory, fileAccessFactory.newFileAccess(Paths.get("./")));
+  }
+
+  public MirrorServer(TaskFactory taskFactory, FileAccessFactory fileAccessFactory, FileWatcherFactory watcherFactory, FileAccess root) {
     this.taskFactory = taskFactory;
     this.fileAccessFactory = fileAccessFactory;
     this.watcherFactory = watcherFactory;
+    this.root = root;
   }
 
   @Override
@@ -157,8 +164,13 @@ public class MirrorServer extends MirrorImplBase {
     responseObserver.onCompleted();
   }
 
+  @VisibleForTesting
+  int numberOfSessions() {
+    return sessions.size();
+  }
+
   private boolean sendErrorIfRequestedPathDoesNotExist(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
-    if (!new File(request.getRemotePath()).exists()) {
+    if (!root.exists(Paths.get(request.getRemotePath()))) {
       String errorMessage = "Path " + request.getRemotePath() + " does not exist on the server";
       log.error(errorMessage + " for " + request.getClientId());
       responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
@@ -172,7 +184,7 @@ public class MirrorServer extends MirrorImplBase {
     long ourTime = System.currentTimeMillis();
     long clientTime = request.getCurrentTime();
     long driftInMillis = Math.abs(ourTime - clientTime);
-    if (driftInMillis > 500) {
+    if (clientTime > 0 && driftInMillis > 500) {
       String errorMessage = "The client and server clocks are "
         + driftInMillis
         + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
