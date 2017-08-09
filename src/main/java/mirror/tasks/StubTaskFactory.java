@@ -21,7 +21,7 @@ public class StubTaskFactory implements TaskFactory {
   public void stopTask(TaskLogic logic) {
     StubTask task = tasks.get(logic);
     if (task != null) {
-      tasks.remove(task);
+      tasks.remove(logic);
       Utils.resetIfInterrupted(() -> task.stop());
     }
   }

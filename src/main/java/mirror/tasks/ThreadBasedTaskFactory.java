@@ -27,7 +27,7 @@ public class ThreadBasedTaskFactory implements TaskFactory {
     if (task == null) {
       throw new IllegalArgumentException("No task found for " + logic);
     }
-    tasks.remove(task);
+    tasks.remove(logic);
     task.stop();
   }
 
