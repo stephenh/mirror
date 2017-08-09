@@ -175,9 +175,7 @@ This will have the mirror client send traffic to the `localhost:49172` port, whi
 Todo
 ====
 
-* Configuration via a `.mirrorrc` file
-* Handle watch event overflows by restarting session
-  * **Done** but might need some tweaks
+* Configuration via a `.mirrorrc` file (if necessary)
 * Really easy setup/install process, e.g.:
   * Currently you have to run `mirror ...` and `mirror ...` on both sides
   * Ideally you could just run `mirror` on the client, and it would self-start the desktop-side process by SSH'ing the jar over
