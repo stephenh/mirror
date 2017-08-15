@@ -6,6 +6,8 @@ option java_package = "mirror";
 option java_outer_classname = "MirrorProto";
 
 service Mirror {
+  rpc TimeCheck(TimeCheckRequest) returns (TimeCheckResponse) {}
+
   rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {}
 
   rpc StreamUpdates(stream Update) returns (stream Update) {}
@@ -13,11 +15,20 @@ service Mirror {
   rpc Ping(PingRequest) returns (PingResponse) {}
 }
 
+message TimeCheckRequest {
+  string clientId = 1;
+  int64 currentTime = 2;
+}
+
+message TimeCheckResponse {
+  string errorMessage = 1;
+}
+
 // Message for the client's initial state.
 message InitialSyncRequest {
   string clientId = 6;
   string remotePath = 1;
-  int64 currentTime = 7;
+  int64 currentTime = 7 [deprecated=true];
   string version = 8;
   repeated string includes = 3;
   repeated string excludes = 4;

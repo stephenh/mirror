@@ -92,6 +92,9 @@ public class SaveToLocal implements TaskLogic {
   private void saveFileLocally(Update remote) throws IOException {
     log.info("Remote update {}", abbreviatePath(remote.getPath()));
     Path path = Paths.get(remote.getPath());
+    if (remote.getData().equals(UpdateTree.initialSyncMarker)) {
+      throw new IllegalStateException("Likely bug, did not expect sync marker");
+    }
     ByteBuffer data = remote.getData().asReadOnlyByteBuffer();
     fileAccess.write(path, data);
     if (remote.getExecutable()) {

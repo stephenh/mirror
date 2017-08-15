@@ -315,7 +315,7 @@ public class UpdateTree {
 
     void clearData() {
       if (remote != null) {
-        remote = remote.toBuilder().setData(ByteString.EMPTY).build();
+        remote = remote.toBuilder().setData(UpdateTree.initialSyncMarker).build();
       }
     }
 

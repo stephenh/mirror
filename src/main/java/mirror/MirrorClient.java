@@ -3,9 +3,11 @@ package mirror;
 import static mirror.Utils.withTimeout;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -63,6 +65,12 @@ public class MirrorClient {
 
     ManagedChannel channel = channelFactory.newChannel();
     MirrorStub stub = MirrorGrpc.newStub(channel).withCompression("gzip");
+
+    boolean outOfSync = logErrorIfTimeOutOfSync(stub);
+    if (outOfSync) {
+      return;
+    }
+
     session = new MirrorSession(taskFactory, paths, fileAccess, watcherFactory);
     session.addStoppedCallback(channel::shutdownNow);
 
@@ -79,8 +87,7 @@ public class MirrorClient {
       InitialSyncRequest req = InitialSyncRequest
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
-        .setClientId(InetAddress.getLocalHost().getHostName())
-        .setCurrentTime(System.currentTimeMillis())
+        .setClientId(getClientId())
         .setVersion(Mirror.getVersion())
         .addAllIncludes(paths.includes.getLines())
         .addAllExcludes(paths.excludes.getLines())
@@ -193,6 +200,49 @@ public class MirrorClient {
       started.countDown();
       onFailure.await();
       return null;
+    }
+  }
+
+  private boolean logErrorIfTimeOutOfSync(MirrorStub stub) {
+    // 0. Do a time drift check
+    SettableFuture<TimeCheckResponse> timeResponse = SettableFuture.create();
+    stub.timeCheck(
+      TimeCheckRequest.newBuilder().setClientId(getClientId()).setCurrentTime(System.currentTimeMillis()).build(),
+      new StreamObserver<TimeCheckResponse>() {
+        @Override
+        public void onNext(TimeCheckResponse value) {
+          timeResponse.set(value);
+        }
+
+        @Override
+        public void onError(Throwable t) {
+          timeResponse.setException(t);
+        }
+
+        @Override
+        public void onCompleted() {
+        }
+      });
+    try {
+      String errorMessage = timeResponse.get().getErrorMessage();
+      if (errorMessage != null && !errorMessage.isEmpty()) {
+        log.error(errorMessage);
+        return true;
+      }
+      return false;
+    } catch (InterruptedException e1) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e1);
+    } catch (ExecutionException e1) {
+      throw new RuntimeException(e1);
+    }
+  }
+
+  private static String getClientId() {
+    try {
+      return InetAddress.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      return "unknown";
     }
   }
 }

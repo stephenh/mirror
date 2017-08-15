@@ -62,8 +62,13 @@ public class MirrorServer extends MirrorImplBase {
   }
 
   @Override
+  public synchronized void timeCheck(TimeCheckRequest request, StreamObserver<TimeCheckResponse> responseObserver) {
+    sendErrorIfClockDriftExists(request, responseObserver);
+  }
+
+  @Override
   public synchronized void initialSync(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
-    if (sendErrorIfRequestedPathDoesNotExist(request, responseObserver) || sendErrorIfClockDriftExists(request, responseObserver)) {
+    if (sendErrorIfRequestedPathDoesNotExist(request, responseObserver)) {
       return;
     }
 
@@ -180,7 +185,7 @@ public class MirrorServer extends MirrorImplBase {
     return false;
   }
 
-  private boolean sendErrorIfClockDriftExists(InitialSyncRequest request, StreamObserver<InitialSyncResponse> responseObserver) {
+  private void sendErrorIfClockDriftExists(TimeCheckRequest request, StreamObserver<TimeCheckResponse> responseObserver) {
     long ourTime = System.currentTimeMillis();
     long clientTime = request.getCurrentTime();
     long driftInMillis = Math.abs(ourTime - clientTime);
@@ -189,10 +194,10 @@ public class MirrorServer extends MirrorImplBase {
         + driftInMillis
         + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
       log.error(errorMessage + " for " + request.getClientId());
-      responseObserver.onNext(InitialSyncResponse.newBuilder().setErrorMessage(errorMessage).build());
-      responseObserver.onCompleted();
-      return true;
+      responseObserver.onNext(TimeCheckResponse.newBuilder().setErrorMessage(errorMessage).build());
+    } else {
+      responseObserver.onNext(TimeCheckResponse.newBuilder().build());
     }
-    return false;
+    responseObserver.onCompleted();
   }
 }
