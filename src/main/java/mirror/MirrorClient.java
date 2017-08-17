@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -66,6 +67,7 @@ public class MirrorClient {
     ManagedChannel channel = channelFactory.newChannel();
     MirrorStub stub = MirrorGrpc.newStub(channel).withCompression("gzip");
 
+    // 0. Do a time drift check
     boolean outOfSync = logErrorIfTimeOutOfSync(stub);
     if (outOfSync) {
       return;
@@ -204,7 +206,21 @@ public class MirrorClient {
   }
 
   private boolean logErrorIfTimeOutOfSync(MirrorStub stub) {
-    // 0. Do a time drift check
+    // we can get false negatives if we're just reestablishing a connection, so try 3 times before failing
+    Optional<String> errorMessage = Optional.empty();
+    for (int i = 0; i < 5; i++) {
+      errorMessage = doTimeCheck(stub);
+      // a single "no error" means we're good
+      if (!errorMessage.isPresent()) {
+        return false;
+      }
+      Utils.resetIfInterrupted(() -> Thread.sleep(1000));
+    }
+    log.error(errorMessage.get());
+    return true;
+  }
+
+  private Optional<String> doTimeCheck(MirrorStub stub) {
     SettableFuture<TimeCheckResponse> timeResponse = SettableFuture.create();
     stub.timeCheck(
       TimeCheckRequest.newBuilder().setClientId(getClientId()).setCurrentTime(System.currentTimeMillis()).build(),
@@ -226,10 +242,9 @@ public class MirrorClient {
     try {
       String errorMessage = timeResponse.get().getErrorMessage();
       if (errorMessage != null && !errorMessage.isEmpty()) {
-        log.error(errorMessage);
-        return true;
+        return Optional.of(errorMessage);
       }
-      return false;
+      return Optional.empty();
     } catch (InterruptedException e1) {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e1);
