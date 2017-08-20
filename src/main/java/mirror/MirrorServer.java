@@ -189,7 +189,7 @@ public class MirrorServer extends MirrorImplBase {
     long ourTime = System.currentTimeMillis();
     long clientTime = request.getCurrentTime();
     long driftInMillis = Math.abs(ourTime - clientTime);
-    if (clientTime > 0 && driftInMillis > 500) {
+    if (clientTime > 0 && driftInMillis > 10_000) {
       String errorMessage = "The client and server clocks are "
         + driftInMillis
         + "ms out of sync, please use ntp/etc. to fix this drift before using mirror";
