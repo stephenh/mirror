@@ -354,7 +354,7 @@ public class UpdateTreeDiffTest {
     // and then clear the data from the tree afterwards
     Node foo = tree.getChildren().get(0);
     assertThat(foo.getName(), is("foo.txt"));
-    assertThat(foo.getRemote().getData().size(), is(0));
+    assertThat(foo.getRemote().getData(), is(UpdateTree.initialSyncMarker));
     // and we don't resave it again on the next diff
     diff();
     assertNoResults();
@@ -542,7 +542,7 @@ public class UpdateTreeDiffTest {
     // and clear it's data from the UpdateTree
     Node foo = tree.getChildren().get(0);
     assertThat(foo.getName(), is("foo.txt"));
-    assertThat(foo.getRemote().getData().size(), is(0));
+    assertThat(foo.getRemote().getData(), is(UpdateTree.initialSyncMarker));
   }
 
   private void diff() {
