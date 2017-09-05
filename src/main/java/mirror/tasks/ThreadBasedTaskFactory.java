@@ -1,6 +1,5 @@
 package mirror.tasks;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -8,11 +7,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ThreadBasedTaskFactory implements TaskFactory {
 
-  private final Map<TaskLogic, ThreadBasedTask> tasks = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<TaskLogic, ThreadBasedTask> tasks = new ConcurrentHashMap<>();
 
   @Override
   public TaskHandle runTask(TaskLogic logic, Runnable onFailure) {
-    ThreadBasedTask task = new ThreadBasedTask(logic, onFailure);
+    ThreadBasedTask task = new ThreadBasedTask(logic, onFailure, () -> {
+      // we don't need to call stopTask(logic) or task.stop because the task is already stopping,
+      // we just to ensure we remove this entry from our map to avoid memory leaks
+      tasks.remove(logic);
+    });
     tasks.put(logic, task);
     task.start();
     return () -> stopTask(logic);
@@ -24,11 +27,10 @@ public class ThreadBasedTaskFactory implements TaskFactory {
   @Override
   public void stopTask(TaskLogic logic) {
     ThreadBasedTask task = tasks.get(logic);
-    if (task == null) {
-      throw new IllegalArgumentException("No task found for " + logic);
+    if (task != null) {
+      tasks.remove(logic);
+      task.stop();
     }
-    tasks.remove(logic);
-    task.stop();
   }
 
 }

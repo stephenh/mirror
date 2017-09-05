@@ -1,12 +1,13 @@
 package mirror.tasks;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A pool of tasks whose lifetime is related: if one task fails, then all
@@ -18,14 +19,14 @@ public class TaskPool {
   private final TaskFactory factory;
   private final List<TaskLogic> tasks = new CopyOnWriteArrayList<>();
   private final List<Runnable> callbacks = new CopyOnWriteArrayList<>();
-  private volatile boolean shutdown = false;
+  private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
   public TaskPool(TaskFactory factory) {
     this.factory = factory;
   }
 
   public TaskHandle runTask(TaskLogic logic) {
-    if (shutdown) {
+    if (shutdown.get()) {
       throw new IllegalStateException("Pool is shutdown");
     }
     TaskHandle h = factory.runTask(logic, this::stopAllTasks);
@@ -41,8 +42,7 @@ public class TaskPool {
   public void stopAllTasks() {
     // Several places call MirrorSession.stop when shutting down, so don't
     // error out if this is already shut down
-    if (!shutdown) {
-      shutdown = true;
+    if (shutdown.compareAndSet(false, true)) {
       factory.runTask(new StopTasksInPool());
     }
   }
@@ -54,9 +54,9 @@ public class TaskPool {
   private class StopTasksInPool implements TaskLogic {
     @Override
     public Duration runOneLoop() throws InterruptedException {
-      tasks.forEach(t -> {
+      new ArrayList<>(tasks).forEach(t -> {
         try {
-          factory.stopTask(t);
+          stopTask(t);
         } catch (Exception e) {
           log.error("Error calling callback", e);
         }

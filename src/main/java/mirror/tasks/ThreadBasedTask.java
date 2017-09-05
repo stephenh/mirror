@@ -26,14 +26,16 @@ class ThreadBasedTask {
   private final Thread thread;
   private final TaskLogic task;
   private final Runnable onFailure;
+  private final Runnable onStop;
 
   private static synchronized int nextThreadId() {
     return nextThread++;
   }
 
-  protected ThreadBasedTask(TaskLogic task, Runnable onFailure) {
+  protected ThreadBasedTask(TaskLogic task, Runnable onFailure, Runnable onStop) {
     this.task = task;
     this.onFailure = onFailure;
+    this.onStop = onStop;
     thread = new ThreadFactoryBuilder().setDaemon(true).setNameFormat(nextThreadId() + "-" + task.getName() + "-%s").build().newThread(() -> run());
   }
 
@@ -43,11 +45,12 @@ class ThreadBasedTask {
   }
 
   void stop() {
-    Utils.resetIfInterrupted(() -> isStarted.await());
-    shutdown.set(true);
-    thread.interrupt();
-    task.onInterrupt();
-    Utils.resetIfInterrupted(() -> isShutdown.await());
+    if (shutdown.compareAndSet(false, true)) {
+      Utils.resetIfInterrupted(() -> isStarted.await());
+      thread.interrupt();
+      task.onInterrupt();
+      Utils.resetIfInterrupted(() -> isShutdown.await());
+    }
   }
 
   private void run() {
@@ -77,6 +80,7 @@ class ThreadBasedTask {
       Thread.currentThread().interrupt();
       // shutting down
     } finally {
+      callFactoryStopCallback();
       isShutdown.countDown();
     }
   }
@@ -96,6 +100,14 @@ class ThreadBasedTask {
       } catch (Exception e2) {
         log.error("onFailure call failed", e2);
       }
+    }
+  }
+
+  private void callFactoryStopCallback() {
+    try {
+      onStop.run();
+    } catch (Exception e) {
+      log.error("onStop call failed", e);
     }
   }
 
