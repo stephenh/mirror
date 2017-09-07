@@ -11,9 +11,9 @@ public class QueueWatcher implements TaskLogic {
 
   private static final Logger log = LoggerFactory.getLogger(QueueWatcher.class);
   private final Queues queues;
-  private int lastUpdates;
-  private int lastLocal;
-  private int lastRemote;
+  private int lastIncomingQueue;
+  private int lastSaveToLocal;
+  private int lastSaveToRemote;
 
   public QueueWatcher(Queues queues) {
     this.queues = queues;
@@ -21,16 +21,20 @@ public class QueueWatcher implements TaskLogic {
 
   @Override
   public Duration runOneLoop() {
-    int updates = queues.incomingQueue.size();
-    int local = queues.saveToLocal.size();
-    int remote = queues.saveToRemote.size();
-    if (updates != lastUpdates || local != lastLocal || remote != lastRemote) {
-      log.debug("Queues: updates=" + updates + ", local=" + local + ", remote=" + remote);
-      lastUpdates = updates;
-      lastLocal = local;
-      lastRemote = remote;
+    int incomingQueue = queues.incomingQueue.size();
+    int saveToLocal = queues.saveToLocal.size();
+    int saveToRemote = queues.saveToRemote.size();
+    if (isStillHigh(lastIncomingQueue, incomingQueue) || isStillHigh(lastSaveToLocal, saveToLocal) || isStillHigh(lastSaveToRemote, saveToRemote)) {
+      log.info("Queues: incomingQueue=" + incomingQueue + ", saveToLocal=" + saveToLocal + ", saveToRemote=" + saveToRemote);
+      lastIncomingQueue = incomingQueue;
+      lastSaveToLocal = saveToLocal;
+      lastSaveToRemote = saveToRemote;
     }
     return Duration.ofMillis(250);
   }
 
+  /** @return true if the queue has been non-zero for our last two checks. */
+  private static boolean isStillHigh(int lastSize, int currentSize) {
+    return lastSize != 0 && currentSize != 0;
+  }
 }
