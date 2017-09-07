@@ -75,6 +75,13 @@ public class MirrorClient {
 
     session = new MirrorSession(taskFactory, paths, fileAccess, watcherFactory);
     session.addStoppedCallback(channel::shutdownNow);
+    // Automatically re-connect when we're disconnected
+    session.addStoppedCallback(() -> {
+      // Don't call startSession again directly, because then we'll start running
+      // our connection code on whatever thread is running this callback. Instead
+      // just signal our main client thread that it should try again.
+      onFailure.countDown();
+    });
 
     // 1. see what our current state is
     try {
@@ -105,6 +112,7 @@ public class MirrorClient {
         @Override
         public void onError(Throwable t) {
           Utils.logConnectionError(log, t);
+          responseFuture.setException(t);
           session.stop();
         }
 
@@ -167,14 +175,6 @@ public class MirrorClient {
       outgoingChanges.onNext(Update.newBuilder().setPath(sessionId).build());
 
       session.diffAndStartPolling(new OutgoingConnectionImpl(outgoingChanges));
-
-      // Automatically re-connect when we're disconnected
-      session.addStoppedCallback(() -> {
-        // Don't call startSession again directly, because then we'll start running
-        // our connection code on whatever thread is running this callback. Instead
-        // just signal our main client thread that it should try again.
-        onFailure.countDown();
-      });
     } catch (Exception e) {
       log.error("Exception starting the client", e);
       session.stop();
