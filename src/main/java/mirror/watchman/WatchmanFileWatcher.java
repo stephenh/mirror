@@ -63,9 +63,14 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   public WatchmanFileWatcher(WatchmanFactory factory, Path root, BlockingQueue<Update> queue) {
     this.factory = factory;
-    this.root = root;
+    try {
+      // If we get passed /home/foo/./path watchman's path sensitiveness check complains,
+      // so turn it into /home/foo/path.
+      this.root = root.toFile().getCanonicalFile().toPath();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     this.queue = queue;
-
   }
 
   @Override
