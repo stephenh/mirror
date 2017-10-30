@@ -47,6 +47,7 @@ I looked at several sync options before starting mirror, but didn't find anythin
 
 * X-Forwarding (to just run everything, IDE included, on the desktop) has noticeable lag, even on a LAN
 * rsync is not two-way, nor real-time
+* [Syncthing](https://syncthing.net/): *multi*directional, fast and real-time (with [syncthing-inotify](https://github.com/syncthing/syncthing-inotify))
 * unison is two-way, but not real-time
 * lsyncd is real-time, but does not officially support two-way (see [issue 303](https://github.com/axkibe/lsyncd/issues/303#issuecomment-244569307))
 * sshfs is too slow and doesn't support inotify
