@@ -258,6 +258,8 @@ public class Mirror {
       // sync the MP-level config directory, but not the svn directory within it
       "*/config",
       "!*/config/**/.svn",
+      // include typings for TS
+      "@types",
       // include the binaries the laptop-side IDE will want
       "*-SNAPSHOT.jar");
   }
