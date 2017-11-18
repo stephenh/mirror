@@ -214,7 +214,7 @@ public class WatchmanFileWatcher implements FileWatcher {
       Path symlink = Files.readSymbolicLink(path);
       String targetPath;
       if (symlink.isAbsolute()) {
-        targetPath = path.getParent().toAbsolutePath().relativize(symlink).toString();
+        targetPath = path.getParent().normalize().relativize(symlink.normalize()).toString();
       } else {
         // the symlink is already relative, so we can leave it alone, e.g. foo.txt
         targetPath = symlink.toString();
