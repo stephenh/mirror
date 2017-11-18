@@ -156,7 +156,7 @@ public class SyncLogic implements TaskLogic {
         }
       } catch (IOException e) {
         // ignore as the path was probably deleted
-        log.info("Exception in readLatestTimeAndSymlink: " + e.getMessage());
+        log.debug("Exception in readLatestTimeAndSymlink: " + e.getMessage());
       }
     }
     return local;
