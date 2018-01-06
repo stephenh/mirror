@@ -71,3 +71,10 @@ eclipse {
     downloadSources = true
   }
 }
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+compileJava {
+  options.compilerArgs.addAll(['--release', '8'])
+}
+
