@@ -43,9 +43,7 @@ public class UpdateTree {
   private static final long oneHourInMillis = Duration.ofHours(1).toMillis();
   private static final long oneMinuteInMillis = Duration.ofMinutes(1).toMillis();
   private final Node root;
-  private final PathRules extraIncludes;
-  private final PathRules extraExcludes;
-  private final List<String> debugPrefixes;
+  private final MirrorPaths config;
 
   public static NodeType getType(Update u) {
     return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
@@ -72,18 +70,17 @@ public class UpdateTree {
     }
   }
 
+  @VisibleForTesting
   public static UpdateTree newRoot() {
-    return newRoot(new PathRules(), new PathRules(), new ArrayList<>());
+    return new UpdateTree(new MirrorPaths(null, null, new PathRules(), new PathRules(), new ArrayList<>()));
   }
 
-  public static UpdateTree newRoot(PathRules extraIncludes, PathRules extraExcludes, List<String> debugPrefixes) {
-    return new UpdateTree(extraIncludes, extraExcludes, debugPrefixes);
+  public static UpdateTree newRoot(MirrorPaths config) {
+    return new UpdateTree(config);
   }
 
-  private UpdateTree(PathRules extraIncludes, PathRules extraExcludes, List<String> debugPrefixes) {
-    this.extraIncludes = extraIncludes;
-    this.extraExcludes = extraExcludes;
-    this.debugPrefixes = debugPrefixes;
+  private UpdateTree(MirrorPaths config) {
+    this.config = config;
     this.root = new Node(null, "");
     this.root.setLocal(Update.newBuilder().setPath("").setDirectory(true).build());
     this.root.setRemote(Update.newBuilder().setPath("").setDirectory(true).build());
@@ -148,11 +145,15 @@ public class UpdateTree {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    visitAll(node -> sb.append(node.getPath() //
-      + " local="
-      + node.local.getModTime()
-      + " remote="
-      + node.remote.getModTime()).append("\n"));
+    visitAll(
+      node -> sb
+        .append(
+          node.getPath() //
+            + " local="
+            + node.local.getModTime()
+            + " remote="
+            + node.remote.getModTime())
+        .append("\n"));
     return sb.toString();
   }
 
@@ -173,14 +174,14 @@ public class UpdateTree {
 
   boolean shouldDebug(Node node) {
     // avoid calcing the path if we have no prefixes anyway
-    if (debugPrefixes.isEmpty()) {
+    if (config.debugPrefixes.isEmpty()) {
       return false;
     }
     return shouldDebug(node.getPath());
   }
 
   boolean shouldDebug(String path) {
-    return debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
+    return config.debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
   }
 
   @VisibleForTesting
@@ -351,8 +352,8 @@ public class UpdateTree {
         }
       });
       // besides parent .gitignores, also use our extra includes/excludes
-      boolean extraIncluded = extraIncludes.matches(path, isDirectory());
-      boolean extraExcluded = extraExcludes.matches(path, isDirectory());
+      boolean extraIncluded = config.includes.matches(path, isDirectory());
+      boolean extraExcluded = config.excludes.matches(path, isDirectory());
       shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
       if (debug) {
         log.info(path + " gitIgnored=" + gitIgnored + ", extraIncluded=" + extraIncluded + ", extraExcluded=" + extraExcluded);
