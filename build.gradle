@@ -74,7 +74,13 @@ eclipse {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-compileJava {
-  options.compilerArgs.addAll(['--release', '8'])
+
+// E.g. '9.0.1 (Oracle Corporation 9.0.1+11)' or '1.8.0_151 (Oracle Corporation 25.151-b12)'
+def currentJvm = org.gradle.internal.jvm.Jvm.current()
+def jvmVersion = currentJvm.toString().tokenize('.').take(2).join(".").toDouble()
+if (jvmVersion >= 1.9) {
+  compileJava {
+    options.compilerArgs.addAll(['--release', '8'])
+  }
 }
 
