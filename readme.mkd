@@ -59,6 +59,8 @@ I looked at several sync options before starting mirror, but didn't find anythin
 Install
 =======
 
+To use the latest release/pre-built jars:
+
 * Install Java 8
   * You can try running `java -version` to see if Java is already installed
   * If not, a you'll need a platform-specific installation step, like `sudo apt install openjdk-8-jre` on Ubuntu
@@ -172,6 +174,19 @@ If you need secure communication, e.g. are syncing across the open Internet with
 * On your client, run mirror with `./mirror client -h localhost ...`
 
 This will have the mirror client send traffic to the `localhost:49172` port, which SSH will securely tunnel to your remote host.
+
+Compiling/Contributing
+======================
+
+If you want to hack on mirror locally, you should be able to:
+
+* Clone this repository
+* Run `./gradlew shadowJar`
+  * This will download mirror's dependencies and produce an all-in-one jar in `build/lib/mirror-all.jar`
+* Run `./mirror ...` (e.g. either `mirror client` or `mirror server`
+  * The `mirror` script in the base directory should pick up your locally-built `build/lib/mirror-all.jar`
+
+If you want to use your locally-built jar on your remote host, you'll need to `scp` the new `mirror-all.jar` to your remote host (in the same directory as the `mirror` script, which will then use your new `mirror-all.jar` instead of the previously-downloaded version.)
 
 Todo
 ====
