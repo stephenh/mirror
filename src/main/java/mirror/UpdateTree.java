@@ -72,7 +72,7 @@ public class UpdateTree {
 
   @VisibleForTesting
   public static UpdateTree newRoot() {
-    return new UpdateTree(new MirrorPaths(null, null, new PathRules(), new PathRules(), new ArrayList<>()));
+    return new UpdateTree(new MirrorPaths(null, null, new PathRules(), new PathRules(), false, new ArrayList<>()));
   }
 
   public static UpdateTree newRoot(MirrorPaths config) {

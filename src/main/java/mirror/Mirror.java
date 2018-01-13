@@ -160,7 +160,10 @@ public class Mirror {
     @Option(name = { "-e", "--exclude" }, description = "pattern of files to skip, in addition to what is git ignored")
     public List<String> extraExcludes = new ArrayList<>();
 
-    @Option(name = { "-d", "--debug" }, description = "prefix of paths to print debug lines for")
+    @Option(name = { "-d", "--debug-all" }, description = "turn on debugging for all paths")
+    public boolean debugAll = false;
+
+    @Option(name = { "--debug-prefixes" }, description = "prefix of paths to print debug lines for, e.g. foo/bar,foo/zaz")
     public List<String> debugPrefixes = new ArrayList<>();
 
     @Option(name = { "-li", "--use-internal-patterns" }, description = "use hardcoded include/excludes that generally work well for internal repos")
@@ -185,7 +188,7 @@ public class Mirror {
         FileWatcherFactory watcherFactory = FileWatcherFactory.newFactory(taskFactory);
 
         MirrorClient client = new MirrorClient(//
-          new MirrorPaths(Paths.get(localRoot), Paths.get(remoteRoot), includes, excludes, debugPrefixes),
+          new MirrorPaths(Paths.get(localRoot), Paths.get(remoteRoot), includes, excludes, debugAll, debugPrefixes),
           taskFactory,
           new ConnectionDetector.Impl(channelFactory),
           watcherFactory,

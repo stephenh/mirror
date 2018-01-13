@@ -12,13 +12,15 @@ public class MirrorPaths {
   public final Path remoteRoot;
   private final PathRules includes;
   private final PathRules excludes;
+  private final boolean debugAll;
   private final List<String> debugPrefixes;
 
-  public MirrorPaths(Path root, Path remoteRoot, PathRules includes, PathRules excludes, List<String> debugPrefixes) {
+  public MirrorPaths(Path root, Path remoteRoot, PathRules includes, PathRules excludes, boolean debugAll, List<String> debugPrefixes) {
     this.root = root;
     this.remoteRoot = remoteRoot;
     this.includes = includes;
     this.excludes = excludes;
+    this.debugAll = debugAll;
     this.debugPrefixes = debugPrefixes;
   }
 
@@ -38,6 +40,9 @@ public class MirrorPaths {
 
   public boolean shouldDebug(Node node) {
     // avoid calcing the path if we have no prefixes anyway
+    if (debugAll) {
+      return true;
+    }
     if (debugPrefixes.isEmpty()) {
       return false;
     }
@@ -45,6 +50,9 @@ public class MirrorPaths {
   }
 
   public boolean shouldDebug(String path) {
+    if (debugAll) {
+      return true;
+    }
     return debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
   }
 

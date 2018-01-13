@@ -489,7 +489,7 @@ public class IntegrationTest {
     ChannelFactory cf = () -> InProcessChannelBuilder.forName("mirror" + port).build();
     TaskFactory clientTaskFactory = new ThreadBasedTaskFactory();
     client = new MirrorClient(// 
-      new MirrorPaths(root2.toPath(), root1.toPath(), includes, excludes, new ArrayList<>()),
+      new MirrorPaths(root2.toPath(), root1.toPath(), includes, excludes, false, new ArrayList<>()),
       clientTaskFactory,
       new ConnectionDetector.Impl(cf),
       watcherFactory,

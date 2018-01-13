@@ -31,7 +31,7 @@ public class MirrorSessionTest {
     Mockito.when(fileWatcher.performInitialScan()).thenReturn(fileUpdates);
     session = new MirrorSession(
       taskFactory,
-      new MirrorPaths(root, null, new PathRules("*.jar"), new PathRules(), new ArrayList<>()),
+      new MirrorPaths(root, null, new PathRules("*.jar"), new PathRules(), false, new ArrayList<>()),
       fileAccess,
       fileWatcherFactory);
   }

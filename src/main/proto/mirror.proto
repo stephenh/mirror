@@ -33,6 +33,7 @@ message InitialSyncRequest {
   repeated string includes = 3;
   repeated string excludes = 4;
   repeated string debugPrefixes = 5;
+  bool debugAll = 9;
   repeated Update state = 2;
 }
 

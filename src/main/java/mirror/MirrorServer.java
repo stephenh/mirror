@@ -77,6 +77,7 @@ public class MirrorServer extends MirrorImplBase {
       null,
       new PathRules(request.getIncludesList()),
       new PathRules(request.getExcludesList()),
+      request.getDebugAll(),
       request.getDebugPrefixesList());
 
     String sessionId = request.getRemotePath() + ":" + request.getClientId();

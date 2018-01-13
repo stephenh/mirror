@@ -95,6 +95,19 @@ Extra includes and excludes patterns can be passed when starting the client, and
 
 (There is also a `--use-internal-patterns` that has useful defaults if you work at the same place I do.)
 
+Help
+====
+
+Options for both the `client` and `server` commands are available by running:
+
+    `./mirror help client`
+
+Or:
+
+    `./mirror help server`
+
+For example, the client supports `--debug-all` and `--debug-prefixes` command line parameters to output debug info for all or subsets of the paths (setting these parameters on the client session will pass them to the client's server session, so that the server will use those options for its own session with that specific client).
+
 Git Usage Note
 ==============
 
