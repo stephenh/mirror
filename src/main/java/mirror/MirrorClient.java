@@ -93,17 +93,14 @@ public class MirrorClient {
 
       // Ideally this would be a blocking/sync call, but it looks like because
       // one of our RPC methods is streaming, then this one is as well
-      InitialSyncRequest req = InitialSyncRequest
+      InitialSyncRequest.Builder req = InitialSyncRequest
         .newBuilder()
         .setRemotePath(paths.remoteRoot.toString())
         .setClientId(getClientId())
         .setVersion(Mirror.getVersion())
-        .addAllIncludes(paths.includes.getLines())
-        .addAllExcludes(paths.excludes.getLines())
-        .addAllDebugPrefixes(paths.debugPrefixes)
-        .addAllState(localState)
-        .build();
-      withTimeout(stub).initialSync(req, new StreamObserver<InitialSyncResponse>() {
+        .addAllState(localState);
+      paths.addParameters(req);
+      withTimeout(stub).initialSync(req.build(), new StreamObserver<InitialSyncResponse>() {
         @Override
         public void onNext(InitialSyncResponse value) {
           responseFuture.set(value);

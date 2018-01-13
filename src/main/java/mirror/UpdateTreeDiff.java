@@ -104,7 +104,7 @@ public class UpdateTreeDiff {
   }
 
   private void debugIfEnabled(Node node, String operation) {
-    if (tree.shouldDebug(node)) {
+    if (tree.config.shouldDebug(node)) {
       log.info(node.getPath() + " " + operation);
       log.info("  l: " + UpdateTree.toDebugString(node.getLocal()));
       log.info("  r: " + UpdateTree.toDebugString(node.getRemote()));

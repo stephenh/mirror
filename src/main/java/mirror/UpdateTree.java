@@ -43,7 +43,7 @@ public class UpdateTree {
   private static final long oneHourInMillis = Duration.ofHours(1).toMillis();
   private static final long oneMinuteInMillis = Duration.ofMinutes(1).toMillis();
   private final Node root;
-  private final MirrorPaths config;
+  final MirrorPaths config;
 
   public static NodeType getType(Update u) {
     return u == null ? null : isDirectory(u) ? NodeType.Directory : isSymlink(u) ? NodeType.Symlink : NodeType.File;
@@ -170,18 +170,6 @@ public class UpdateTree {
       current = current.getChild(part.getFileName().toString());
     }
     return current;
-  }
-
-  boolean shouldDebug(Node node) {
-    // avoid calcing the path if we have no prefixes anyway
-    if (config.debugPrefixes.isEmpty()) {
-      return false;
-    }
-    return shouldDebug(node.getPath());
-  }
-
-  boolean shouldDebug(String path) {
-    return config.debugPrefixes.stream().anyMatch(prefix -> path.startsWith(prefix));
   }
 
   @VisibleForTesting
@@ -331,7 +319,7 @@ public class UpdateTree {
       }
       // temporarily calc our path
       String path = getPath();
-      boolean debug = shouldDebug(path);
+      boolean debug = config.shouldDebug(path);
       boolean gitIgnored = parents().anyMatch(node -> {
         if (node.shouldIgnore()) {
           if (debug) {
@@ -352,8 +340,8 @@ public class UpdateTree {
         }
       });
       // besides parent .gitignores, also use our extra includes/excludes
-      boolean extraIncluded = config.includes.matches(path, isDirectory());
-      boolean extraExcluded = config.excludes.matches(path, isDirectory());
+      boolean extraIncluded = config.isIncluded(path, isDirectory());
+      boolean extraExcluded = config.isExcluded(path, isDirectory());
       shouldIgnore = (gitIgnored || extraExcluded) && !extraIncluded;
       if (debug) {
         log.info(path + " gitIgnored=" + gitIgnored + ", extraIncluded=" + extraIncluded + ", extraExcluded=" + extraExcluded);
