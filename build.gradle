@@ -25,7 +25,7 @@ dependencies {
   compile "io.grpc:grpc-stub:${grpcVersion}"
   compile "ch.qos.logback:logback-classic:1.2.2"
   compile "org.slf4j:jul-to-slf4j:1.7.25"
-  compile 'com.github.jnr:jnr-posix:3.0.34'
+  compile 'com.github.jnr:jnr-posix:3.0.43'
   compile 'com.github.jnr:jnr-unixsocket:0.12'
   compile 'org.eclipse.jgit:org.eclipse.jgit:4.2.0.201601211800-r'
   compile 'commons-io:commons-io:2.4'

@@ -1,0 +1,5 @@
+eclipse.preferences.version=1
+general.enableProjectSettings=true
+paths.directoryPaths=${workspace_loc\:/${project}/build/extracted-include-protos/main}
+paths.filesInMultipleDirectories=true
+paths.filesInOneDirectoryOnly=false
