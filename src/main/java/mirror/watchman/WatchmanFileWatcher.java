@@ -144,7 +144,7 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private void putFile(Map<String, Object> file) {
     int mode = ((Number) file.get("mode")).intValue();
-    long mtime = ((Number) file.get("mtime")).longValue() * 1000;
+    long mtime = ((Number) file.get("mtime_ms")).longValue();
     resetIfInterrupted(() -> {
       Update.Builder ub = Update
         .newBuilder()
@@ -168,7 +168,9 @@ public class WatchmanFileWatcher implements FileWatcher {
   private void startWatchAndInitialFind() throws IOException {
     // This will be a no-op after the first execution, as we don't currently clean up on our watches.
     wm.query("watch", root.toString());
-    Map<String, Object> r = wm.query("find", root.toString());
+    Map<String, Object> params = new HashMap<>();
+    params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
+    Map<String, Object> r = wm.query("query", root.toString(), params);
     initialScanClock = (String) r.get("clock");
     putFiles(r);
   }
@@ -176,7 +178,7 @@ public class WatchmanFileWatcher implements FileWatcher {
   private void startSubscription() throws IOException {
     Map<String, Object> params = new HashMap<>();
     params.put("since", initialScanClock);
-    params.put("fields", newArrayList("name", "exists", "mode", "mtime"));
+    params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     wm.query("subscribe", root.toString(), "mirror", params);
   }
 
