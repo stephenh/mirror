@@ -2,6 +2,7 @@ package mirror.watchman;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static mirror.Utils.resetIfInterrupted;
+import static org.apache.commons.lang3.StringUtils.removeEnd;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,10 +14,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,14 +41,17 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(WatchmanFileWatcher.class);
   private final WatchmanFactory factory;
-  private final Path root;
+  private final Path ourRoot;
+  // we may ask to watch /home/foo/bar, but watchman decides to watch /home/foo
+  private volatile String watchmanRoot;
+  private volatile Optional<String> watchmanPrefix;
   private volatile Watchman wm;
   private volatile BlockingQueue<Update> queue;
   private volatile String initialScanClock;
 
   /** Main method for doing manual debugging/observation of behavior. */
   public static void main(String[] args) throws Exception {
-    LoggingConfig.init();
+    LoggingConfig.initWithTracing();
     TaskFactory f = new ThreadBasedTaskFactory();
     Path testDirectory = Paths.get("/home/stephen/dir1");
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
@@ -66,7 +72,7 @@ public class WatchmanFileWatcher implements FileWatcher {
     try {
       // If we get passed /home/foo/./path watchman's path sensitiveness check complains,
       // so turn it into /home/foo/path.
-      this.root = root.toFile().getCanonicalFile().toPath();
+      this.ourRoot = root.toFile().getCanonicalFile().toPath();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -110,7 +116,7 @@ public class WatchmanFileWatcher implements FileWatcher {
         wm.close();
         // try resetting the overflow
         wm = factory.newWatchman();
-        wm.query("watch-del", root.toString());
+        wm.query("watch-del", watchmanRoot);
         startWatchAndInitialFind();
         startSubscription();
       } catch (Exception e2) {
@@ -154,6 +160,9 @@ public class WatchmanFileWatcher implements FileWatcher {
         .setDirectory(isFileStatType(mode, FileStat.S_IFDIR))
         .setExecutable(isExecutable(mode))
         .setLocal(true);
+      watchmanPrefix.ifPresent(prefix -> {
+        ub.setPath(StringUtils.removeStart(ub.getPath(), prefix));
+      });
       readSymlinkTargetIfNeeded(ub, mode);
       setIgnoreStringIfNeeded(ub);
       clearModTimeIfADelete(ub);
@@ -167,10 +176,18 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private void startWatchAndInitialFind() throws IOException {
     // This will be a no-op after the first execution, as we don't currently clean up on our watches.
-    wm.query("watch", root.toString());
+    Map<String, Object> result = wm.query("watch-project", ourRoot.toString());
+    watchmanRoot = (String) result.get("watch");
+    // Add a slash on the end so that when we build paths, and strip the prefix, we get back "foo.txt" instead of "/foo.txt"
+    watchmanPrefix = Optional.ofNullable((String) result.get("relative_path")).map(p -> p + "/");
+    log.info("Watchman root is {}", watchmanRoot);
+
     Map<String, Object> params = new HashMap<>();
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
-    Map<String, Object> r = wm.query("query", root.toString(), params);
+    watchmanPrefix.ifPresent(prefix -> {
+      params.put("path", newArrayList(removeEnd(prefix, "/")));
+    });
+    Map<String, Object> r = wm.query("query", watchmanRoot, params);
     initialScanClock = (String) r.get("clock");
     putFiles(r);
   }
@@ -179,7 +196,10 @@ public class WatchmanFileWatcher implements FileWatcher {
     Map<String, Object> params = new HashMap<>();
     params.put("since", initialScanClock);
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
-    wm.query("subscribe", root.toString(), "mirror", params);
+    watchmanPrefix.ifPresent(prefix -> {
+      params.put("expression", newArrayList("dirname", removeEnd(prefix, "/")));
+    });
+    wm.query("subscribe", watchmanRoot, "mirror", params);
   }
 
   // The modtime from watchman is the pre-deletion modtime; to be
@@ -195,7 +215,7 @@ public class WatchmanFileWatcher implements FileWatcher {
   private void setIgnoreStringIfNeeded(Update.Builder ub) {
     if (ub.getPath().endsWith(".gitignore")) {
       try {
-        Path path = root.resolve(ub.getPath());
+        Path path = ourRoot.resolve(ub.getPath());
         ub.setIgnoreString(FileUtils.readFileToString(path.toFile()));
       } catch (IOException e) {
         // ignore as the file probably disappeared
@@ -212,7 +232,7 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private void readSymlinkTarget(Update.Builder ub) {
     try {
-      Path path = root.resolve(ub.getPath());
+      Path path = ourRoot.resolve(ub.getPath());
       Path symlink = Files.readSymbolicLink(path);
       String targetPath;
       if (symlink.isAbsolute()) {

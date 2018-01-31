@@ -66,6 +66,7 @@ public class LoggingConfig {
   public synchronized static void initWithTracing() {
     init();
     getRootLogger().setLevel(Level.TRACE);
+    getLogger("mirror").setLevel(Level.TRACE);
   }
 
   public synchronized static void enableLogFile() {

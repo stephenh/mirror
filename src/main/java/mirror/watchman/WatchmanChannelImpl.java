@@ -82,7 +82,7 @@ public class WatchmanChannelImpl implements Watchman {
   }
 
   public Map<String, Object> query(Object... query) throws IOException {
-    log.debug("Sending query: {}", query);
+    log.debug("Sending query: {}", Arrays.toString(query));
     serializer.serializeToStream(Arrays.asList(query), input);
     return read();
   }
