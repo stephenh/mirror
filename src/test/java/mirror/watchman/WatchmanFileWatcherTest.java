@@ -33,7 +33,8 @@ import mirror.Update;
  */
 public class WatchmanFileWatcherTest {
 
-  private final Path root = Paths.get("/");
+  private static final String absRoot = "/home/someuser/someroot";
+  private static final Path root = Paths.get(absRoot);
   private Watchman wm = null;
   private WatchmanFactory factory;
   private BlockingQueue<Update> queue = new ArrayBlockingQueue<Update>(100);
@@ -44,7 +45,7 @@ public class WatchmanFileWatcherTest {
     queryParams.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     factory = () -> {
       wm = mock(Watchman.class);
-      when(wm.query("query", "/", queryParams)).thenReturn(ImmutableMap.of("clock", "foo", "files", new ArrayList<>()));
+      when(wm.query("query", absRoot, queryParams)).thenReturn(ImmutableMap.of("clock", "foo", "files", new ArrayList<>()));
       return wm;
     };
   }
@@ -64,11 +65,11 @@ public class WatchmanFileWatcherTest {
     // and we closed the previous wm connection
     verify(originalWm).close();
     // and deleted the old watch
-    verify(wm).query("watch-del", "/");
+    verify(wm).query("watch-del", absRoot);
     // and re-scanned the new wm connection
-    verify(wm).query("watch", "/");
-    verify(wm).query("query", "/", queryParams);
-    verify(wm).query(eq("subscribe"), eq("/"), eq("mirror"), anyMap());
+    verify(wm).query("watch", absRoot);
+    verify(wm).query("query", absRoot, queryParams);
+    verify(wm).query(eq("subscribe"), eq(absRoot), eq("mirror"), anyMap());
     verifyNoMoreInteractions(wm);
   }
 
