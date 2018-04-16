@@ -1,6 +1,7 @@
 package mirror;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import mirror.UpdateTree.Node;
@@ -14,6 +15,10 @@ public class MirrorPaths {
   private final PathRules excludes;
   private final boolean debugAll;
   private final List<String> debugPrefixes;
+
+  public static MirrorPaths forTesting(Path local) {
+    return new MirrorPaths(local, null, new PathRules(), new PathRules(), false, new ArrayList<>());
+  }
 
   public MirrorPaths(Path root, Path remoteRoot, PathRules includes, PathRules excludes, boolean debugAll, List<String> debugPrefixes) {
     this.root = root;

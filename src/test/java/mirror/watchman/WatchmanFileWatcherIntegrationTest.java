@@ -19,6 +19,7 @@ import org.junit.Test;
 import joist.util.Execute;
 import mirror.FileWatcher;
 import mirror.LoggingConfig;
+import mirror.MirrorPaths;
 import mirror.Update;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
@@ -49,7 +50,7 @@ public class WatchmanFileWatcherIntegrationTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), dir.toPath().toAbsolutePath(), queue);
+    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), MirrorPaths.forTesting(dir.toPath().toAbsolutePath()), queue);
     watcher.performInitialScan();
     taskFactory.runTask(watcher);
     sleep();
@@ -99,17 +100,18 @@ public class WatchmanFileWatcherIntegrationTest {
     // then we see:
     assertThat(
       Seq.seq(drainUpdates()).map(u -> u.getPath() + (u.getDelete() ? " delete" : "")).toString(","),
-      is(String.join( //
-        ",",
-        "dir1/dir12/foo.txt", // create
-        "dir1/dir12", // create
-        "dir1", // create
-        "dir2/dir12/foo.txt", // create
-        "dir2/dir12", // create
-        "dir1 delete", // delete
-        "dir1/dir12/foo.txt delete", // delete
-        "dir1/dir12 delete", // delete
-        "dir2"))); // create
+      is(
+        String.join( //
+          ",",
+          "dir1/dir12/foo.txt", // create
+          "dir1/dir12", // create
+          "dir1", // create
+          "dir2/dir12/foo.txt", // create
+          "dir2/dir12", // create
+          "dir1 delete", // delete
+          "dir1/dir12/foo.txt delete", // delete
+          "dir1/dir12 delete", // delete
+          "dir2"))); // create
   }
 
   @Test

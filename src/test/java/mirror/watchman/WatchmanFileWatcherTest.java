@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import mirror.MirrorPaths;
 import mirror.Update;
 
 /**
@@ -42,7 +43,7 @@ public class WatchmanFileWatcherTest {
   public void shouldHandleWatchProjectReturningAPrefix() throws Exception {
     // given a file watcher that has been initialized
     setupWatchmanWithRelativePath("/home");
-    WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, root, queue);
+    WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, MirrorPaths.forTesting(root), queue);
     fw.performInitialScan();
     fw.onStart();
     verify(wm).query("watch-project", absRoot);
@@ -65,7 +66,7 @@ public class WatchmanFileWatcherTest {
   public void shouldRestartWatchmanWhenOverflowHappens() throws Exception {
     // given a file watcher that has been initialized
     setupWatchmanForNoRelativePath();
-    WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, root, queue);
+    WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, MirrorPaths.forTesting(root), queue);
     fw.performInitialScan();
     fw.onStart();
     // when a read gets an overflow

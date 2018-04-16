@@ -29,6 +29,7 @@ import com.google.protobuf.TextFormat;
 import jnr.posix.FileStat;
 import mirror.FileWatcher;
 import mirror.LoggingConfig;
+import mirror.MirrorPaths;
 import mirror.Update;
 import mirror.UpdateTree;
 import mirror.tasks.TaskFactory;
@@ -40,6 +41,7 @@ import mirror.tasks.ThreadBasedTaskFactory;
 public class WatchmanFileWatcher implements FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(WatchmanFileWatcher.class);
+  private final MirrorPaths config;
   private final WatchmanFactory factory;
   private final Path ourRoot;
   // we may ask to watch /home/foo/bar, but watchman decides to watch /home/foo
@@ -55,7 +57,8 @@ public class WatchmanFileWatcher implements FileWatcher {
     TaskFactory f = new ThreadBasedTaskFactory();
     Path testDirectory = Paths.get("/home/stephen/dir1");
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
-    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), testDirectory, queue);
+    MirrorPaths config = MirrorPaths.forTesting(testDirectory);
+    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), config, queue);
     log.info("Starting performInitialScan");
     List<Update> initialScan = w.performInitialScan();
     initialScan.forEach(node -> {
@@ -67,12 +70,13 @@ public class WatchmanFileWatcher implements FileWatcher {
     }
   }
 
-  public WatchmanFileWatcher(WatchmanFactory factory, Path root, BlockingQueue<Update> queue) {
+  public WatchmanFileWatcher(WatchmanFactory factory, MirrorPaths config, BlockingQueue<Update> queue) {
+    this.config = config;
     this.factory = factory;
     try {
       // If we get passed /home/foo/./path watchman's path sensitiveness check complains,
       // so turn it into /home/foo/path.
-      this.ourRoot = root.toFile().getCanonicalFile().toPath();
+      this.ourRoot = config.root.toFile().getCanonicalFile().toPath();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -168,7 +172,10 @@ public class WatchmanFileWatcher implements FileWatcher {
       clearModTimeIfADelete(ub);
       Update u = ub.build();
       if (log.isTraceEnabled()) {
-        log.trace("Putting: " + TextFormat.shortDebugString(u));
+        log.trace("Queueing: " + TextFormat.shortDebugString(u));
+      }
+      if (config != null && config.shouldDebug(ub.getPath())) {
+        log.info("Queueing: " + TextFormat.shortDebugString(u));
       }
       queue.put(u);
     });

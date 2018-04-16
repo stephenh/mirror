@@ -41,7 +41,7 @@ public class MirrorSession {
 
   public MirrorSession(TaskFactory taskFactory, MirrorPaths paths, FileAccess fileAccess, FileWatcherFactory fileWatcherFactory) {
     this.fileAccess = fileAccess;
-    this.fileWatcher = fileWatcherFactory.newWatcher(paths.root.toAbsolutePath(), queues.incomingQueue);
+    this.fileWatcher = fileWatcherFactory.newWatcher(paths, queues.incomingQueue);
     this.tree = UpdateTree.newRoot(paths);
 
     // Run all our tasks in a pool so they are terminated together
