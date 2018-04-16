@@ -399,10 +399,18 @@ public class UpdateTree {
   private long sanityCheckTimestamp(long millis) {
     long now = System.currentTimeMillis();
     if (millis > now + oneHourInMillis) {
-      return now - oneMinuteInMillis;
-    } else {
-      return millis;
+      millis = now - oneMinuteInMillis;
     }
+    // Due to a Java 8 bug, Files.getLastModifiedTime is truncated to seconds. This
+    // means watchman might return a file time of 1.234 seconds, but when we re-read
+    // the time with Files.getLastModifiedTime (which we only due for symlinks, to
+    // ensure LinkOption.NOFOLLOW_LINKS is used), we'll truncate it to 1 seconds.
+    //
+    // So, for now, continue doing all time stamp comparisons in truncated millis.
+    // (For a long time we truncated millis directly in WatchmanFileWatcher anyway.)
+    //
+    // https://stackoverflow.com/questions/24804618/get-file-mtime-with-millisecond-resolution-from-java
+    return millis / 1000 * 1000;
   }
 
   /** Visits nodes in the tree, in breadth-first order, continuing if {@visitor} returns true. */
