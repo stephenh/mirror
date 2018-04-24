@@ -39,6 +39,7 @@ import com.google.protobuf.TextFormat;
 public class UpdateTree {
 
   public static final ByteString initialSyncMarker = ByteString.copyFrom("initialSyncMarker", Charsets.UTF_8);
+  private static final int minimumMillisPrecision = 1000;
   private static final Logger log = LoggerFactory.getLogger(UpdateTree.class);
   private static final long oneHourInMillis = Duration.ofHours(1).toMillis();
   private static final long oneMinuteInMillis = Duration.ofMinutes(1).toMillis();
@@ -221,7 +222,7 @@ public class UpdateTree {
       // The best we can do for guessing the mod time of deletions
       // is to take the old, known mod time and just tick 1
       if (local != null && this.local != null && local.getDelete() && local.getModTime() == 0L) {
-        int tick = this.local.getDelete() ? 0 : 1;
+        int tick = this.local.getDelete() ? 0 : minimumMillisPrecision;
         local = local.toBuilder().setModTime(this.local.getModTime() + tick).build();
       }
       boolean wasDirectory = this.local != null && this.local.getDirectory();
@@ -406,11 +407,16 @@ public class UpdateTree {
     // the time with Files.getLastModifiedTime (which we only due for symlinks, to
     // ensure LinkOption.NOFOLLOW_LINKS is used), we'll truncate it to 1 seconds.
     //
+    // This means our local symlink would seem perpetually out-of-date compared to
+    // the remote symlink, and so keep getting synced.
+    //
     // So, for now, continue doing all time stamp comparisons in truncated millis.
     // (For a long time we truncated millis directly in WatchmanFileWatcher anyway.)
     //
     // https://stackoverflow.com/questions/24804618/get-file-mtime-with-millisecond-resolution-from-java
-    return millis / 1000 * 1000;
+    //
+    // Although a lot of unit tests use tiny 1-5 millisecond values, so don't round those.
+    return (millis < minimumMillisPrecision) ? millis : millis / minimumMillisPrecision * minimumMillisPrecision;
   }
 
   /** Visits nodes in the tree, in breadth-first order, continuing if {@visitor} returns true. */
