@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 ./gradlew clean check shadowJar \
   && cp build/libs/mirror-all.jar ~/ \
   && scp build/libs/mirror-all.jar sh10:~/ \
