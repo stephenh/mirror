@@ -243,7 +243,7 @@ public class SyncLogicTest {
     assertThat(outgoing.values.size(), is(1));
     // and then file is re-created
     fileAccess.write(fooDotTxt, ByteBuffer.wrap(data));
-    fileAccess.setModifiedTime(fooDotTxt, 3L);
+    fileAccess.setModifiedTime(fooDotTxt, 2000L);
     changes.add(Update.newBuilder().setPath("foo.txt").setData(ByteString.copyFrom(data)).setLocal(true).build());
     poll();
     // then we issue both the delete+create

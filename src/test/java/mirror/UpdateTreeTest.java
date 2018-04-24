@@ -97,7 +97,7 @@ public class UpdateTreeTest {
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
     assertThat(root.getChildren().get(0).getLocal().getDelete(), is(true));
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(2L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
   }
 
   @Test
@@ -136,9 +136,9 @@ public class UpdateTreeTest {
     root.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(2L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(2L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
   }
 
   @Test(expected = IllegalArgumentException.class)
