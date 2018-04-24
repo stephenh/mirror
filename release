@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./gradlew check shadowJar \
+./gradlew clean check shadowJar \
   && cp build/libs/mirror-all.jar ~/ \
   && scp build/libs/mirror-all.jar sh10:~/ \
   && scp build/libs/mirror-all.jar joist.ws:/var/www/joist.repo/
