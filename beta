@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./gradlew shadowJar \
+  && cp build/libs/mirror-all.jar ~/ \
+  && scp build/libs/mirror-all.jar sh10:~/
+
