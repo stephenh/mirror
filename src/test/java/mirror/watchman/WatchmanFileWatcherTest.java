@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -32,7 +33,7 @@ import mirror.Update;
  */
 public class WatchmanFileWatcherTest {
 
-  private static final String absRoot = "/home/someuser/someroot";
+  private static final String absRoot = "/foo/bar/zaz";
   private static final Path root = Paths.get(absRoot);
   private Watchman wm = null;
   private WatchmanFactory factory;
@@ -41,31 +42,25 @@ public class WatchmanFileWatcherTest {
 
   @Test
   public void shouldHandleWatchProjectReturningAPrefix() throws Exception {
-    // given a file watcher that has been initialized
-    setupWatchmanWithRelativePath("/home");
+    // given we watch /foo/bar/zaz and /foo is already the watch root
+    setupWatchman("/foo", Optional.of("bar/zaz"));
     WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, MirrorPaths.forTesting(root), queue);
     fw.performInitialScan();
     fw.onStart();
     verify(wm).query("watch-project", absRoot);
-    verify(wm).query("query", "/home", queryParams);
+    verify(wm).query("query", "/foo", queryParams);
     verify(wm).query(
       "subscribe",
-      "/home",
+      "/foo",
       "mirror",
-      ImmutableMap.of(
-        "expression",
-        newArrayList("dirname", "someuser/someroot"),
-        "fields",
-        newArrayList("name", "exists", "mode", "mtime_ms"),
-        "since",
-        "foo"));
+      ImmutableMap.of("relative_root", "bar/zaz", "fields", newArrayList("name", "exists", "mode", "mtime_ms"), "since", "foo"));
     verifyNoMoreInteractions(wm);
   }
 
   @Test
   public void shouldRestartWatchmanWhenOverflowHappens() throws Exception {
-    // given a file watcher that has been initialized
-    setupWatchmanForNoRelativePath();
+    // given we watch /foo/bar/zaz and that is our watch root
+    setupWatchman("/foo/bar/zaz", Optional.empty());
     WatchmanFileWatcher fw = new WatchmanFileWatcher(factory, MirrorPaths.forTesting(root), queue);
     fw.performInitialScan();
     fw.onStart();
@@ -86,22 +81,20 @@ public class WatchmanFileWatcherTest {
     verifyNoMoreInteractions(wm);
   }
 
-  private void setupWatchmanForNoRelativePath() {
+  private void setupWatchman(String watchRoot, Optional<String> relativePath) {
     factory = () -> {
+      // I hate mocks
       wm = mock(Watchman.class);
-      when(wm.query("watch-project", absRoot)).thenReturn(ImmutableMap.of("watch", absRoot));
+      // mock the watch-project response
+      Map<String, Object> watchResponse = relativePath.isPresent() // 
+        ? ImmutableMap.of("watch", watchRoot, "relative_path", relativePath.get()) //
+        : ImmutableMap.of("watch", watchRoot);
+      when(wm.query("watch-project", absRoot)).thenReturn(watchResponse);
+      // mock the query response
       queryParams.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
-      when(wm.query("query", absRoot, queryParams)).thenReturn(ImmutableMap.of("clock", "foo", "files", new ArrayList<>()));
-      return wm;
-    };
-  }
-
-  private void setupWatchmanWithRelativePath(String watchRoot) {
-    factory = () -> {
-      wm = mock(Watchman.class);
-      when(wm.query("watch-project", absRoot)).thenReturn(ImmutableMap.of("watch", watchRoot, "relative_path", "someuser/someroot"));
-      queryParams.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
-      queryParams.put("path", newArrayList("someuser/someroot"));
+      if (relativePath.isPresent()) {
+        queryParams.put("relative_root", relativePath.get());
+      }
       when(wm.query("query", watchRoot, queryParams)).thenReturn(ImmutableMap.of("clock", "foo", "files", new ArrayList<>()));
       return wm;
     };
