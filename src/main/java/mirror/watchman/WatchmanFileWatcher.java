@@ -2,7 +2,6 @@ package mirror.watchman;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static mirror.Utils.resetIfInterrupted;
-import static org.apache.commons.lang3.StringUtils.removeEnd;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +18,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
