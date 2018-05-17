@@ -164,9 +164,6 @@ public class WatchmanFileWatcher implements FileWatcher {
         .setDirectory(isFileStatType(mode, FileStat.S_IFDIR))
         .setExecutable(isExecutable(mode))
         .setLocal(true);
-      watchmanPrefix.ifPresent(prefix -> {
-        ub.setPath(StringUtils.removeStart(ub.getPath(), prefix));
-      });
       readSymlinkTargetIfNeeded(ub, mode);
       setIgnoreStringIfNeeded(ub);
       clearModTimeIfADelete(ub);
@@ -185,14 +182,13 @@ public class WatchmanFileWatcher implements FileWatcher {
     // This will be a no-op after the first execution, as we don't currently clean up on our watches.
     Map<String, Object> result = wm.query("watch-project", ourRoot.toString());
     watchmanRoot = (String) result.get("watch");
-    // Add a slash on the end so that when we build paths, and strip the prefix, we get back "foo.txt" instead of "/foo.txt"
-    watchmanPrefix = Optional.ofNullable((String) result.get("relative_path")).map(p -> p + "/");
+    watchmanPrefix = Optional.ofNullable((String) result.get("relative_path"));
     log.info("Watchman root is {}", watchmanRoot);
 
     Map<String, Object> params = new HashMap<>();
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     watchmanPrefix.ifPresent(prefix -> {
-      params.put("path", newArrayList(removeEnd(prefix, "/")));
+      params.put("relative_root",  prefix);
     });
     Map<String, Object> r = wm.query("query", watchmanRoot, params);
     initialScanClock = (String) r.get("clock");
@@ -204,7 +200,7 @@ public class WatchmanFileWatcher implements FileWatcher {
     params.put("since", initialScanClock);
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     watchmanPrefix.ifPresent(prefix -> {
-      params.put("expression", newArrayList("dirname", removeEnd(prefix, "/")));
+      params.put("relative_root", prefix);
     });
     wm.query("subscribe", watchmanRoot, "mirror", params);
   }

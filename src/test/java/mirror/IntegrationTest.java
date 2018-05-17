@@ -41,6 +41,8 @@ public class IntegrationTest {
     integrationTestDir.mkdirs();
     root1.mkdirs();
     root2.mkdirs();
+    // FileUtils.touch(new File(root1, ".watchmanconfig"));
+    // FileUtils.touch(new File(root2, ".watchmanconfig"));
   }
 
   @After
