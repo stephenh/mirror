@@ -12,6 +12,8 @@ before_install:
   - ./configure
   - make
   - sudo make install
+  - pwd
+  - cd ..
 cache:
   directories:
     - $HOME/.gradle/caches/
