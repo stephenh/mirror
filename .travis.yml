@@ -1,10 +1,17 @@
 language: java
-sudo: false
+sudo: true
 jdk:
   - oraclejdk8
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+before_install:
+  - curl -sL 'https://github.com/facebook/watchman/archive/v4.9.0.tar.gz' | tar xzf -
+  - cd watchman-*
+  - ./autogen.sh
+  - ./configure
+  - make
+  - sudo make install
 cache:
   directories:
     - $HOME/.gradle/caches/
