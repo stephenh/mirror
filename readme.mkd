@@ -1,4 +1,6 @@
 
+[![Build Status](https://travis-ci.org/stephenh/mirror.svg?branch=master)](https://travis-ci.org/stephenh/mirror)
+
 Primary Workflow
 ================
 
