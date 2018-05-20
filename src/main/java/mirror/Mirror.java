@@ -105,7 +105,7 @@ public class Mirror {
 
   @Command(name = "server", description = "starts a server for the remote client to connect to")
   public static class MirrorServerCommand extends BaseCommand {
-    @Option(name = { "-p", "--post" }, description = "port to listen on, default: " + defaultPort)
+    @Option(name = { "-p", "--port" }, description = "port to listen on, default: " + defaultPort)
     public int port = defaultPort;
 
     @Override
@@ -145,7 +145,7 @@ public class Mirror {
     @Option(name = { "-h", "--host" }, description = "host name of remote server to connect to")
     public String host;
 
-    @Option(name = { "-p", "--post" }, description = "port remote server to connect to, default: " + defaultPort)
+    @Option(name = { "-p", "--port" }, description = "port remote server to connect to, default: " + defaultPort)
     public int port = defaultPort;
 
     @Option(name = { "-l", "--local-root" }, description = "path on the local side to sync, e.g. ./code; either absolute or relative to the directory mirror client was invoked in")
