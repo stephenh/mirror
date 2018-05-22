@@ -32,6 +32,6 @@ RUN curl -sLo /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/downl
   chmod +x /usr/local/bin/gosu
 
 WORKDIR "/opt/mirror"
-ADD docker-entrypoint.sh docker-entrypoint.sh
+ADD docker/docker-entrypoint.sh docker-entrypoint.sh
 RUN chmod a+x docker-entrypoint.sh
 ENTRYPOINT ["./docker-entrypoint.sh"]
