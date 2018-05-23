@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+U=${U:-$(id -u)}
+G=${G:-$(id -g)}
+
 if ! (getent passwd "${U}" >/dev/null); then
   useradd -u "${U}" "user${U}"
 fi
