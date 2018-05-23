@@ -1,5 +1,6 @@
-FROM debian:9
+FROM debian:9 as mirror-builder
 
+# Install dependencies
 RUN apt-get update -q && apt-get install -qy \
   libssl-dev \
   autoconf \
@@ -12,7 +13,8 @@ RUN apt-get update -q && apt-get install -qy \
   openjdk-8-jdk-headless \
   git
 
-RUN cd $(mktemp -dt) && \
+# Install 'watchman'
+RUN cd /tmp && \
   curl -sL 'https://github.com/facebook/watchman/archive/v4.9.0.tar.gz' | tar xzf - && \
   cd watchman-* && \
   ./autogen.sh && \
@@ -20,18 +22,30 @@ RUN cd $(mktemp -dt) && \
   make && \
   make install
 
-RUN cd $(mktemp -dt) && \
-  curl -sL 'https://github.com/stephenh/mirror/archive/1.1.15.tar.gz' | tar xzf - && \
-  cd mirror-* && \
-  ./gradlew shadowJar && \
-  mkdir -p /opt/mirror && \
-  cp ./mirror /opt/mirror/ && \
-  cp ./build/libs/mirror-*-all.jar /opt/mirror/mirror-all.jar
-
+# Install 'gosu'
 RUN curl -sLo /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-$(dpkg --print-architecture)" && \
   chmod +x /usr/local/bin/gosu
 
+# Build 'mirror'
+COPY . /tmp/mirror
+WORKDIR /tmp/mirror
+RUN ./gradlew shadowJar
+
+
+# ------------------------------------------------------------------- #
+
+
+FROM debian:9
+
+RUN apt-get update -q && apt-get install -qy \
+  openjdk-8-jre-headless
+
+COPY --from=mirror-builder /usr/local/bin/gosu /usr/local/bin/
+COPY --from=mirror-builder /usr/local/bin/watchman /usr/local/bin/
+RUN install -d -m 777 /usr/local/var/run/watchman
+
 WORKDIR "/opt/mirror"
+COPY --from=mirror-builder /tmp/mirror/mirror ./
+COPY --from=mirror-builder /tmp/mirror/build/libs/mirror-all.jar ./
 ADD docker/docker-entrypoint.sh docker-entrypoint.sh
-RUN chmod a+x docker-entrypoint.sh
 ENTRYPOINT ["./docker-entrypoint.sh"]
