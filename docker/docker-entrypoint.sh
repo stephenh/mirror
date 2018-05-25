@@ -12,4 +12,4 @@ if ! (getent group "${G}" >/dev/null); then
   groupadd -g "${G}" "group${G}"
 fi
 
-exec gosu "${U}:${G}" "$@"
+exec gosu "${U}:${G}" /opt/mirror/mirror "$@"
