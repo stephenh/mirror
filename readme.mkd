@@ -201,21 +201,18 @@ usually you'll want to mount some directory *into* the container to make it avai
 synchronisation.
 To mount the current working directory as `/data` into the container, pass `-v $(pwd):/data` to docker.
 
-The image accepts two environment variables to control the owner of the files that *mirror* will create:
-- `$U`: The UID of the user for creating files.
-- `$G`: The GID of the group for creating files.
-
-So for creating files with the current user/group, pass `-eU=$(id -u) -eG=$(id -g)` to docker, when starting the container.
+By default docker runs processes as `root`, which results in all written files owned by `root` on the host system.
+To run the process as your current user, pass `-u $(id -u):$(id -g)` to docker.
 
 To start a **_mirror_ server** available on port 49172, with the current working directory mounted at `/data` run:
 ```bash
-docker run --rm --init -it -eU=$(id -u) -eG=$(id -g) -v $(pwd):/data -p 49172:49172 \
+docker run --rm --init -it -u $(id -u):$(id -g) -v $(pwd):/data -p 49172:49172 \
   quay.io/stephenh/mirror server
 ```
 
 To start a **_mirror_ client** with the current working directory mounted at `/data` (and syncing the local `/data` with the remote `/data`) run:
 ```bash
-docker run --rm --init -it -eU=$(id -u) -eG=$(id -g) -v $(pwd):/data \
+docker run --rm --init -it -u $(id -u):$(id -g) -v $(pwd):/data \
   quay.io/stephenh/mirror client \
   --local-root /data \
   --remote-root /data \
