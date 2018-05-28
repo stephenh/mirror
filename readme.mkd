@@ -1,5 +1,6 @@
 
 [![Build Status](https://travis-ci.org/stephenh/mirror.svg?branch=master)](https://travis-ci.org/stephenh/mirror)
+[![Docker Repository on Quay](https://quay.io/repository/stephenh/mirror/status "Docker Repository on Quay")](https://quay.io/repository/stephenh/mirror)
 
 Primary Workflow
 ================
@@ -189,6 +190,34 @@ If you need secure communication, e.g. are syncing across the open Internet with
 * On your client, run mirror with `./mirror client -h localhost ...`
 
 This will have the mirror client send traffic to the `localhost:49172` port, which SSH will securely tunnel to your remote host.
+
+Running with Docker
+===================
+
+A docker image is available at [quay.io/stephenh/mirror](https://quay.io/stephenh/mirror).
+
+Since the container will have its own filesystem separate from the host's filesystem,
+usually you'll want to mount some directory *into* the container to make it available for
+synchronisation.
+To mount the current working directory as `/data` into the container, pass `-v $(pwd):/data` to docker.
+
+By default docker runs processes as `root`, which results in all written files owned by `root` on the host system.
+To run the process as your current user, pass `-u $(id -u):$(id -g)` to docker.
+
+To start a **_mirror_ server** available on port 49172, with the current working directory mounted at `/data` run:
+```bash
+docker run --rm --init -it -u $(id -u):$(id -g) -v $(pwd):/data -p 49172:49172 \
+  quay.io/stephenh/mirror server
+```
+
+To start a **_mirror_ client** with the current working directory mounted at `/data` (and syncing the local `/data` with the remote `/data`) run:
+```bash
+docker run --rm --init -it -u $(id -u):$(id -g) -v $(pwd):/data \
+  quay.io/stephenh/mirror client \
+  --local-root /data \
+  --remote-root /data \
+  --host <SERVER-HOST>
+```
 
 Compiling/Contributing
 ======================
