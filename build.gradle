@@ -5,6 +5,7 @@ plugins {
   id "idea"
   id "com.google.protobuf" version "0.8.4"
   id 'com.github.johnrengelman.shadow' version '2.0.0'
+  id "com.github.ben-manes.versions" version "0.20.0"
 }
 
 def grpcVersion = '1.13.1'
