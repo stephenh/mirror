@@ -1,5 +1,6 @@
 package mirror;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
@@ -330,7 +331,7 @@ public class WatchServiceFileWatcher implements TaskLogic, FileWatcher {
     // In theory we should read this in the debouncer, but performInitialScan
     // does not go through that codepath
     if (file.getFileName().toString().equals(".gitignore")) {
-      b.setIgnoreString(FileUtils.readFileToString(file.toFile()));
+      b.setIgnoreString(FileUtils.readFileToString(file.toFile(), UTF_8));
     }
     put(queue, b.build());
   }

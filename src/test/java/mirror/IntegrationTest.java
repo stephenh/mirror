@@ -63,9 +63,9 @@ public class IntegrationTest {
   @Test
   public void testSimpleFile() throws Exception {
     startMirror();
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
     sleep();
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
   }
 
   @Test
@@ -80,8 +80,8 @@ public class IntegrationTest {
   @Test
   public void testDeleteSimpleFile() throws Exception {
     // given a file that exists in both root1/root2
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
     startMirror();
     // when one file is deleted
     new File(root1, "foo.txt").delete();
@@ -95,7 +95,7 @@ public class IntegrationTest {
     // given a file within a directory that exists in both root1/root2
     for (File root : new File[] { root1, root2 }) {
       new File(root, "dir").mkdir();
-      FileUtils.writeStringToFile(new File(root, "dir/foo.txt"), "abc");
+      TestUtils.writeStringToFile(new File(root, "dir/foo.txt"), "abc");
     }
     startMirror();
     // when the directory is deleted
@@ -110,21 +110,21 @@ public class IntegrationTest {
     startMirror();
     // given a file that is created in a sub directory
     new File(root1, "dir").mkdir();
-    FileUtils.writeStringToFile(new File(root1, "dir/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "dir/foo.txt"), "abc");
     sleep();
     // then it's copied remotely
-    assertThat(FileUtils.readFileToString(new File(root2, "dir/foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "dir/foo.txt")), is("abc"));
   }
 
   @Test
   public void testCreateExecutableFile() throws Exception {
     // given a file that is executable
-    FileUtils.writeStringToFile(new File(root1, "foo.sh"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.sh"), "abc");
     NativeFileAccessUtils.setExecutable(root1.toPath().resolve("foo.sh"));
     startMirror();
     sleep();
     // then it's copied remotely
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.sh")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.sh")), is("abc"));
     // and made executable
     assertThat(NativeFileAccessUtils.isExecutable(root2.toPath().resolve("foo.sh")), is(true));
   }
@@ -133,15 +133,15 @@ public class IntegrationTest {
   public void testTwoWay() throws Exception {
     startMirror();
     // given a root1 change
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
     sleep();
     // and it is replicated to root2
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
     // and it then changes on root2
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
     sleep();
     // then it is also replicated back to root1
-    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
   }
 
   @Test
@@ -150,35 +150,35 @@ public class IntegrationTest {
     // given a root1 change
     int i = 0;
     for (; i < 100; i++) {
-      FileUtils.writeStringToFile(new File(root2, "foo" + i + ".txt"), "abc");
+      TestUtils.writeStringToFile(new File(root2, "foo" + i + ".txt"), "abc");
     }
     sleep();
     sleep();
     // and it is replicated to root2
-    assertThat(FileUtils.readFileToString(new File(root1, "foo0.txt")), is("abc"));
-    assertThat(FileUtils.readFileToString(new File(root1, "foo" + (i - 1) + ".txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo0.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo" + (i - 1) + ".txt")), is("abc"));
   }
 
   @Test
   public void testFileSymlinks() throws Exception {
     // given a file that exists in both remotes
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
     startMirror();
     // when a symlink is created on root1
     Files.createSymbolicLink(root1.toPath().resolve("foo2"), Paths.get("foo.txt"));
     sleep();
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo2")).toString(), is("foo.txt"));
-    assertThat(FileUtils.readFileToString(new File(root2, "foo2")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo2")), is("abc"));
   }
 
   @Test
   public void testFileSymlinksThatAreUpdatedAfterInitialSync() throws Exception {
     // given a file that exists in both remotes, and has a symlink to it
     for (File root : new File[] { root1, root2 }) {
-      FileUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
-      FileUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
+      TestUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
+      TestUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
       Files.createSymbolicLink(new File(root, "foo").toPath(), Paths.get("foo1.txt"));
     }
     sleep();
@@ -190,15 +190,15 @@ public class IntegrationTest {
     sleep();
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo")).toString(), is("foo2.txt"));
-    assertThat(FileUtils.readFileToString(new File(root2, "foo")), is("abc2"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo")), is("abc2"));
   }
 
   @Test
   public void testFileSymlinksThatAreUpdatedDuringInitialSync() throws Exception {
     // given a file that exists in both remotes, and has a symlink to it
     for (File root : new File[] { root1, root2 }) {
-      FileUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
-      FileUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
+      TestUtils.writeStringToFile(new File(root, "foo1.txt"), "abc1");
+      TestUtils.writeStringToFile(new File(root, "foo2.txt"), "abc2");
     }
     // and root1 has a symlink to foo1
     Files.createSymbolicLink(new File(root1, "foo").toPath(), Paths.get("foo1.txt"));
@@ -215,15 +215,15 @@ public class IntegrationTest {
   @Test
   public void testFileSymlinksThatAreAbsolutePaths() throws Exception {
     // given a file that exists in both remotes
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
     startMirror();
     // when a symlink is created on root1
     Files.createSymbolicLink(root1.toPath().resolve("foo2"), root1.toPath().resolve("foo.txt").toAbsolutePath());
     sleep();
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("foo2")).toString(), is("foo.txt"));
-    assertThat(FileUtils.readFileToString(new File(root2, "foo2")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo2")), is("abc"));
   }
 
   @Test
@@ -232,7 +232,7 @@ public class IntegrationTest {
     for (File root : new File[] { root1, root2 }) {
       new File(root, "a").mkdir();
       new File(root, "b").mkdir();
-      FileUtils.writeStringToFile(new File(root, "a/foo.txt"), "abc");
+      TestUtils.writeStringToFile(new File(root, "a/foo.txt"), "abc");
     }
     startMirror();
     // when a symlink to b/ is created on root1
@@ -240,28 +240,28 @@ public class IntegrationTest {
     sleep();
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("b/foo2")).toString(), is("../a/foo.txt"));
-    assertThat(FileUtils.readFileToString(new File(root2, "b/foo2")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "b/foo2")), is("abc"));
   }
 
   @Test
   public void testDirectorySymlinks() throws Exception {
     // given a file that exists in both remotes
-    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
     startMirror();
     // when a symlink for it's directory is created on root1
     Files.createSymbolicLink(root1.toPath().resolve("b"), Paths.get("a"));
     sleep();
     // then it is replicated to root2 as a symlink
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("b")).toString(), is("a"));
-    assertThat(FileUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
   }
 
   @Test
   public void testInitialSyncDirectorySymlinkFromServerToClient() throws Exception {
     // given a file that exists in both remotes
-    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
     // and it is also symlinked on root1
     new File(root1, "b").mkdir();
     Files.createSymbolicLink(new File(root1, "b/foo.txt").toPath(), new File(root1, "a/foo.txt").getAbsoluteFile().toPath());
@@ -270,14 +270,14 @@ public class IntegrationTest {
     sleep();
     // then the symlink is replicated to root2
     assertThat(Files.readSymbolicLink(root2.toPath().resolve("b/foo.txt")).toString(), is("../a/foo.txt"));
-    assertThat(FileUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "b/foo.txt")), is("abc"));
   }
 
   @Test
   public void testInitialSyncDirectorySymlinkFromClientToServer() throws Exception {
     // given a file that exists in both remotes
-    FileUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "a/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "a/foo.txt"), "abc");
     // and it is also symlinked on root2
     Files.createSymbolicLink(new File(root2, "b").toPath(), new File(root2, "a/foo.txt").getAbsoluteFile().toPath());
     // when mirror is started
@@ -285,36 +285,36 @@ public class IntegrationTest {
     sleep();
     // then the symlink is replicated to root1
     assertThat(Files.readSymbolicLink(root1.toPath().resolve("b")).toString(), is("a/foo.txt"));
-    assertThat(FileUtils.readFileToString(new File(root1, "b")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root1, "b")), is("abc"));
   }
 
   @Test
   public void testInitialSyncMissingFileFromServerToClient() throws Exception {
     // given root1 has an existing file
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
     // then the file is created in root2
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
   }
 
   @Test
   public void testInitialSyncMissingFileFromClientToServer() throws Exception {
     // given root2 has an existing file
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
     // then the file is created in root1
-    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo.txt")), is("abc"));
   }
 
   @Test
   public void testInitialSyncStaleFileFromServerToClient() throws Exception {
     // given both roots have an existing file
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
     // and root1's file is newer
     new File(root1, "foo.txt").setLastModified(2000);
     new File(root2, "foo.txt").setLastModified(1000);
@@ -322,14 +322,14 @@ public class IntegrationTest {
     startMirror();
     sleep();
     // then the file is updated in root2
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
   }
 
   @Test
   public void testInitialSyncStaleFileFromClientToServer() throws Exception {
     // given both roots have an existing file
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abcd");
     // and root2's file is newer
     new File(root1, "foo.txt").setLastModified(2000);
     new File(root2, "foo.txt").setLastModified(3000);
@@ -337,13 +337,13 @@ public class IntegrationTest {
     startMirror();
     sleep();
     // then the file is updated in root1
-    assertThat(FileUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo.txt")), is("abcd"));
   }
 
   @Test
   public void testSkipIgnoredDirectories() throws Exception {
     // given a file that exists within an ignored directory
-    FileUtils.writeStringToFile(new File(root1, "target/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "target/foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
@@ -354,7 +354,7 @@ public class IntegrationTest {
   @Test
   public void testIncludeWithinExcludedDirectories() throws Exception {
     // given a file that exists within an included directory
-    FileUtils.writeStringToFile(new File(root1, "tmp/src_managed/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "tmp/src_managed/foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
@@ -365,7 +365,7 @@ public class IntegrationTest {
   @Test
   public void testIncludeWithPatternWithinExcludedDirectories() throws Exception {
     // given a file that exists within an included directory
-    FileUtils.writeStringToFile(new File(root1, "target/foo/includedDirectory/foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root1, "target/foo/includedDirectory/foo.txt"), "abc");
     // when mirror is started
     startMirror();
     sleep();
@@ -379,12 +379,12 @@ public class IntegrationTest {
     Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
     // and target only exists on root1
     new File(root1, "target").mkdirs();
-    FileUtils.writeStringToFile(new File(root1, "target/output"), "output");
+    TestUtils.writeStringToFile(new File(root1, "target/output"), "output");
     // when mirror is started
     startMirror();
     sleep();
     // then the symlink on root1 works
-    assertThat(FileUtils.readFileToString(new File(root1, "src/output")), is("output"));
+    assertThat(TestUtils.readFileToString(new File(root1, "src/output")), is("output"));
     // but we didn't copy it over to root2
     assertThat(new File(root2, "src/output").exists(), is(false));
   }
@@ -396,7 +396,7 @@ public class IntegrationTest {
     NativeFileAccessUtils.setModifiedTimeForSymlink(root2.toPath().resolve("src"), 1000);
     // but now on root1 it's actually a real directory
     new File(root1, "src").mkdir();
-    FileUtils.writeStringToFile(new File(root1, "src/foo.txt"), "foo");
+    TestUtils.writeStringToFile(new File(root1, "src/foo.txt"), "foo");
     new File(root1, "src/foo.txt").setLastModified(2000);
     // when mirror is started
     startMirror();
@@ -411,7 +411,7 @@ public class IntegrationTest {
   public void testRealPathThatIsNowASymlink() throws Exception {
     // given that root2 thought src was a real path
     new File(root2, "src").mkdir();
-    FileUtils.writeStringToFile(new File(root2, "src/foo.txt"), "foo");
+    TestUtils.writeStringToFile(new File(root2, "src/foo.txt"), "foo");
     sleep();
     // but now it's a symlink
     Files.createSymbolicLink(root1.toPath().resolve("src"), Paths.get("target"));
@@ -425,9 +425,9 @@ public class IntegrationTest {
   @Test
   public void testRespectsGitIgnoreFile() throws Exception {
     // given that root1 has a .gitignore file
-    FileUtils.writeStringToFile(new File(root1, ".gitignore"), "foo.txt");
+    TestUtils.writeStringToFile(new File(root1, ".gitignore"), "foo.txt");
     // and a file that would be ignored
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "foo");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "foo");
     // when mirror is started
     startMirror();
     sleep();
@@ -438,9 +438,9 @@ public class IntegrationTest {
   @Test
   public void testRespectsGitIgnoreFileInNestedDirectories() throws Exception {
     // given that root1 has a .gitignore file
-    FileUtils.writeStringToFile(new File(root1, "foo/.gitignore"), "dir1/*");
+    TestUtils.writeStringToFile(new File(root1, "foo/.gitignore"), "dir1/*");
     // and a file that would be ignored
-    FileUtils.writeStringToFile(new File(root1, "foo/dir1/foo.txt"), "foo");
+    TestUtils.writeStringToFile(new File(root1, "foo/dir1/foo.txt"), "foo");
     // when mirror is started
     startMirror();
     sleep();
@@ -451,8 +451,8 @@ public class IntegrationTest {
   @Test
   public void testUpdateFileThatWasMarkedReadOnlyByCodeGenerator() throws Exception {
     // given two files exist
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "abc1");
-    FileUtils.writeStringToFile(new File(root2, "foo.txt"), "abc2");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc1");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc2");
     // and root1's file is newer
     new File(root1, "foo.txt").setLastModified(2000);
     new File(root2, "foo.txt").setLastModified(1000);
@@ -462,15 +462,15 @@ public class IntegrationTest {
     startMirror();
     sleep();
     // then we can successfully update root2
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is("abc1"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc1"));
   }
 
   @Test
   public void testSimpleFileThatIsEmpty() throws Exception {
     startMirror();
-    FileUtils.writeStringToFile(new File(root1, "foo.txt"), "");
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "");
     sleep();
-    assertThat(FileUtils.readFileToString(new File(root2, "foo.txt")), is(""));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is(""));
   }
 
   private void startMirror() throws Exception {
@@ -504,5 +504,4 @@ public class IntegrationTest {
   private static void sleep() throws InterruptedException {
     Thread.sleep(1500);
   }
-
 }

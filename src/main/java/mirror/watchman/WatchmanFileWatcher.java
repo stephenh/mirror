@@ -1,6 +1,7 @@
 package mirror.watchman;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static mirror.Utils.resetIfInterrupted;
 
 import java.io.IOException;
@@ -217,7 +218,7 @@ public class WatchmanFileWatcher implements FileWatcher {
     if (ub.getPath().endsWith(".gitignore")) {
       try {
         Path path = ourRoot.resolve(ub.getPath());
-        ub.setIgnoreString(FileUtils.readFileToString(path.toFile()));
+        ub.setIgnoreString(FileUtils.readFileToString(path.toFile(), UTF_8));
       } catch (IOException e) {
         // ignore as the file probably disappeared
         log.debug("Exception reading .gitignore, assumed stale", e);

@@ -1,5 +1,6 @@
 package mirror.watchman;
 
+import static mirror.TestUtils.writeStringToFile;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -70,7 +71,7 @@ public class WatchmanFileWatcherIntegrationTest {
     // and then renamed
     File dir2 = new File(dir, "dir2");
     new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
-    FileUtils.writeStringToFile(new File(dir2, "foo.txt"), "abc");
+    writeStringToFile(new File(dir2, "foo.txt"), "abc");
     sleep();
     assertThat( //
       Seq.seq(drainUpdates()).map(u -> u.getPath() + (u.getDelete() ? " delete" : "")).toString(","),
@@ -89,13 +90,13 @@ public class WatchmanFileWatcherIntegrationTest {
     File dir12 = new File(dir1, "dir12");
     dir12.mkdir();
     File foo = new File(dir12, "foo.txt");
-    FileUtils.writeStringToFile(foo, "abc");
+    writeStringToFile(foo, "abc");
     sleep();
     // when dir1 is renamed
     File dir2 = new File(dir, "dir2");
     new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
     // and foo.txt is written to
-    FileUtils.writeStringToFile(new File(dir2, "dir12/foo.txt"), "abcd");
+    writeStringToFile(new File(dir2, "dir12/foo.txt"), "abcd");
     sleep();
     // then we see:
     assertThat(
@@ -127,7 +128,7 @@ public class WatchmanFileWatcherIntegrationTest {
     dir1.mkdir();
     sleep();
     // and we write a file inside of dir1
-    FileUtils.writeStringToFile(new File(dir1, "foo.txt"), "abc");
+    writeStringToFile(new File(dir1, "foo.txt"), "abc");
     sleep();
     // then we see all of the events
     assertThat( //

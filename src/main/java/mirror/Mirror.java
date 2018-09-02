@@ -117,7 +117,7 @@ public class Mirror {
 
       Server rpc = NettyServerBuilder
         .forPort(port)
-        .maxMessageSize(maxMessageSize)
+        .maxInboundMessageSize(maxMessageSize)
         .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
         .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
         // add in /2 to whatever the client is sending to account for latency
