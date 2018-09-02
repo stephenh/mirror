@@ -20,7 +20,6 @@ import com.facebook.buck.bser.BserSerializer;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import jnr.enxio.channels.NativeSocketChannel;
 import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
 import joist.util.Execute;
@@ -120,8 +119,8 @@ public class WatchmanChannelImpl implements Watchman {
 
   @Override
   public void close() throws IOException {
-    ((NativeSocketChannel) channel).shutdownInput();
-    ((NativeSocketChannel) channel).shutdownOutput();
+    ((UnixSocketChannel) channel).shutdownInput();
+    ((UnixSocketChannel) channel).shutdownOutput();
     channel.close();
   }
 
