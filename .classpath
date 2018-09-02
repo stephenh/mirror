@@ -51,6 +51,11 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/javax.annotation/javax.annotation-api/1.3.2/65dfd2c47380bf72ec62a5b8c4ceb78a4eda1a53/javax.annotation-api-1.3.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/javax.annotation/javax.annotation-api/1.3.2/934c04d3cfef185a8008e7bf34331b79730a9d43/javax.annotation-api-1.3.2.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/ch.qos.logback/logback-classic/1.2.2/5de889f053c01cd1266b094602c810c5988d6381/logback-classic-1.2.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/ch.qos.logback/logback-classic/1.2.2/f81d1cb16fc384523de17ba46370d863bc2f691/logback-classic-1.2.2.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
@@ -61,12 +66,12 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-unixsocket/0.19/9e800efd64abdc9ab8bf84a1f74e1f1cf6de4cea/jnr-unixsocket-0.19-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-unixsocket/0.19/dbd1de1ed9fa77e76b85863f6540489081459eb2/jnr-unixsocket-0.19.jar">
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.46/30c35941cc732b242c53f0abbf6435bd5705bebe/jnr-posix-3.0.46-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.46/99b1430a737f41834910e945c19906280a6277d4/jnr-posix-3.0.46.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.46/30c35941cc732b242c53f0abbf6435bd5705bebe/jnr-posix-3.0.46-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-posix/3.0.46/99b1430a737f41834910e945c19906280a6277d4/jnr-posix-3.0.46.jar">
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.facebook.watchman/watchman-lib/0.1/328651c0668d0ce7d7283e6cc633f4bc4f36a348/watchman-lib-0.1-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.facebook.watchman/watchman-lib/0.1/d9d9a4d0168e3618f1ddd255f07afcebbf5cd36f/watchman-lib-0.1.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
@@ -96,7 +101,7 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.jooq/jool/0.9.14/517047e6869faadb493aac932451ff58a2e6ff2a/jool-0.9.14-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.jooq/jool/0.9.14/e60fd100fa8ed864ba4f9aa7e4fe61cca9d34a07/jool-0.9.14.jar">
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.jooq/jool/0.9.10/96e460ae708d900dd67294101426062acb3a64a9/jool-0.9.10-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.jooq/jool/0.9.10/52379bfc3384dd7298dafaace3535255976e1cd6/jool-0.9.10.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
@@ -131,7 +136,7 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.guava/guava/20.0/9c8493c7991464839b612d7547d6c263adf08f75/guava-20.0-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.guava/guava/20.0/89507701249388e1ed5ddcf8c41f4ce1be7831ef/guava-20.0.jar">
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.guava/guava/23.6.1-jre/6a7a9c6fca630455b204c9471887df19cc2b4cfa/guava-23.6.1-jre-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.guava/guava/23.6.1-jre/c18ab06b4b7646be581211ad59be1b6e1ea4c278/guava-23.6.1-jre.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
@@ -151,17 +156,32 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-enxio/0.17/325a9527b5521534983d83ccc1a307bd5df416fa/jnr-enxio-0.17-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-enxio/0.17/2676933e6c33347905e4601c3f98c50953838140/jnr-enxio-0.17.jar">
-		<attributes>
-			<attribute name="gradle_used_by_scope" value="main,test"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-ffi/2.1.8/e2418c0dad859025ca6e15560d12669a8b666d4/jnr-ffi-2.1.8-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-ffi/2.1.8/19f6ded387526e623b4cbd1165eeb4df3cd38cc5/jnr-ffi-2.1.8.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-constants/0.9.9/c044f06c9a3bd97a989c4ae744351b9f76e094cc/jnr-constants-0.9.9-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-constants/0.9.9/33f23994e09aeb49880aa01e12e8e9eff058c14c/jnr-constants-0.9.9.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.immutables/value/2.7.1/15b4256f7327189fc699921bf2b51d48fab281d3/value-2.7.1-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.immutables/value/2.7.1/7879e75c53074fd8cbbe014bfa5e8689f8c565ae/value-2.7.1.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/net.java.dev.jna/jna-platform/4.5.2/acd7e40e3c37103db081f71d52115b242e769757/jna-platform-4.5.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/net.java.dev.jna/jna-platform/4.5.2/741853c07152f6c0fef5194efa6b2dabac22e9c0/jna-platform-4.5.2.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.zaxxer/nuprocess/1.2.4/34be6cf8e3c0ef1f7a4fa2483f547060ff415785/nuprocess-1.2.4-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.zaxxer/nuprocess/1.2.4/d53144c96374e885d522168b40f2b4799ff50256/nuprocess-1.2.4.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/net.java.dev.jna/jna/4.5.2/abbb850e6885dd52b7b785add4a821f4b45ceb5a/jna-4.5.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/net.java.dev.jna/jna/4.5.2/35d000afbaa4ed425d91873b40f4df9b8236875b/jna-4.5.2.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
@@ -201,7 +221,7 @@
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.2/380fceb109283ad515a05ca6955f97290e392cd8/error_prone_annotations-2.1.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.2/6dcc08f90f678ac33e5ef78c3c752b6f59e63e0c/error_prone_annotations-2.1.2.jar">
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.3/990fe1fd48078a2befecdfcebcad8e6e1bd195a0/error_prone_annotations-2.1.3-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.1.3/39b109f2cd352b2d71b52a3b5a1a9850e1dc304b/error_prone_annotations-2.1.3.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>
@@ -282,6 +302,21 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-x86asm/1.0.2/6bb6efcd010567ad80c8bb2bdd5065b30f0f1468/jnr-x86asm-1.0.2-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.github.jnr/jnr-x86asm/1.0.2/6936bbd6c5b235665d87bd450f5e13b52d4b48/jnr-x86asm-1.0.2.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.checkerframework/checker-compat-qual/2.0.0/eb7f7d588d0aef07a2c89178053c2a9e4613947f/checker-compat-qual-2.0.0-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.checkerframework/checker-compat-qual/2.0.0/fc89b03860d11d6213d0154a62bcd1c2f69b9efa/checker-compat-qual-2.0.0.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/1efdf5b737b02f9b72ebdec4f72c37ec411302ff/j2objc-annotations-1.1-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/com.google.j2objc/j2objc-annotations/1.1/ed28ded51a8b1c6b112568def5f4b455e6809019/j2objc-annotations-1.1.jar">
+		<attributes>
+			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/886474da3f761d39fcbb723d97ecc5089e731f42/animal-sniffer-annotations-1.14-sources.jar" kind="var" path="GRADLE_USER_HOME/caches/modules-2/files-2.1/org.codehaus.mojo/animal-sniffer-annotations/1.14/775b7e22fb10026eed3f86e8dc556dfafe35f2d5/animal-sniffer-annotations-1.14.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
 		</attributes>

@@ -1,6 +1,5 @@
 package mirror;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,7 +73,7 @@ public class MirrorSession {
     taskPool.addShutdownCallback(callback);
   }
 
-  public List<Update> calcInitialState() throws IOException, InterruptedException {
+  public List<Update> calcInitialState() throws Exception {
     List<Update> initialUpdates = fileWatcher.performInitialScan();
 
     // We've drained the initial state, so we can tell FileWatcher to start polling now.

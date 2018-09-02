@@ -51,7 +51,7 @@ public class WatchmanFileWatcherIntegrationTest {
       FileUtils.forceDelete(dir);
     }
     dir.mkdirs();
-    watcher = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), MirrorPaths.forTesting(dir.toPath().toAbsolutePath()), queue);
+    watcher = new WatchmanFileWatcher(WatchmanImpl.createIfAvailable().get(), MirrorPaths.forTesting(dir.toPath().toAbsolutePath()), queue);
     watcher.performInitialScan();
     taskFactory.runTask(watcher);
     sleep();

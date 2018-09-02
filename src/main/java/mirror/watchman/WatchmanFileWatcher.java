@@ -22,7 +22,8 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.facebook.buck.bser.BserDeserializer.BserEofException;
+import com.facebook.watchman.Callback;
+import com.facebook.watchman.WatchmanClient.SubscriptionDescriptor;
 import com.google.protobuf.TextFormat;
 
 import jnr.posix.FileStat;
@@ -41,14 +42,15 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private static final Logger log = LoggerFactory.getLogger(WatchmanFileWatcher.class);
   private final MirrorPaths config;
-  private final WatchmanFactory factory;
+  private final Watchman wm;
   private final Path ourRoot;
+  private final BlockingQueue<Update> queue;
+  private final BlockingQueue<Exception> exceptions = new LinkedBlockingQueue<>();
   // we may ask to watch /home/foo/bar, but watchman decides to watch /home/foo
   private volatile String watchmanRoot;
   private volatile Optional<String> watchmanPrefix;
-  private volatile Watchman wm;
-  private volatile BlockingQueue<Update> queue;
   private volatile String initialScanClock;
+  private volatile SubscriptionDescriptor subscription;
 
   /** Main method for doing manual debugging/observation of behavior. */
   public static void main(String[] args) throws Exception {
@@ -57,7 +59,7 @@ public class WatchmanFileWatcher implements FileWatcher {
     Path testDirectory = Paths.get("/home/stephen/dir1");
     BlockingQueue<Update> queue = new LinkedBlockingQueue<>();
     MirrorPaths config = MirrorPaths.forTesting(testDirectory);
-    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanChannelImpl.createIfAvailable().get(), config, queue);
+    WatchmanFileWatcher w = new WatchmanFileWatcher(WatchmanImpl.createIfAvailable().get(), config, queue);
     log.info("Starting performInitialScan");
     List<Update> initialScan = w.performInitialScan();
     initialScan.forEach(node -> {
@@ -69,9 +71,9 @@ public class WatchmanFileWatcher implements FileWatcher {
     }
   }
 
-  public WatchmanFileWatcher(WatchmanFactory factory, MirrorPaths config, BlockingQueue<Update> queue) {
+  public WatchmanFileWatcher(Watchman wm, MirrorPaths config, BlockingQueue<Update> queue) {
     this.config = config;
-    this.factory = factory;
+    this.wm = wm;
     try {
       // If we get passed /home/foo/./path watchman's path sensitiveness check complains,
       // so turn it into /home/foo/path.
@@ -86,7 +88,7 @@ public class WatchmanFileWatcher implements FileWatcher {
   public void onStart() {
     try {
       // Start the watchman subscription, and pass "since" because we don't
-      // need to be re-sent everything that we already saw in performInitialScan.
+      // need to be re-send everything that we already saw in performInitialScan.
       //
       // Note that once we do this, our wm instance is basically dedicated
       // to this subscription because runOneLoop will make continual blocking
@@ -94,7 +96,7 @@ public class WatchmanFileWatcher implements FileWatcher {
       // means we can't really send any other commands without having the
       // response of our new command and subscription responses mixed up.
       startSubscription();
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -113,29 +115,28 @@ public class WatchmanFileWatcher implements FileWatcher {
   public Duration runOneLoop() throws InterruptedException {
     try {
       // Keep blocking until we get more push notifications
-      putFiles(wm.read());
+      throw exceptions.take();
     } catch (WatchmanOverflowException e) {
       try {
-        wm.close();
         // try resetting the overflow
-        wm = factory.newWatchman();
-        wm.query("watch-del", watchmanRoot);
+        wm.unsubscribe(subscription);
+        wm.run("watch-del", watchmanRoot);
         startWatchAndInitialFind();
         startSubscription();
       } catch (Exception e2) {
         log.error("Could not reset watchman", e2);
       }
-    } catch (BserEofException e) {
+    } catch (InterruptedException e) {
+      // BserEofException
       // shutting down
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
     return null;
   }
 
   @Override
-  public List<Update> performInitialScan() throws IOException, InterruptedException {
-    wm = factory.newWatchman();
+  public List<Update> performInitialScan() throws Exception {
     startWatchAndInitialFind();
     List<Update> updates = new ArrayList<>(queue.size());
     queue.drainTo(updates);
@@ -177,9 +178,9 @@ public class WatchmanFileWatcher implements FileWatcher {
     });
   }
 
-  private void startWatchAndInitialFind() throws IOException {
+  private void startWatchAndInitialFind() throws Exception {
     // This will be a no-op after the first execution, as we don't currently clean up on our watches.
-    Map<String, Object> result = wm.query("watch-project", ourRoot.toString());
+    Map<String, Object> result = wm.run("watch-project", ourRoot.toString());
     watchmanRoot = (String) result.get("watch");
     watchmanPrefix = Optional.ofNullable((String) result.get("relative_path"));
     log.info("Watchman root is {}", watchmanRoot);
@@ -187,21 +188,40 @@ public class WatchmanFileWatcher implements FileWatcher {
     Map<String, Object> params = new HashMap<>();
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     watchmanPrefix.ifPresent(prefix -> {
-      params.put("relative_root",  prefix);
+      params.put("relative_root", prefix);
     });
-    Map<String, Object> r = wm.query("query", watchmanRoot, params);
+    Map<String, Object> r = wm.run("query", watchmanRoot, params);
     initialScanClock = (String) r.get("clock");
     putFiles(r);
   }
 
-  private void startSubscription() throws IOException {
+  private void startSubscription() throws Exception {
     Map<String, Object> params = new HashMap<>();
     params.put("since", initialScanClock);
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     watchmanPrefix.ifPresent(prefix -> {
       params.put("relative_root", prefix);
     });
-    wm.query("subscribe", watchmanRoot, "mirror", params);
+    subscription = wm.subscribe(Paths.get(watchmanRoot), params, new Callback() {
+      @Override
+      public void call(Map<String, Object> message) {
+        // this callback happens on a WatchmanClient thread, so any exceptions we want
+        // to capture and put into the exceptions queue so our pumping thread can see it
+        try {
+          if (message.containsKey("error")) {
+            if (((String) message.get("error")).contains("IN_Q_OVERFLOW")) {
+              throw new WatchmanOverflowException();
+            }
+            throw new RuntimeException("Watchman error: " + message.get("error"));
+          }
+          @SuppressWarnings("unchecked")
+          List<Map<String, Object>> files = (List<Map<String, Object>>) message.get("files");
+          files.forEach(WatchmanFileWatcher.this::putFile);
+        } catch (Exception e) {
+          exceptions.add(e);
+        }
+      }
+    });
   }
 
   // The modtime from watchman is the pre-deletion modtime; to be
