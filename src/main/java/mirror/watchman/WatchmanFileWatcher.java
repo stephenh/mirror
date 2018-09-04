@@ -87,14 +87,6 @@ public class WatchmanFileWatcher implements FileWatcher {
   @Override
   public void onStart() {
     try {
-      // Start the watchman subscription, and pass "since" because we don't
-      // need to be re-send everything that we already saw in performInitialScan.
-      //
-      // Note that once we do this, our wm instance is basically dedicated
-      // to this subscription because runOneLoop will make continual blocking
-      // calls on Watchman.read to keep getting the latest updates, which
-      // means we can't really send any other commands without having the
-      // response of our new command and subscription responses mixed up.
       startSubscription();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -197,6 +189,7 @@ public class WatchmanFileWatcher implements FileWatcher {
 
   private void startSubscription() throws Exception {
     Map<String, Object> params = new HashMap<>();
+    // Pass since b/c we don't need to be re-sent everything that we already saw in performInitialScan.
     params.put("since", initialScanClock);
     params.put("fields", newArrayList("name", "exists", "mode", "mtime_ms"));
     watchmanPrefix.ifPresent(prefix -> {
