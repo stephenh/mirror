@@ -1,6 +1,8 @@
-bin/
-build/
+/bin/
+/build/
 .gradle/
 /*.iml
 /*.ipr
 /*.iws
+/.idea/
+/out/
