@@ -147,10 +147,14 @@ public class WatchmanFileWatcher implements FileWatcher {
   private void putFile(Map<String, Object> file) {
     int mode = ((Number) file.get("mode")).intValue();
     long mtime = ((Number) file.get("mtime_ms")).longValue();
+    Object name = file.get("name");
+    if (!(name instanceof String)) {
+      return; // ignore non-utf8 file names as they are likely corrupted
+    }
     resetIfInterrupted(() -> {
       Update.Builder ub = Update
         .newBuilder()
-        .setPath((String) file.get("name"))
+        .setPath((String) name)
         .setDelete(!(boolean) file.get("exists"))
         .setModTime(mtime)
         .setDirectory(isFileStatType(mode, FileStat.S_IFDIR))
