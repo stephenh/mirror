@@ -6,13 +6,13 @@ option java_package = "mirror";
 option java_outer_classname = "MirrorProto";
 
 service Mirror {
-  rpc TimeCheck(TimeCheckRequest) returns (TimeCheckResponse) {}
+  rpc TimeCheck(TimeCheckRequest) returns (TimeCheckResponse);
 
-  rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {}
+  rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse);
 
-  rpc StreamUpdates(stream Update) returns (stream Update) {}
+  rpc StreamUpdates(stream Update) returns (stream Update);
 
-  rpc Ping(PingRequest) returns (PingResponse) {}
+  rpc Ping(PingRequest) returns (PingResponse);
 }
 
 message TimeCheckRequest {
