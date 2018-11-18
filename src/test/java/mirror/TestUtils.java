@@ -1,11 +1,12 @@
 package mirror;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import joist.util.Execute;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.io.FileUtils;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TestUtils {
 
@@ -17,4 +18,7 @@ public class TestUtils {
     FileUtils.writeStringToFile(file, data, UTF_8);
   }
 
+  public static void move(final String from, final String to) {
+    new Execute(new String[] { "mv", from, to }).toSystemOut();
+  }
 }

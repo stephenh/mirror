@@ -91,6 +91,28 @@ public class IntegrationTest {
   }
 
   @Test
+  public void testRestoreSimpleFile() throws Exception {
+    // given a file that exists in both root1/root2
+    TestUtils.writeStringToFile(new File(root1, "foo.txt"), "abc");
+    TestUtils.writeStringToFile(new File(root2, "foo.txt"), "abc");
+    startMirror();
+    // when one file is moved out of the tree
+    File fooOriginal = new File(root1, "foo.txt");
+    File fooBuild = new File("./build", "foo.txt");
+    TestUtils.move(fooOriginal.toString(), fooBuild.toString());
+    sleep();
+    // then it's also deleted remotely
+    assertThat(new File(root2, "foo.txt").exists(), is(false));
+    // then when its moved back
+    TestUtils.move(fooBuild.toString(), fooOriginal.toString());
+    sleep();
+    // then it's also restored remotely
+    assertThat(new File(root2, "foo.txt").exists(), is(true));
+    assertThat(TestUtils.readFileToString(new File(root1, "foo.txt")), is("abc"));
+    assertThat(TestUtils.readFileToString(new File(root2, "foo.txt")), is("abc"));
+  }
+
+  @Test
   public void testDeleteDirectory() throws Exception {
     // given a file within a directory that exists in both root1/root2
     for (File root : new File[] { root1, root2 }) {

@@ -225,6 +225,13 @@ public class UpdateTree {
         int tick = this.local.getDelete() ? 0 : minimumMillisPrecision;
         local = local.toBuilder().setModTime(this.local.getModTime() + tick).build();
       }
+      // If we can tell the incoming local update is meant to re-create the previous
+      // delete marker, ensure that we bump it to a most-delete marker modtime. E.g.
+      // sometimes the restored file will keep the pre-delete marker timestamp.
+      if (local != null && this.local != null && this.local.getDelete() && this.local.getModTime() > local.getModTime()) {
+        // Should we update the local file system? Probably, but currently that isn't the UpdateTree's job
+        local = local.toBuilder().setModTime(this.local.getModTime() + minimumMillisPrecision).build();
+      }
       boolean wasDirectory = this.local != null && this.local.getDirectory();
       this.local = clearPath(local);
       // If we're no longer a directory, or we got deleted, ensure our children they are deleted.

@@ -1,5 +1,6 @@
 package mirror;
 
+import static mirror.TestUtils.move;
 import static mirror.TestUtils.writeStringToFile;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -66,7 +67,7 @@ public class WatchServiceFileWatcherTest {
     dir1.mkdir();
     // and then renamed
     File dir2 = new File(dir, "dir2");
-    new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
+    move(dir1.toString(), dir2.toString());
     writeStringToFile(new File(dir2, "foo.txt"), "abc");
     sleep();
     assertThat( //
@@ -89,7 +90,7 @@ public class WatchServiceFileWatcherTest {
     writeStringToFile(foo, "abc");
     // when dir1 is renamed
     File dir2 = new File(dir, "dir2");
-    new Execute(new String[] { "mv", dir1.toString(), dir2.toString() }).toSystemOut();
+    move(dir1.toString(), dir2.toString());
     // and foo.txt is written to
     writeStringToFile(new File(dir2, "dir12/foo.txt"), "abcd");
     sleep();
