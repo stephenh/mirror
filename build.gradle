@@ -8,9 +8,9 @@ plugins {
   id "com.github.ben-manes.versions" version "0.20.0"
 }
 
-def grpcVersion = '1.14.0'
+def grpcVersion = '1.16.1'
 // This version must match the protobuf-java version that grpc transitively pulls in
-def protobufVersion = '3.5.1'
+def protobufVersion = '3.6.1'
 
 repositories {
   mavenCentral()
