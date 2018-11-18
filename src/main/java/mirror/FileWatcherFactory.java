@@ -1,17 +1,12 @@
 package mirror;
 
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.util.Optional;
-import java.util.concurrent.BlockingQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import mirror.tasks.TaskFactory;
 import mirror.watchman.Watchman;
 import mirror.watchman.WatchmanFileWatcher;
 import mirror.watchman.WatchmanImpl;
+
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Provides a factory for creating file watchers, given we need to
@@ -32,20 +27,12 @@ public interface FileWatcherFactory {
    * @return the default factory that will try to create a watchman-based impl if possible, otherwise a Java WatchService-based impl.
    */
   static FileWatcherFactory newFactory(TaskFactory taskFactory) {
-    Logger log = LoggerFactory.getLogger(FileWatcherFactory.class);
     return (config, queue) -> {
       Optional<Watchman> wm = WatchmanImpl.createIfAvailable();
       if (wm.isPresent()) {
         return new WatchmanFileWatcher(wm.get(), config, queue);
       } else {
-        log.info("Watchman not found, using WatchService instead");
-        log.info("  Note that WatchService is buggy on Linux, and uses polling on Mac.");
-        log.info("  While mirror will work with WatchService, especially to test, you should eventually install watchman.");
-        try {
-          return new WatchServiceFileWatcher(taskFactory, FileSystems.getDefault().newWatchService(), config.root, queue);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
+        throw new RuntimeException("Watchman not found, please install watchman and ensure its on your PATH.");
       }
     };
   }
