@@ -10,11 +10,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TestUtils {
 
-  public static String readFileToString(final File file) throws IOException {
+  public static String readFile(final File file) throws IOException {
     return FileUtils.readFileToString(file, UTF_8);
   }
 
-  public static void writeStringToFile(final File file, final String data) throws IOException {
+  public static void writeFile(final File file, final String data) throws IOException {
     FileUtils.writeStringToFile(file, data, UTF_8);
   }
 

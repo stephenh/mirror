@@ -1,7 +1,7 @@
 package mirror;
 
 import static mirror.TestUtils.move;
-import static mirror.TestUtils.writeStringToFile;
+import static mirror.TestUtils.writeFile;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -19,7 +19,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import joist.util.Execute;
 import mirror.tasks.TaskFactory;
 import mirror.tasks.ThreadBasedTaskFactory;
 
@@ -68,7 +67,7 @@ public class WatchServiceFileWatcherTest {
     // and then renamed
     File dir2 = new File(dir, "dir2");
     move(dir1.toString(), dir2.toString());
-    writeStringToFile(new File(dir2, "foo.txt"), "abc");
+    writeFile(new File(dir2, "foo.txt"), "abc");
     sleep();
     assertThat( //
       Seq.seq(drainUpdates()).map(u -> u.getPath()).toString(","),
@@ -87,12 +86,12 @@ public class WatchServiceFileWatcherTest {
     File dir12 = new File(dir1, "dir12");
     dir12.mkdir();
     File foo = new File(dir12, "foo.txt");
-    writeStringToFile(foo, "abc");
+    writeFile(foo, "abc");
     // when dir1 is renamed
     File dir2 = new File(dir, "dir2");
     move(dir1.toString(), dir2.toString());
     // and foo.txt is written to
-    writeStringToFile(new File(dir2, "dir12/foo.txt"), "abcd");
+    writeFile(new File(dir2, "dir12/foo.txt"), "abcd");
     sleep();
     // then we see:
     assertThat(
@@ -121,7 +120,7 @@ public class WatchServiceFileWatcherTest {
     dir1.mkdir();
     sleep();
     // and we write a file inside of dir1
-    writeStringToFile(new File(dir1, "foo.txt"), "abc");
+    writeFile(new File(dir1, "foo.txt"), "abc");
     sleep();
     // then we see all of the events
     assertThat( //

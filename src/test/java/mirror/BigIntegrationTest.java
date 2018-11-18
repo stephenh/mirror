@@ -1,7 +1,7 @@
 package mirror;
 
-import static mirror.TestUtils.readFileToString;
-import static mirror.TestUtils.writeStringToFile;
+import static mirror.TestUtils.readFile;
+import static mirror.TestUtils.writeFile;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -65,7 +65,7 @@ public class BigIntegrationTest {
     for (int i = 0; i < 500; i++) {
       for (int j = 0; j < 100; j++) {
         for (int k = 0; k < 10; k++) {
-          writeStringToFile(new File(root1, "project" + i + "/dir" + j + "/file-" + k + ".txt"), "abc");
+          writeFile(new File(root1, "project" + i + "/dir" + j + "/file-" + k + ".txt"), "abc");
         }
       }
     }
@@ -75,7 +75,7 @@ public class BigIntegrationTest {
     sleep();
     sleep();
     sleep();
-    assertThat(readFileToString(new File(root2, "foo.txt")), is("abc"));
+    assertThat(readFile(new File(root2, "foo.txt")), is("abc"));
   }
 
   private void startMirror() throws Exception {
