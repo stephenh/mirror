@@ -43,4 +43,19 @@ public class PathRulesTest {
     assertThat(includes.matches("multi-product/config/.svn/stuff", false), is(false));
   }
 
+  @Test
+  public void testUnignoreGitDirectory() {
+    PathRules includes = new PathRules();
+    PathRules excludes = new PathRules();
+    ArrayList<String> extraIncludes = new ArrayList<String>();
+    extraIncludes.add(".git");
+    Mirror.setupIncludesAndExcludes(includes, excludes, extraIncludes, new ArrayList<>(), true);
+    // we'll sync the .git directory if passed "--include .git" on command line
+    assertThat(includes.matches(".git", true), is(true));
+    assertThat(includes.matches(".git/file", false), is(true));
+    // .svn directory is still excluded
+    assertThat(includes.matches(".svn", true), is(false));
+    assertThat(includes.matches(".svn/file", false), is(false));
+  }
+
 }
