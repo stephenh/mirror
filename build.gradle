@@ -33,7 +33,7 @@ dependencies {
   compile 'commons-io:commons-io:2.6'
   compile 'org.apache.commons:commons-lang3:3.8.1'
   // Keep on 0.9.10 as it doesn't matter and 0.9.14 requires newer JDKs
-  compile 'org.jooq:jool:0.9.14'
+  compile 'org.jooq:jool:0.9.10'
   compile 'com.github.rvesse:airline:2.6.0'
   compile 'joist:joist-util:1.13.3'
   testCompile 'junit:junit:4.12'
