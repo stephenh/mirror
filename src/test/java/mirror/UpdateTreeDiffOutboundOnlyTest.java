@@ -1,24 +1,22 @@
 package mirror;
 
+import com.google.protobuf.ByteString;
+import mirror.UpdateTree.Node;
+import mirror.UpdateTreeDiff.DiffResults;
+import org.jooq.lambda.Seq;
+import org.junit.Test;
+
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.jooq.lambda.Seq.seq;
 
-import org.jooq.lambda.Seq;
-import org.junit.Test;
-
-import com.google.protobuf.ByteString;
-
-import mirror.UpdateTree.Node;
-import mirror.UpdateTreeDiff.DiffResults;
-
-public class UpdateTreeDiffTest {
+public class UpdateTreeDiffOutboundOnlyTest {
 
   private static final ByteString data = ByteString.copyFrom(new byte[] { 1, 2, 3, 4 });
   private UpdateTree tree = UpdateTree.newRoot();
   private DiffResults results = null;
-  private SyncDirection syncDirection = SyncDirection.BOTH;
+  private SyncDirection syncDirection = SyncDirection.OUTBOUND;
 
   @Test
   public void sendLocalNewFileToRemote() {
@@ -50,10 +48,10 @@ public class UpdateTreeDiffTest {
     diff();
     // then we don't do anything
     assertNoResults();
-    // and when we do have data, then we will save it
+    // and when we do have data, then we still don't do anything
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).setData(data).build());
     diff();
-    assertSaveLocally("foo.txt");
+    assertNoResults();
   }
 
   @Test
@@ -67,7 +65,7 @@ public class UpdateTreeDiffTest {
     // and when we do have data, then we will save it
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
     diff();
-    assertSaveLocally("foo.txt");
+    assertNoResults();
   }
 
   @Test
@@ -115,11 +113,8 @@ public class UpdateTreeDiffTest {
     // that is a newer directory on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
     diff();
-    // then we delete the file
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    // and create the directory
-    assertThat(results.saveLocally.get(1).getDirectory(), is(true));
+    // then we don't delete the file
+    assertNoResults();
   }
 
   @Test
@@ -130,9 +125,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
     diff();
     // then we delete the file
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
+    assertNoResults();
   }
 
   @Test
@@ -154,62 +147,45 @@ public class UpdateTreeDiffTest {
     // that is now a file on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
-    // then we delete the directory to create the file
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getDelete(), is(false));
-  }
-
-  @Test
-  public void deleteLocalDirectoryThatIsNowASymlink() {
-    // given a local directory
-    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
-    // that is now a symlink on the remote
-    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
-    diff();
-    // then we delete the directory
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    assertThat(tree.find("foo").getLocal().getSymlink(), is("bar"));
-    assertThat(tree.find("foo/bar.txt").getLocal().getDelete(), is(true));
-    // and when we diff again
-    diff();
-    // then we don't re-delete it
-    assertNoResults();
-
-    // client deletes foo/
-    // server sends foo/
-    // client sees Update(foo, local=true, delete=true, mod=) echo
-    // --> should see already deleted, do nothing
-    // client sees Update(foo, mod=X) from server
-
-    // client deletes foo/
-    // server sends foo
-    // client sees Update(foo, mod=X) from server
-    // client sees Update(foo, local=true, delete=true, mod=) echo
-  }
-
-  @Test
-  public void deleteLocalDirectoryThatIsNowASymlinkDuringSync() {
-    // given a local directory
-    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
-    // that is now a symlink on the remote
-    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
-    // instead of initialDiff
-    diff();
-    assertSaveLocally("foo", "foo");
-    // then we delete the directory
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    // and also save the symlink
-    assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    // and when we diff again
-    diff();
-    // then we don't re-delete it
+    // then we don't  delete the directory to create the file
     assertNoResults();
   }
+
+//  @Test
+//  public void deleteLocalDirectoryThatIsNowASymlink() {
+//    // given a local directory
+//    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
+//    // that is now a symlink on the remote
+//    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
+//    diff();
+//
+//    // then we don't delete it
+//    assertNoResults();
+//
+//    // client deletes foo/
+//    // server sends foo/
+//    // client sees Update(foo, local=true, delete=true, mod=) echo
+//    // --> should see already deleted, do nothing
+//    // client sees Update(foo, mod=X) from server
+//
+//    // client deletes foo/
+//    // server sends foo
+//    // client sees Update(foo, mod=X) from server
+//    // client sees Update(foo, local=true, delete=true, mod=) echo
+//  }
+
+//  @Test
+//  public void deleteLocalDirectoryThatIsNowASymlinkDuringSync() {
+//    // given a local directory
+//    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar.txt").setModTime(2L).build());
+//    // that is now a symlink on the remote
+//    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setSymlink("bar").build());
+//    // instead of initialDiff
+//    diff();
+//    assertNoResults();
+//  }
 
   @Test
   public void leavelLocalDirectoryThatWasAFile() {
@@ -230,13 +206,7 @@ public class UpdateTreeDiffTest {
     // that is now a file on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).build());
     diff();
-    // then we delete the symlink to create the file
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getDelete(), is(false));
-    // and when we diff again
-    diff();
-    // then we don't re-delete it
+    // then we don't delete it
     assertNoResults();
   }
 
@@ -248,9 +218,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDirectory(true).build());
     diff();
     // then we delete the symlink
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getDirectory(), is(true));
+    assertNoResults();
   }
 
   @Test
@@ -265,20 +233,17 @@ public class UpdateTreeDiffTest {
     assertNoSaveLocally();
   }
 
-  @Test
-  public void skipLocalFileIfParentDirectoryHasBeenRemoved() {
-    // given a local file
-    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).setSymlink("bar").build());
-    // but the directory is now a symlink on the remote
-    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
-    diff();
-    // then we delete our local foo and don't send anything to the remote
-    assertSaveLocally("foo", "foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    assertNoSendToRemote();
-  }
+//  @Test
+//  public void skipLocalFileIfParentDirectoryHasBeenRemoved() {
+//    // given a local file
+//    tree.addLocal(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(1L).setSymlink("bar").build());
+//    // but the directory is now a symlink on the remote
+//    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
+//    diff();
+//    // then we delete our local foo and don't send anything to the remote
+//    assertNoResults();
+//  }
 
   @Test
   public void skipLocalFileThatIsIgnored() {
@@ -300,8 +265,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
     diff();
     // then we don't sync the local file
-    assertSaveLocally(".gitignore");
-    assertNoSendToRemote();
+    assertNoResults();
   }
 
   @Test
@@ -325,7 +289,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").setData(data).build());
     diff();
     // then we don't sync the local foo.txt file, but we do sync .gitignore
-    assertSaveLocally(".gitignore");
+    assertNoResults();
   }
 
   @Test
@@ -350,15 +314,12 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
     diff();
     // then we save the file to locally
-    assertSaveLocally("foo.txt");
+    assertNoResults();
     // assertThat(nodeCapture.getValue().getUpdate().getData(), is(data));
     // and then clear the data from the tree afterwards
     Node foo = tree.getChildren().get(0);
     assertThat(foo.getName(), is("foo.txt"));
     assertThat(foo.getRemote().getData(), is(UpdateTree.initialSyncMarker));
-    // and we don't resave it again on the next diff
-    diff();
-    assertNoResults();
   }
 
   @Test
@@ -367,9 +328,6 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
     diff();
     // then we save the directory to locally
-    assertSaveLocally("foo");
-    // and we don't resave it again on the next diff
-    diff();
     assertNoResults();
   }
 
@@ -379,10 +337,6 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
     // and it also has a file in it
     tree.addRemote(Update.newBuilder().setPath("foo/bar.txt").setData(data).setModTime(2L).build());
-    diff();
-    // then we save the directory to locally
-    assertSaveLocally("foo", "foo/bar.txt");
-    // and we don't resave it again on the next diff
     diff();
     assertNoResults();
   }
@@ -411,12 +365,6 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(2L).build());
     // and it is deleted on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
-    diff();
-    // then we delete it locally
-    assertSaveLocally("foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-    assertThat(results.saveLocally.get(0).getLocal(), is(false));
-    // and we don't resend it again on the next diff
     diff();
     assertNoResults();
   }
@@ -474,47 +422,46 @@ public class UpdateTreeDiffTest {
     assertThat(tree.find("foo/bar").getChildren().size(), is(1));
   }
 
-  @Test
-  public void deleteMultipleLevelsRemotely() {
-    // given a tree of foo/bar/zaz.txt that exists on both local and remote
-    tree.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
-
-    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
-    tree.addRemote(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
-    tree.addRemote(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
-
-    // and it is deleted remotely (per last test, only a delete foo will come across)
-    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
-
-    // then we only need to delete the local directory
-    diff();
-    assertSaveLocally("foo");
-    assertThat(results.saveLocally.get(0).getDelete(), is(true));
-
-    // and we preemptively consider the local children deleted
-    assertThat(tree.find("foo/bar").getLocal().getDelete(), is(true));
-    assertThat(tree.find("foo/bar/zaz.txt").getLocal().getDelete(), is(true));
-
-    // and we don't resend it again on the next diff
-    diff();
-    assertNoResults();
-    assertThat(tree.find("foo").getChildren().size(), is(1));
-    assertThat(tree.find("foo/bar").getChildren().size(), is(1));
-
-    // and when the deletes are echoed by the file system we don't resend the delete
-    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setDelete(true).build());
-    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDelete(true).build());
-    // pretend we haven't seen the foo echo delete
-    diff();
-    assertNoResults();
-
-    // now the foo echo comes by
-    tree.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
-    diff();
-    assertNoResults();
-  }
+//  @Test
+//  public void deleteMultipleLevelsRemotely() {
+//    // given a tree of foo/bar/zaz.txt that exists on both local and remote
+//    tree.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+//
+//    tree.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+//    tree.addRemote(Update.newBuilder().setPath("foo/bar").setDirectory(true).setModTime(2L).build());
+//    tree.addRemote(Update.newBuilder().setPath("foo/bar/zaz.txt").setModTime(2L).build());
+//
+//    // and it is deleted remotely (per last test, only a delete foo will come across)
+//    tree.addRemote(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
+//
+//    // then we only need to delete the local directory
+//    diff();
+//    assertNoResults();
+//
+//    // and we preemptively consider the local children deleted
+//    assertThat(tree.find("foo/bar").getLocal().getDelete(), is(true));
+//    assertThat(tree.find("foo/bar/zaz.txt").getLocal().getDelete(), is(true));
+//
+//    // and we don't resend it again on the next diff
+//    diff();
+//    assertNoResults();
+//    assertThat(tree.find("foo").getChildren().size(), is(1));
+//    assertThat(tree.find("foo/bar").getChildren().size(), is(1));
+//
+//    // and when the deletes are echoed by the file system we don't resend the delete
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar/zaz.txt").setDelete(true).build());
+//    tree.addLocal(Update.newBuilder().setPath("foo/bar").setDelete(true).build());
+//    // pretend we haven't seen the foo echo delete
+//    diff();
+//    assertNoResults();
+//
+//    // now the foo echo comes by
+//    tree.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
+//    diff();
+//    assertNoResults();
+//  }
 
   @Test
   public void clearDataOfStaleRemoteFile() {

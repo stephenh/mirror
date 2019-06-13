@@ -49,9 +49,11 @@ public class UpdateTreeDiff {
   }
 
   private final UpdateTree tree;
+  private final SyncDirection syncDirection;
 
-  public UpdateTreeDiff(UpdateTree tree) {
+  public UpdateTreeDiff(UpdateTree tree, SyncDirection syncDirection) {
     this.tree = tree;
+    this.syncDirection = syncDirection;
   }
 
   public DiffResults diff() {
@@ -65,7 +67,7 @@ public class UpdateTreeDiff {
     Update local = node.getLocal();
     Update remote = node.getRemote();
 
-    if (node.isLocalNewer()) {
+    if (node.isLocalNewer() && syncDirection.getAllowOutbound()) {
       if (!node.shouldIgnore()) {
         debugIfEnabled(node, "isLocalNewer");
         if (local.getDelete() && node.isParentDeleted()) {
@@ -75,7 +77,7 @@ public class UpdateTreeDiff {
         }
       }
       node.setRemote(local);
-    } else if (node.isRemoteNewer()) {
+    } else if (node.isRemoteNewer() && syncDirection.getAllowInbound()) {
       // if we were a directory, and this is now a file, do an explicit delete first
       if (local != null && !node.isSameType() && !local.getDelete() && !remote.getDelete()) {
         Update delete = local.toBuilder().setDelete(true).build();
@@ -99,6 +101,7 @@ public class UpdateTreeDiff {
       // should rarely/never happen (although it did happen when a bug existed), but
       // if the remote side sends over data that exactly matches what we already have,
       // we won't save but, which is fine, but make sure we free it from memory
+      // This will also occur if the other side sends a message that our direction forbids (which shouldn't happen)
       node.clearData();
     }
   }

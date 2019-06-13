@@ -1,46 +1,40 @@
 package mirror;
 
+import com.google.protobuf.ByteString;
+import mirror.UpdateTree.Node;
+import mirror.UpdateTreeDiff.DiffResults;
+import org.jooq.lambda.Seq;
+import org.junit.Test;
+
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.jooq.lambda.Seq.seq;
 
-import org.jooq.lambda.Seq;
-import org.junit.Test;
-
-import com.google.protobuf.ByteString;
-
-import mirror.UpdateTree.Node;
-import mirror.UpdateTreeDiff.DiffResults;
-
-public class UpdateTreeDiffTest {
+public class UpdateTreeDiffInboundOnlyTest {
 
   private static final ByteString data = ByteString.copyFrom(new byte[] { 1, 2, 3, 4 });
   private UpdateTree tree = UpdateTree.newRoot();
   private DiffResults results = null;
-  private SyncDirection syncDirection = SyncDirection.BOTH;
+  private SyncDirection syncDirection = SyncDirection.INBOUND;
 
   @Test
-  public void sendLocalNewFileToRemote() {
+  public void noSendLocalNewFileToRemote() {
     // given a local file that is new
     tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
-    diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo.txt");
-    // and then we don't resend it on the next idff
+    // we don't send it
     diff();
     assertNoResults();
   }
 
   @Test
-  public void sendLocalChangedFileToRemote() {
+  public void noSendLocalChangedFileToRemote() {
     // given a local file that is newer
     tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(2L).build());
     tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo.txt");
-    assertNoSaveLocally();
+    // then we don't send the file to the remote
+    assertNoResults();
   }
 
   @Test
@@ -71,41 +65,41 @@ public class UpdateTreeDiffTest {
   }
 
   @Test
-  public void sendLocalNewSymlinkToRemote() {
+  public void noSendLocalNewSymlinkToRemote() {
     // given a local symlink that is new
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar").build());
     diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo");
+    // then we don't send the file to the remote
+    assertNoResults();
   }
 
   @Test
-  public void sendLocalChangedSymlinkToRemote() {
+  public void noSendLocalChangedSymlinkToRemote() {
     // given a local symlink that is chagned
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setSymlink("bar2").build());
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).setSymlink("bar").build());
     diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo");
+    // then we don't send the file to the remote
+    assertNoResults();
   }
 
   @Test
-  public void sendLocalNewDirectoryToRemote() {
+  public void noSendLocalNewDirectoryToRemote() {
     // given a local directory that is new
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
     diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo");
+    // then we don't send the file to the remote
+    assertNoResults();
   }
 
   @Test
-  public void sendLocalNewNestedFileToRemote() {
+  public void noSendLocalNewNestedFileToRemote() {
     // given a local file that is new
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(2L).setDirectory(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo/foo.txt").setModTime(2L).build());
     diff();
-    // then we send the file to the remote
-    assertSendToRemote("foo", "foo/foo.txt");
+    // then we don't send the file to the remote
+    assertNoResults();
   }
 
   @Test
@@ -142,8 +136,9 @@ public class UpdateTreeDiffTest {
     // that is an older directory on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).setDirectory(true).build());
     diff();
-    // then we send our file to the remote, and leave it alone locally
-    assertSendToRemote("foo");
+    // then we don't send the file to the remote + leave it alone locally
+    assertNoResults();
+    //
     assertNoSaveLocally();
   }
 
@@ -219,8 +214,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).build());
     diff();
     // then we send our directory to the remote, and leave it alone locally
-    assertSendToRemote("foo");
-    assertNoSaveLocally();
+    assertNoResults();
   }
 
   @Test
@@ -260,9 +254,8 @@ public class UpdateTreeDiffTest {
     // that is an older file on the remote
     tree.addRemote(Update.newBuilder().setPath("foo").setModTime(1L).build());
     diff();
-    // then we send our symlink to the remote, and leave it alone locally
-    assertSendToRemote("foo");
-    assertNoSaveLocally();
+    // then we don't send our symlink to the remote, and leave it alone locally
+    assertNoResults();
   }
 
   @Test
@@ -277,7 +270,7 @@ public class UpdateTreeDiffTest {
     assertSaveLocally("foo", "foo");
     assertThat(results.saveLocally.get(0).getDelete(), is(true));
     assertThat(results.saveLocally.get(1).getSymlink(), is("bar"));
-    assertNoSendToRemote();
+    assertsendToRemote();
   }
 
   @Test
@@ -288,8 +281,7 @@ public class UpdateTreeDiffTest {
     tree.addLocal(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("*.txt").build());
     diff();
     // then we don't sync the local foo.txt file, but we do sync .gitignore
-    assertNoSaveLocally();
-    assertSendToRemote(".gitignore");
+    assertNoResults();
   }
 
   @Test
@@ -301,7 +293,7 @@ public class UpdateTreeDiffTest {
     diff();
     // then we don't sync the local file
     assertSaveLocally(".gitignore");
-    assertNoSendToRemote();
+    assertsendToRemote();
   }
 
   @Test
@@ -341,7 +333,7 @@ public class UpdateTreeDiffTest {
     tree.addRemote(Update.newBuilder().setPath(".gitignore").setModTime(1L).setIgnoreString("foo/").build());
     diff();
     // then we do
-    assertSendToRemote("foo/foo.txt");
+    assertNoResults();
   }
 
   @Test
@@ -395,10 +387,8 @@ public class UpdateTreeDiffTest {
     // and it is deleted locally
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
     diff();
-    // then we send the delete to the remote
-    assertSendToRemote("foo");
-    assertThat(results.sendToRemote.get(0).getDelete(), is(true));
-    assertThat(results.sendToRemote.get(0).getLocal(), is(false));
+    // then we don't send the delete to the remote
+    assertNoResults();
     // and we don't resend it again on the next diff
     diff();
     assertNoResults();
@@ -429,18 +419,12 @@ public class UpdateTreeDiffTest {
     // and it is deleted locally
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
     diff();
-    // then we send the delete to the remote
-    assertSendToRemote("foo");
-    assertThat(results.sendToRemote.get(0).getDelete(), is(true));
-    assertThat(results.sendToRemote.get(0).getLocal(), is(false));
+    // then we don't send the delete to the remote
+    assertNoResults();
     // when it's re-created locally
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(4L).build());
     diff();
-    // then we send the delete to the remote
-    assertThat(results.sendToRemote.get(0).getDelete(), is(false));
-    assertThat(results.sendToRemote.get(0).getLocal(), is(false));
-    // and we don't resend it again on the next diff
-    diff();
+    // then we don't send the delete to the remote
     assertNoResults();
   }
 
@@ -460,14 +444,11 @@ public class UpdateTreeDiffTest {
     tree.addLocal(Update.newBuilder().setPath("foo/bar").setModTime(3L).setDelete(true).build());
     tree.addLocal(Update.newBuilder().setPath("foo").setModTime(3L).setDelete(true).build());
 
-    // then we only need to send the root delete to the remote
+    // then we don't send anything
     diff();
-    assertSendToRemote("foo");
-    assertThat(results.sendToRemote.get(0).getDelete(), is(true));
-    assertThat(results.sendToRemote.get(0).getLocal(), is(false));
-    assertThat(results.sendToRemote.get(0).getDirectory(), is(false)); // i guess it's okay for this to be false?
+    assertNoResults();
 
-    // and we don't resend it again on the next diff
+    // and we don't send it on the next diff
     diff();
     assertNoResults();
     assertThat(tree.find("foo").getChildren().size(), is(1));
@@ -516,20 +497,20 @@ public class UpdateTreeDiffTest {
     assertNoResults();
   }
 
-  @Test
-  public void clearDataOfStaleRemoteFile() {
-    // given a remote file that thought it was newer
-    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
-    // and a local file that is actually newer
-    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(3L).build());
-    diff();
-    // then we ignore the remove change
-    assertNoSaveLocally();
-    // and clear it's data from the UpdateTree
-    Node foo = tree.getChildren().get(0);
-    assertThat(foo.getName(), is("foo.txt"));
-    assertThat(foo.getRemote().getData().size(), is(0));
-  }
+//  @Test
+//  public void clearDataOfStaleRemoteFile() {
+//    // given a remote file that thought it was newer
+//    tree.addRemote(Update.newBuilder().setPath("foo.txt").setModTime(2L).setData(data).build());
+//    // and a local file that is actually newer
+//    tree.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(3L).build());
+//    diff();
+//    // then we ignore the remove change
+//    assertNoSaveLocally();
+//    // and clear it's data from the UpdateTree
+//    Node foo = tree.getChildren().get(0);
+//    assertThat(foo.getName(), is("foo.txt"));
+//    assertThat(foo.getRemote().getData().size(), is(0));
+//  }
 
   @Test
   public void clearDataErronouslySentRemoteFile() {
@@ -559,7 +540,7 @@ public class UpdateTreeDiffTest {
     assertThat(results.saveLocally.size(), is(0));
   }
 
-  private void assertNoSendToRemote() {
+  private void assertsendToRemote() {
     assertThat(results.sendToRemote.size(), is(0));
   }
 

@@ -23,6 +23,7 @@ public class MirrorSessionTest {
   private final FileWatcherFactory fileWatcherFactory = Mockito.mock(FileWatcherFactory.class);
   private final FileWatcher fileWatcher = Mockito.mock(FileWatcher.class);
   private final StubTaskFactory taskFactory = new StubTaskFactory();
+  private final SyncDirection syncDirection = SyncDirection.BOTH;
   private MirrorSession session;
 
   @Before
@@ -33,7 +34,8 @@ public class MirrorSessionTest {
       taskFactory,
       new MirrorPaths(root, null, new PathRules("*.jar"), new PathRules(), false, new ArrayList<>()),
       fileAccess,
-      fileWatcherFactory);
+      fileWatcherFactory,
+      syncDirection);
   }
 
   @Test

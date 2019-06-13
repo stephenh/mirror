@@ -34,6 +34,7 @@ public class MirrorClient {
   private final FileWatcherFactory watcherFactory;
   private final FileAccess fileAccess;
   private final ChannelFactory channelFactory;
+  private final SyncDirection syncDirection;
   private volatile TaskLogic sessionStarter;
   private volatile MirrorSession session;
 
@@ -44,12 +45,24 @@ public class MirrorClient {
     FileWatcherFactory watcherFactory,
     FileAccess fileAccess,
     ChannelFactory channelFactory) {
+    this(paths, taskFactory, detector, watcherFactory, fileAccess, channelFactory, SyncDirection.BOTH);
+  }
+
+  public MirrorClient(
+    MirrorPaths paths,
+    TaskFactory taskFactory,
+    ConnectionDetector detector,
+    FileWatcherFactory watcherFactory,
+    FileAccess fileAccess,
+    ChannelFactory channelFactory,
+    SyncDirection syncDirection) {
     this.paths = paths;
     this.taskFactory = taskFactory;
     this.detector = detector;
     this.watcherFactory = watcherFactory;
     this.fileAccess = fileAccess;
     this.channelFactory = channelFactory;
+    this.syncDirection = syncDirection;
   }
 
   /** Connects to the server and starts a sync session. */
@@ -73,7 +86,7 @@ public class MirrorClient {
       return;
     }
 
-    session = new MirrorSession(taskFactory, paths, fileAccess, watcherFactory);
+    session = new MirrorSession(taskFactory, paths, fileAccess, watcherFactory, syncDirection);
     session.addStoppedCallback(channel::shutdownNow);
     // Automatically re-connect when we're disconnected
     session.addStoppedCallback(() -> {
@@ -98,7 +111,9 @@ public class MirrorClient {
         .setRemotePath(paths.remoteRoot.toString())
         .setClientId(getClientId())
         .setVersion(Mirror.getVersion())
-        .addAllState(localState);
+        .addAllState(localState)
+        .setAllowInbound(syncDirection.getAllowInbound())
+        .setAllowOutbound(syncDirection.getAllowOutbound());
       paths.addParameters(req);
       withTimeout(stub).initialSync(req.build(), new StreamObserver<InitialSyncResponse>() {
         @Override

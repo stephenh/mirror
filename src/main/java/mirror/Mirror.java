@@ -169,6 +169,9 @@ public class Mirror {
     @Option(name = { "-li", "--use-internal-patterns" }, description = "use hardcoded include/excludes that generally work well for internal repos")
     public boolean useInternalPatterns;
 
+    @Option(name = { "-sd", "--sync-direction"}, description = "direction to sync files, defaults to \"BOTH\", allowed values: \"INBOUND\", \"OUTBOUND\", \"BOTH\"")
+    public SyncDirection syncDirection = SyncDirection.BOTH;
+
     @Override
     protected void runIfChecksOkay() {
       try {
@@ -193,7 +196,8 @@ public class Mirror {
           new ConnectionDetector.Impl(channelFactory),
           watcherFactory,
           new NativeFileAccess(Paths.get(localRoot).toAbsolutePath()),
-          channelFactory);
+          channelFactory,
+          syncDirection);
         client.startSession();
         // dumb way of waiting until they hit control-c
         CountDownLatch cl = new CountDownLatch(1);
