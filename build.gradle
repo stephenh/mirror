@@ -3,8 +3,8 @@ plugins {
   id "java"
   id "eclipse"
   id "idea"
-  id "com.google.protobuf" version "0.8.8"
-  id 'com.github.johnrengelman.shadow' version "4.0.4"
+  id "com.google.protobuf" version "0.8.10"
+  id 'com.github.johnrengelman.shadow' version "5.1.0"
   id "com.github.ben-manes.versions" version "0.20.0"
 }
 
