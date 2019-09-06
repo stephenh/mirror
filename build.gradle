@@ -14,7 +14,7 @@ def protobufVersion = '3.6.1'
 
 repositories {
   mavenCentral()
-  maven { url "http://repo.joist.ws" }
+  maven { url 'https://jitpack.io' }
   mavenLocal()
 }
 
@@ -28,14 +28,14 @@ dependencies {
   compile "ch.qos.logback:logback-classic:1.2.2"
   compile "org.slf4j:jul-to-slf4j:1.7.25"
   compile 'com.github.jnr:jnr-posix:3.0.49'
-  compile 'com.facebook.watchman:watchman-lib:0.3'
+  compile 'com.github.stephenh:watchman:return-byte-array-for-non-utf-8-SNAPSHOT'
   compile 'org.eclipse.jgit:org.eclipse.jgit:5.2.1.201812262042-r'
   compile 'commons-io:commons-io:2.6'
   compile 'org.apache.commons:commons-lang3:3.8.1'
   // Keep on 0.9.10 as it doesn't matter and 0.9.14 requires newer JDKs
   compile 'org.jooq:jool:0.9.10'
   compile 'com.github.rvesse:airline:2.6.0'
-  compile 'joist:joist-util:1.13.3'
+  compile 'com.github.stephenh.joist:joist-util:1.14.0'
   testCompile 'junit:junit:4.12'
   testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'
   testCompile 'org.mockito:mockito-core:2.24.5'
