@@ -4,13 +4,12 @@ set -e
 
 ./gradlew clean check shadowJar \
   && cp build/libs/mirror-all.jar ~/ \
-  && scp build/libs/mirror-all.jar sh10:~/ \
-  && scp build/libs/mirror-all.jar joist.ws:/var/www/joist.repo/
+  && scp build/libs/mirror-all.jar sh10:~/
 
 version=$(git describe --tags --dirty)
 echo $version > .version
-scp .version joist.ws:/var/www/joist.repo/mirror-version
+# scp .version joist.ws:/var/www/joist.repo/mirror-version
 rm .version
 
-scp mirror joist.ws:/var/www/joist.repo/mirror
+# scp mirror joist.ws:/var/www/joist.repo/mirror
 
