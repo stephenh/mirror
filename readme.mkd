@@ -67,10 +67,9 @@ To use the latest release/pre-built jars:
 * Install Java 8
   * You can try running `java -version` to see if Java is already installed
   * If not, a you'll need a platform-specific installation step, like `sudo apt install openjdk-8-jre` on Ubuntu
-* Optional: Install [watchman](https://facebook.github.io/watchman/)
-  * `mirror` will use the built-in Java `WatchService` API if you don't have watchman installed, and it will basically work, but the JDK-provided `WatchService` implementations are not that great: the Linux implementation is buggy (see [JDK-8145981](https://bugs.openjdk.java.net/browse/JDK-8145981)), and the Mac implementation uses polling.
-* Download the latest [mirror](https://github.com/stephenh/mirror/releases/latest/download/mirror) and [mirror-all.jar](http://github.com/stephenh/mirror/releases/latest/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
-  * `wget https://github.com/stephenh/mirror/releases/latest/mirror-all.jar ~/`
+* Install [watchman](https://facebook.github.io/watchman/)
+* Download the latest [mirror](https://github.com/stephenh/mirror/releases/latest/download/mirror) and [mirror-all.jar](http://github.com/stephenh/mirror/releases/latest/download/mirror-all.jar) to your home directory (or some other directory on your path, e.g. `~/bin`)
+  * `wget https://github.com/stephenh/mirror/releases/latest/download/mirror-all.jar ~/`
   * `wget https://github.com/stephenh/mirror/releases/latest/download/mirror ~/`
 * Make the `mirror` file executable
   * `chmod u+x mirror`
