@@ -260,6 +260,14 @@ public class UpdateTreeTest {
   }
 
   @Test
+  public void isNewerForDeletedDirectoriesDoesCareAboutModTime() {
+    root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(3).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setDelete(true).setModTime(2).build());
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+    assertThat(root.getChildren().get(0).isRemoteNewer(), is(false));
+  }
+
+  @Test
   public void isNewerForDeletedDirectoryDoesCareAboutModTime() {
     root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setDelete(true).setModTime(2).build());
     root.addRemote(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1).build());

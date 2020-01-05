@@ -1,5 +1,15 @@
 package mirror;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.TextFormat;
+import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Seq;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -10,17 +20,6 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
-import org.apache.commons.lang3.StringUtils;
-import org.jooq.lambda.Seq;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.TextFormat;
 
 /**
  * A tree of file+directory metadata ({@link Update}s).
@@ -71,8 +70,7 @@ public class UpdateTree {
     }
   }
 
-  @VisibleForTesting
-  public static UpdateTree newRoot() {
+  @VisibleForTesting public static UpdateTree newRoot() {
     return new UpdateTree(new MirrorPaths(null, null, new PathRules(), new PathRules(), false, new ArrayList<>()));
   }
 
@@ -113,12 +111,12 @@ public class UpdateTree {
     }
   }
 
-  /** Invokes {@link visitor} at each node in the tree, including the root, descending until {@code visitor} returns false. */
+  /** Invokes {@param visitor} at each node in the tree, including the root, descending until {@code visitor} returns false. */
   public void visit(Predicate<Node> visitor) {
     visit(root, visitor);
   }
 
-  /** Invokes {@link visitor} at each node in the tree, including the root. */
+  /** Invokes {@param visitor} at each node in the tree, including the root. */
   public void visitAll(Consumer<Node> visitor) {
     visit(root, n -> {
       visitor.accept(n);
@@ -127,7 +125,7 @@ public class UpdateTree {
   }
 
   /**
-   * Invokes {@link visitor} at each dirty node in the tree, including the root.
+   * Invokes {@param visitor} at each dirty node in the tree, including the root.
    *
    * After this method completes, all nodes are reset to clean. 
    */
@@ -143,23 +141,14 @@ public class UpdateTree {
     });
   }
 
-  @Override
-  public String toString() {
+  @Override public String toString() {
     StringBuilder sb = new StringBuilder();
-    visitAll(
-      node -> sb
-        .append(
-          node.getPath() //
-            + " local="
-            + node.local.getModTime()
-            + " remote="
-            + node.remote.getModTime())
-        .append("\n"));
+    visitAll(node -> sb.append(node.getPath() //
+      + " local=" + node.local.getModTime() + " remote=" + node.remote.getModTime()).append("\n"));
     return sb.toString();
   }
 
-  @VisibleForTesting
-  Node find(String path) {
+  @VisibleForTesting Node find(String path) {
     if ("".equals(path)) {
       return root;
     }
@@ -173,14 +162,15 @@ public class UpdateTree {
     return current;
   }
 
-  @VisibleForTesting
-  List<Node> getChildren() {
+  @VisibleForTesting List<Node> getChildren() {
     return root.children;
   }
 
   public enum NodeType {
     File, Directory, Symlink
-  };
+  }
+
+  ;
 
   /** Either a directory or file within the tree. */
   public class Node {
@@ -265,10 +255,13 @@ public class UpdateTree {
     }
 
     boolean isNewer(Update a, Update b) {
-      return a != null
-        && (b == null || sanityCheckTimestamp(a.getModTime()) > sanityCheckTimestamp(b.getModTime()))
-        && !(a.getDelete() && (b == null || b.getDelete())) // ignore no-op deletes
-        && !(!a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b)); // modtimes on existing dirs don't matter
+      if (a == null) {
+        return false;
+      }
+      boolean isNewer = b == null || (sanityCheckTimestamp(a.getModTime()) > sanityCheckTimestamp(b.getModTime()));
+      boolean isNoopDelete = a.getDelete() && (b == null || b.getDelete());
+      boolean isDirModtimeChange = !a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b) && !b.getDelete();
+      return isNewer && !isNoopDelete && !isDirModtimeChange;
     }
 
     boolean isParentDeleted() {
@@ -384,8 +377,7 @@ public class UpdateTree {
       });
     }
 
-    @Override
-    public String toString() {
+    @Override public String toString() {
       return name;
     }
 
