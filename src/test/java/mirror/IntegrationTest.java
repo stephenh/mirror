@@ -132,6 +132,22 @@ public class IntegrationTest {
   }
 
   @Test
+  public void testDeleteDirectoryThatWasJustCreated() throws Exception {
+    // given no files exist on either side
+    startMirror();
+    // and after starting some files were created on root1
+    writeFile(new File(root1, "dir/foo.txt"), "abc");
+    sleep();
+    // and they were synced to root2
+    assertThat(new File(root2, "dir/foo.txt").exists(), is(true));
+    // when the directory is are deleted from root1
+    deleteDirectory(new File(root1, "dir"));
+    sleep();
+    // then the directory is deleted from root2 as well
+    assertThat(new File(root2, "dir").exists(), is(false));
+  }
+
+  @Test
   public void testCreateNestedFile() throws Exception {
     startMirror();
     // given a file that is created in a sub directory
