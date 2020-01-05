@@ -2,7 +2,7 @@
 
 set -e
 
-./gradlew clean check shadowJar \
+./gradlew clean check shadowJar githubRelease \
   && cp build/libs/mirror-all.jar ~/ \
   && scp build/libs/mirror-all.jar sh10:~/
 
@@ -12,4 +12,3 @@ echo $version > .version
 rm .version
 
 # scp mirror joist.ws:/var/www/joist.repo/mirror
-

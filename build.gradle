@@ -77,7 +77,7 @@ eclipse {
 }
 
 githubRelease {
-  token getProperty('github.token')
+  token findProperty('github.token')
   owner 'stephenh'
   tagName version
   releaseAssets.from('build/libs/mirror-all.jar', './mirror')
