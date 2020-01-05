@@ -97,7 +97,7 @@ public class UpdateTreeTest {
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
     assertThat(root.getChildren().get(0).getLocal().getDelete(), is(true));
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1L));
   }
 
   @Test
@@ -143,15 +143,21 @@ public class UpdateTreeTest {
     assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1002L));
   }
 
-
   @Test
   public void deleteFileTwiceDoesNotRetickModTime() {
     root.addLocal(Update.newBuilder().setPath("foo.txt").setModTime(1L).build());
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
     assertThat(root.getChildren().size(), is(1));
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1L));
     root.addLocal(Update.newBuilder().setPath("foo.txt").setDelete(true).build());
-    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1L));
+  }
+
+  @Test
+  public void ignoreFileSystemDirectoryModTimeTicks() {
+    root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(1L).build());
+    root.addLocal(Update.newBuilder().setPath("foo").setDirectory(true).setModTime(2L).build());
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1L));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -280,6 +286,19 @@ public class UpdateTreeTest {
     root.addRemote(Update.newBuilder().setPath("foo").setModTime(1).build());
     root.addLocal(Update.newBuilder().setPath("foo").setDelete(true).build());
     assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+  }
+
+  @Test
+  public void isNewerForRestoredFiles() {
+    // given we'd marked foo as deleted
+    root.addLocal(Update.newBuilder().setPath("foo").setDelete(true).setModTime(1).build());
+    root.addRemote(Update.newBuilder().setPath("foo").setDelete(true).setModTime(1).build());
+    // when a new non-delete comes in with the same modtime (i.e. a `mv` of the old file)
+    root.addLocal(Update.newBuilder().setPath("foo").setModTime(1).build());
+    // then we've artificially ticked the modtime ahead so we can recognize it as newer
+    assertThat(root.getChildren().get(0).getLocal().getModTime(), is(1001L));
+    assertThat(root.getChildren().get(0).isLocalNewer(), is(true));
+    assertThat(root.getChildren().get(0).isRemoteNewer(), is(false));
   }
 
   @Test

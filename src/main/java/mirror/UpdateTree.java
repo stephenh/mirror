@@ -170,8 +170,6 @@ public class UpdateTree {
     File, Directory, Symlink
   }
 
-  ;
-
   /** Either a directory or file within the tree. */
   public class Node {
     private final Node parent;
@@ -209,15 +207,25 @@ public class UpdateTree {
     }
 
     void setLocal(Update local) {
-      // The best we can do for guessing the mod time of deletions
-      // is to take the old, known mod time and just tick 1
+      // Deleted files don't have a modtime, so keep the previous mod time
       if (local != null && this.local != null && local.getDelete() && local.getModTime() == 0L) {
-        int tick = this.local.getDelete() ? 0 : minimumMillisPrecision;
-        local = local.toBuilder().setModTime(this.local.getModTime() + tick).build();
+        local = local.toBuilder().setModTime(this.local.getModTime()).build();
       }
-      // If we can tell the incoming local update is meant to re-create the previous
-      // delete marker, ensure that we bump it to a most-delete marker modtime. E.g.
-      // sometimes the restored file will keep the pre-delete marker timestamp.
+      // If we're a directory, every write to a child directory bumps our modtime. This can cause us to drift
+      // ahead of the remote, so we purposefully pin ourselves to the prior modtime. I.e. we only want directory
+      // modtimes to advance on explicit actions like delete/re-create.
+      if (local != null && this.local != null && local.getDirectory() && this.local.getDirectory()) {
+        local = local.toBuilder().setModTime(this.local.getModTime()).build();
+      }
+      // Restored files that were marked deleted but restored w/the same modtime need a newer
+      // modtime to force both the local & remote diff logic to know that this restored version wins.
+      if (local != null && this.local != null && !local.getDelete() && this.local.getDelete() && local.getModTime() <= this.local.getModTime()) {
+        // TODO Should we write this modtime bump back to our local file system?
+        local = local.toBuilder().setModTime(this.local.getModTime() + minimumMillisPrecision).build();
+      }
+      // If we can tell the incoming local update is meant to re-create the previous delete marker,
+      // ensure that we bump it to a most-delete marker modtime. E.g. sometimes the restored file will
+      // keep the pre-delete marker timestamp (like when it is `mv`'d instead of created as a new file).
       if (local != null && this.local != null && this.local.getDelete() && this.local.getModTime() > local.getModTime()) {
         // Should we update the local file system? Probably, but currently that isn't the UpdateTree's job
         local = local.toBuilder().setModTime(this.local.getModTime() + minimumMillisPrecision).build();
@@ -258,8 +266,25 @@ public class UpdateTree {
       if (a == null) {
         return false;
       }
-      boolean isNewer = b == null || (sanityCheckTimestamp(a.getModTime()) > sanityCheckTimestamp(b.getModTime()));
+
+      long aTime = sanityCheckTimestamp(a.getModTime());
+      long bTime = b == null ? 0 : sanityCheckTimestamp(b.getModTime());
+
+      // For deletes, we keep the same modtime as the last file, so we have to combine that with the deleted flag.
+      boolean aDeleteWins = aTime == bTime && a.getDelete() && b != null && !b.getDelete();
+      boolean bDeleteWins = aTime == bTime && !a.getDelete() && b != null && b.getDelete();
+      if (aDeleteWins) {
+        return true;
+      } else if (bDeleteWins) {
+        return false;
+      }
+
+      boolean isNewer = aTime > bTime || b == null;
+      // Don't bother sending deletes to a remote that is already deleted/doesn't exist
       boolean isNoopDelete = a.getDelete() && (b == null || b.getDelete());
+      // Anytime we write to a file like `foo/bar/zaz.txt` (like from an incoming update),
+      // the modtimes of each parent directory is updated automatically by the file system,
+      // which we pick up as local changes, but we don't really need to sync these back over.
       boolean isDirModtimeChange = !a.getDelete() && UpdateTree.isDirectory(a) && b != null && UpdateTree.isDirectory(b) && !b.getDelete();
       return isNewer && !isNoopDelete && !isDirModtimeChange;
     }
@@ -313,7 +338,6 @@ public class UpdateTree {
       return local != null ? UpdateTree.isDirectory(local) : remote != null ? UpdateTree.isDirectory(remote) : false;
     }
 
-    /** @param p should be a relative path, e.g. a/b/c.txt. */
     boolean shouldIgnore() {
       if (shouldIgnore != null) {
         return shouldIgnore;
@@ -418,7 +442,7 @@ public class UpdateTree {
     return (millis < minimumMillisPrecision) ? millis : millis / minimumMillisPrecision * minimumMillisPrecision;
   }
 
-  /** Visits nodes in the tree, in breadth-first order, continuing if {@visitor} returns true. */
+  /** Visits nodes in the tree, in breadth-first order, continuing if {@param visitor} returns true. */
   private static void visit(Node start, Predicate<Node> visitor) {
     Queue<Node> queue = new LinkedBlockingQueue<Node>();
     queue.add(start);
