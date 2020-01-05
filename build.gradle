@@ -6,6 +6,7 @@ plugins {
   id "com.google.protobuf" version "0.8.10"
   id 'com.github.johnrengelman.shadow' version "5.1.0"
   id "com.github.ben-manes.versions" version "0.20.0"
+  id "com.github.breadmoirai.github-release" version "2.2.10"
 }
 
 def grpcVersion = '1.22.1'
@@ -73,6 +74,13 @@ eclipse {
   classpath {
     downloadSources = true
   }
+}
+
+githubRelease {
+  token getProperty('github.token')
+  owner 'stephenh'
+  tagName version
+  releaseAssets.from('build/libs/mirror-all.jar', './mirror')
 }
 
 sourceCompatibility = 1.8
