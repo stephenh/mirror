@@ -65,7 +65,7 @@ jar {
 }
 
 shadowJar {
-  version = null
+  archiveVersion = null
 }
 
 eclipse {
@@ -77,7 +77,7 @@ eclipse {
 }
 
 githubRelease {
-  token findProperty('github.token')
+  token { findProperty('github.token') || 'unset' }
   owner 'stephenh'
   tagName version
   releaseAssets.from('build/libs/mirror-all.jar', './mirror')
