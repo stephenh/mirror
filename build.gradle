@@ -65,7 +65,7 @@ jar {
 }
 
 shadowJar {
-  archiveVersion = null
+  archiveVersion = ''
 }
 
 eclipse {
