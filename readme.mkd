@@ -95,6 +95,8 @@ Extra includes and excludes patterns can be passed when starting the client, and
 
     ./mirror client --include '*-SNAPSHOT.jar` --include '.classpath' --include '.project' --exclude `build/`
 
+If you'd like mirror to completely ignore your `.gitignore` files, i.e. to sync everything, you can use `--include '*'`.
+
 (There is also a `--use-internal-patterns` that has useful defaults if you work at the same place I do.)
 
 Help
