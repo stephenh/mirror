@@ -32,7 +32,7 @@ public class IntegrationTest {
   }
 
   private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
-  private static final File integrationTestDir = new File("./build/IntergrationTest");
+  private static final File integrationTestDir = new File("./build/IntegrationTest");
   private static final File root1 = new File(integrationTestDir, "root1");
   private static final File root2 = new File(integrationTestDir, "root2");
   private static int nextPort = 10_000;
