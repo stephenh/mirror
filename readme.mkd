@@ -115,6 +115,8 @@ For example, the client supports `--debug-all` and `--debug-prefixes` command li
 Git Usage Note
 ==============
 
+(**Update February 2020**: Lately I have been ignoring this advice and passing `-i .git` to have both sides sync their `.git` metadata so that staging/index/etc. status is all shared, and it's been working out really well so far.)
+
 In general, `mirror` will work best if you have just one machine (either the desktop or laptop) have the git (or svn/other SCM) working copy (or working copies if you're syncing a directory like `~/code` with multiple repositories), and have the non-git machine just get all of it's files via `mirror` from git-using machine, and not by also having it's own `git` working copy.
 
 The reason is that if you had `git` working copies on both the laptop and desktop, you could run into:
@@ -140,6 +142,15 @@ Note that if you have a lot of directories, you might have to increase the nativ
 * For Linux see [https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers](this wiki page)
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
 * For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
+
+Watchman Config
+===============
+
+If you have an extremely large number of files that you don't want to sync, `.gitignore` may not be enough, because mirror and the underlying Watchman tool will still initially load those files into memory, even to decide "oh right, don't sync them".
+
+To have Mirror and watchman fundamentally ignore things, you can create a `.watchmanconfig` file with the `ignore_dirs` property set.
+
+See the [watchman config](https://facebook.github.io/watchman/docs/config.html).
 
 Syncing More than Two Machines
 ==============================
