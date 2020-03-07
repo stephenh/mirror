@@ -84,6 +84,8 @@ To use the latest release/pre-built jars:
 
 This will sync the `$HOME/code` directory on your two machines.
 
+(Note: for Arch Linux users, AUR has the `mirror-tool` and `mirror-tool-git` packages.)
+
 Config
 ======
 
