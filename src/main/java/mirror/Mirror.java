@@ -5,6 +5,7 @@ import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public class Mirror {
   private static final Logger log = LoggerFactory.getLogger(Mirror.class);
   private static final int maxMessageSize = 1073741824; // 1gb
   private static final int defaultPort = 49172;
+  private static final String defaultHost = "0.0.0.0";
   private static final int keepAliveInSeconds = 20;
   private static final int keepAliveTimeoutInSeconds = 5;
 
@@ -108,6 +110,9 @@ public class Mirror {
     @Option(name = { "-p", "--port" }, description = "port to listen on, default: " + defaultPort)
     public int port = defaultPort;
 
+    @Option(name = { "-h", "--host" }, description = "host name to listen on, default: " + defaultHost)
+    public String host = defaultHost;
+
     @Override
     protected void runIfChecksOkay() {
       TaskFactory taskFactory = new ThreadBasedTaskFactory();
@@ -116,7 +121,7 @@ public class Mirror {
       MirrorServer server = new MirrorServer(taskFactory, accessFactory, watcherFactory);
 
       Server rpc = NettyServerBuilder
-        .forPort(port)
+        .forAddress(new InetSocketAddress(host, port))
         .maxInboundMessageSize(maxMessageSize)
         .keepAliveTime(keepAliveInSeconds, TimeUnit.SECONDS)
         .keepAliveTimeout(keepAliveTimeoutInSeconds, TimeUnit.SECONDS)
@@ -129,7 +134,7 @@ public class Mirror {
 
       try {
         rpc.start();
-        log.info("Listening on " + port + ", version " + Mirror.getVersion());
+        log.info("Listening on " + host + ":" + port + ", version " + Mirror.getVersion());
         rpc.awaitTermination();
       } catch (IOException e) {
         e.printStackTrace();
