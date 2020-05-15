@@ -76,6 +76,13 @@ public class NativeFileAccess implements FileAccess {
   public void delete(Path relative) throws IOException {
     File file = resolve(relative).toFile();
     if (file.isDirectory()) {
+      // a workaround
+      // moved deleted dir to tmp dir, so that will not produced any new file events
+      File tmpDir = FileUtils.getTempDirectory();
+      File destDir = Paths.get(tmpDir.toString(), "mirror").toFile();
+      FileUtils.moveDirectoryToDirectory(file, destDir, true);
+      FileUtils.deleteDirectory(destDir);
+
       FileUtils.deleteDirectory(file);
     } else {
       file.delete();
