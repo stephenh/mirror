@@ -3,6 +3,7 @@ package mirror;
 import static org.apache.commons.lang3.StringUtils.chomp;
 import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -90,10 +91,41 @@ public class Mirror {
     @Option(name = "--enable-log-file", description = "enables logging debug statements to mirror.log")
     public boolean enableLogFile;
 
+    @Option(name = { "-ln", "--log-file-name" }, description = "name of output log file, defaults to mirror.log")
+    public String logFileName = null;
+    
+    @Option(name = { "-lp", "--log-file-path" }, description = "define location of mirror.log, defaults to local source directory")
+    public String logFilePath = null;
+    
+    
     @Override
     public final void run() {
+      String logFile;
+      
+      if (null == logFileName) {
+        logFileName = "mirror.log";
+      }
+      if (null == logFilePath) {
+        logFilePath = "./";
+      }
       if (enableLogFile) {
-        LoggingConfig.enableLogFile();
+        if (logFilePath.substring(logFilePath.length() - 1) != "/") {
+          logFilePath = logFilePath + "/";
+        }
+        
+        File logpath = new File(logFilePath);
+        
+        if (!logpath.exists()) {
+          throw new RuntimeException("Error: Log path does not exist: " + logFilePath);
+        } else if (!logpath.canWrite()) {
+          throw new RuntimeException("Error: Cannot write to log path: " + logFilePath);
+        } else if (!logpath.isDirectory()) {
+          throw new RuntimeException("Error: Log path is not a directory: " + logFilePath);
+        } else {
+          logFile = logFilePath + logFileName;
+        }
+        
+        LoggingConfig.enableLogFile(logFile);
       }
       if (!skipLimitChecks && !SystemChecks.checkLimits()) {
         // SystemChecks will have log.error'd some output
