@@ -68,7 +68,7 @@ public class LoggingConfig {
     getLogger("mirror").setLevel(Level.TRACE);
   }
 
-  public synchronized static void enableLogFile() {
+  public synchronized static void enableLogFile(String logFilePath) {
     init();
 
     LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -81,7 +81,7 @@ public class LoggingConfig {
     FileAppender<ILoggingEvent> file = new FileAppender<>();
     file.setContext(context);
     file.setAppend(true);
-    file.setFile("mirror.log");
+    file.setFile(logFilePath);
     file.setEncoder(encoder);
     file.start();
     getRootLogger().addAppender(file);
