@@ -3,13 +3,13 @@ plugins {
   id "java"
   id "eclipse"
   id "idea"
-  id "com.google.protobuf" version "0.8.10"
+  id "com.google.protobuf" version "0.8.14"
   id 'com.github.johnrengelman.shadow' version "5.1.0"
   id "com.github.ben-manes.versions" version "0.20.0"
   id "com.github.breadmoirai.github-release" version "2.2.10"
 }
 
-def grpcVersion = '1.22.1'
+def grpcVersion = '1.35.0'
 // This version must match the protobuf-java version that grpc transitively pulls in
 def protobufVersion = '3.6.1'
 
