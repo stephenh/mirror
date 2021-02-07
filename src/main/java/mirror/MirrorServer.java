@@ -86,8 +86,16 @@ public class MirrorServer extends MirrorImplBase {
       sessions.get(sessionId).stop();
     }
 
+    //This is the sync direction from the client's point of view. We need to use the complement to construct the session.
+    SyncDirection syncDirection = getSyncDirection(request);
+
     log.info("Starting new session " + sessionId);
-    MirrorSession session = new MirrorSession(taskFactory, paths, fileAccessFactory.newFileAccess(paths.root.toAbsolutePath()), watcherFactory);
+    MirrorSession session = new MirrorSession(
+            taskFactory,
+            paths,
+            fileAccessFactory.newFileAccess(paths.root.toAbsolutePath()),
+            watcherFactory,
+            syncDirection.getComplement());
 
     sessions.put(sessionId, session);
     session.addStoppedCallback(() -> {
@@ -200,5 +208,15 @@ public class MirrorServer extends MirrorImplBase {
       responseObserver.onNext(TimeCheckResponse.newBuilder().build());
     }
     responseObserver.onCompleted();
+  }
+
+  private SyncDirection getSyncDirection(InitialSyncRequest request) {
+    if (request.getAllowOutbound() && !request.getAllowInbound()) {
+      return SyncDirection.OUTBOUND;
+    }
+    if (!request.getAllowOutbound() && request.getAllowInbound()) {
+      return SyncDirection.INBOUND;
+    }
+    return SyncDirection.BOTH;
   }
 }

@@ -1,8 +1,7 @@
 #!/bin/bash
 
-SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN=mirror.Mirror
-JAR=mirror-all.jar
+JAR=mirror.jar
 OPTS="-Xmx2G -XX:+HeapDumpOnOutOfMemoryError"
 
 if [ -e ${SCRIPT_DIRECTORY}/${JAR} ]; then

@@ -22,7 +22,8 @@ public class SyncLogicTest {
   private final StubObserver<Update> outgoing = new StubObserver<>();
   private final StubFileAccess fileAccess = new StubFileAccess();
   private final UpdateTree tree = UpdateTree.newRoot();
-  private final SyncLogic l = new SyncLogic(queues, fileAccess, tree);
+  private final SyncDirection syncDirection = SyncDirection.BOTH;
+  private final SyncLogic l = new SyncLogic(queues, fileAccess, tree, syncDirection);
 
   @Test
   public void sendLocalChangeToRemote() throws Exception {

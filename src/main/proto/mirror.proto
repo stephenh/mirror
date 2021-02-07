@@ -30,6 +30,8 @@ message InitialSyncRequest {
   string remotePath = 1;
   int64 currentTime = 7 [deprecated=true];
   string version = 8;
+  bool allowInbound = 10;
+  bool allowOutbound = 11;
   repeated string includes = 3;
   repeated string excludes = 4;
   repeated string debugPrefixes = 5;
