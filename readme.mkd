@@ -141,9 +141,10 @@ System Watch Limits
 
 Note that if you have a lot of directories, you might have to increase the native file system limits, e.g.
 
-* For Linux see [https://github.com/guard/listen/wiki/Increasing-the-amount-of-inotify-watchers](this wiki page)
+* For Linux see [this readme](https://github.com/guard/listen/blob/master/README.md#increasing-the-amount-of-inotify-watchers)
   * `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
-* For Mac, see [https://facebook.github.io/watchman/docs/install.html#system-specific-preparation](the watchman docs)
+  * `echo fs.inotify.max_queued_events=50000 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
+* For Mac, see [the watchman docs](https://facebook.github.io/watchman/docs/install.html#system-specific-preparation)
 
 Watchman Config
 ===============
