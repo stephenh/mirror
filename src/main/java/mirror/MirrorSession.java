@@ -35,18 +35,20 @@ public class MirrorSession {
   private final FileWatcher fileWatcher;
   private final UpdateTree tree;
   private final SyncLogic syncLogic;
+  private final SyncDirection syncDirection;
   private volatile SaveToRemote saveToRemote;
   private volatile OutgoingConnection outgoingChanges;
 
-  public MirrorSession(TaskFactory taskFactory, MirrorPaths paths, FileAccess fileAccess, FileWatcherFactory fileWatcherFactory) {
+  public MirrorSession(TaskFactory taskFactory, MirrorPaths paths, FileAccess fileAccess, FileWatcherFactory fileWatcherFactory, SyncDirection syncDirection) {
     this.fileAccess = fileAccess;
     this.fileWatcher = fileWatcherFactory.newWatcher(paths, queues.incomingQueue);
     this.tree = UpdateTree.newRoot(paths);
+    this.syncDirection = syncDirection;
 
     // Run all our tasks in a pool so they are terminated together
     taskPool = taskFactory.newTaskPool();
 
-    syncLogic = new SyncLogic(queues, fileAccess, tree);
+    syncLogic = new SyncLogic(queues, fileAccess, tree, syncDirection);
     // started in diffAndStartPolling
 
     saveToLocal = new SaveToLocal(queues, fileAccess);
@@ -79,6 +81,7 @@ public class MirrorSession {
     // We've drained the initial state, so we can tell FileWatcher to start polling now.
     // This will start filling up the queue, but not technically start processing/sending
     // updates to the remote (see #startPolling).
+    // TODO: We don't need to watch files if we're inbound only - we do need the initial state list though
     start(fileWatcher);
 
     initialUpdates.forEach(u -> tree.addLocal(u));
@@ -93,6 +96,7 @@ public class MirrorSession {
         seedRemote.add(n.restorePath(n.getLocal()));
       }
     });
+    // TODO: maybe interrupt the watcher here?
     return seedRemote;
   }
 

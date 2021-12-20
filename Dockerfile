@@ -41,7 +41,7 @@ RUN install -d -m 777 /usr/local/var/run/watchman
 
 WORKDIR "/opt/mirror"
 COPY --from=mirror-builder /tmp/mirror/mirror ./
-COPY --from=mirror-builder /tmp/mirror/build/libs/mirror-all.jar ./
+COPY --from=mirror-builder /tmp/mirror/build/libs/mirror.jar ./
 RUN chmod a+s /usr/sbin/useradd /usr/sbin/groupadd
 ADD docker/docker-entrypoint.sh docker-entrypoint.sh
 ENTRYPOINT ["./docker-entrypoint.sh"]

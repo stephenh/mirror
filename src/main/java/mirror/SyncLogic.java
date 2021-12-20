@@ -40,11 +40,13 @@ public class SyncLogic implements TaskLogic {
   private final Queues queues;
   private final FileAccess fileAccess;
   private final UpdateTree tree;
+  private final SyncDirection syncDirection;
 
-  public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree) {
+  public SyncLogic(Queues queues, FileAccess fileAccess, UpdateTree tree, SyncDirection syncDirection) {
     this.queues = queues;
     this.fileAccess = fileAccess;
     this.tree = tree;
+    this.syncDirection = syncDirection;
   }
 
   @Override
@@ -95,7 +97,7 @@ public class SyncLogic implements TaskLogic {
   }
 
   private void diff() throws InterruptedException {
-    DiffResults r = new UpdateTreeDiff(tree).diff();
+    DiffResults r = new UpdateTreeDiff(tree, syncDirection).diff();
     for (Update u : r.saveLocally) {
       queues.saveToLocal.put(u);
     }
